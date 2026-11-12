@@ -580,12 +580,59 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
         dVfBeforeBound_ = dVf_.primitiveField();
     }
 
-    // Adjust dVf for unbounded cells
+    // Adjust dVf for unbounded cells. sweptClip onePlane (round 3,
+    // 2026-11-12): this per-cell net-balance redistribution, as it is, is
+    // the only limiter of the one-plane fluxes; the faces it changes, the
+    // cells touched and the volume it moves are counted (a processor face
+    // on the lower rank's side)
+    scalarField dVf0;
+    if (sweptOnePlane_)
+    {
+        dVf0.setSize(mesh_.nFaces());
+        for (label facei = 0; facei < mesh_.nFaces(); ++facei)
+        {
+            dVf0[facei] = faceValue(dVf_, facei);
+        }
+    }
     limitFluxes
     (
         Sp,
         Su
     );
+    if (sweptOnePlane_)
+    {
+        const polyBoundaryMesh& pbm = mesh_.boundaryMesh();
+        const labelList& own = mesh_.faceOwner();
+        const labelList& nei = mesh_.faceNeighbour();
+        const label nInt = mesh_.nInternalFaces();
+        bitSet touched(mesh_.nCells());
+        nOnePlaneLimFaces_ = 0;
+        onePlaneLimVolume_ = 0;
+        for (label facei = 0; facei < mesh_.nFaces(); ++facei)
+        {
+            bool count = true;
+            if (facei >= nInt)
+            {
+                const label patchi = pbm.whichPatch(facei);
+                if (dVf_.boundaryField()[patchi].size() != pbm[patchi].size()) continue;
+                if (isA<processorPolyPatch>(pbm[patchi]))
+                {
+                    const processorPolyPatch& ppp = refCast<const processorPolyPatch>(pbm[patchi]);
+                    count = (ppp.myProcNo() < ppp.neighbProcNo());
+                }
+            }
+            const scalar d = faceValue(dVf_, facei) - dVf0[facei];
+            if (d == 0) continue;
+            touched.set(own[facei]);
+            if (facei < nInt) touched.set(nei[facei]);
+            if (count)
+            {
+                ++nOnePlaneLimFaces_;
+                onePlaneLimVolume_ += mag(d);
+            }
+        }
+        nOnePlaneLimCells_ = touched.count();
+    }
 
     scalar maxAlphaMinus1 = gMax(alpha1In_) - 1;
     scalar minAlpha = gMin(alpha1In_);
@@ -674,11 +721,11 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
     {
         defaultAreaFractions();
 
-        // sweptClip onePlane, rule 2 (2026-11-09): the faces of the empty
-        // cells to 0, of the full cells to 1, after the defaults
+        // sweptClip onePlane (round 3, 2026-11-12): the counters after the
+        // step (no reset)
         if (sweptOnePlane_)
         {
-            onePlaneResetFaces();
+            onePlaneCountOffFaces();
         }
 
         // The faces set in this step are the previous ones of the next

@@ -716,116 +716,64 @@ class davofSweptAdvection
             pointField sweptFacePlaneX0_;
             bitSet sweptFaceHasPlane_;
 
-            //- THE KISS VARIANT, ONE PLANE PER FACE (Tomislav, 2026-11-09;
-            //  key sweptClip pieces | onePlane, default pieces, which stays
-            //  bit for bit the path above). onePlane: the closed triangle
-            //  list of a face's swept volume (the midpoint trace of the face
-            //  vertices and the pyramid correction delta = 3 (V_f - V_g)/
-            //  |A_pre| of sweptTriangles, unchanged) is clipped by ONE
-            //  plane, the plane of its Lagrangian donor: the cell holding
-            //  the centroid of the pre-image (the area-weighted centroids of
-            //  the pre-image fan), searched in the order upwind cell,
-            //  downwind cell, the upwind cell's vertex ring, the ring cells
-            //  of other ranks (sweptExchange); a centroid outside the mesh
-            //  at an inflow patch takes the boundary value, one found
-            //  nowhere the upwind cell (counted). The wet volume is the
-            //  closed form with the apex on the plane,
-            //  V_wet = (1/3) sum_T (x_T - x_0) . a_T over the wet polygons:
-            //  the cap closes the surface and contributes nothing, every
-            //  point of it has (x - x_0) . n = 0 (the divergence-theorem sum
-            //  of T. Tolle, D. Gruending, D. Bothe, T. Maric,
-            //  triSurfaceImmersion: Computing volume fractions and signed
-            //  distances from triangulated surfaces immersed in unstructured
-            //  meshes, Comput. Phys. Commun. 273 (2022) 108249,
+            //- THE KISS VARIANT, ONE PLANE PER FACE (Tomislav, 2026-11-09; round
+            //  3 of 2026-11-12, a deletion from round 2; key sweptClip pieces |
+            //  onePlane, default pieces, which stays bit for bit the path
+            //  above). Three operations per face, one plane, no tolerance but
+            //  the plane-exists test: (1) the prism P_f between f and its
+            //  pre-image f^- (the midpoint trace, the pyramid correction of
+            //  sweptTriangles, unchanged), for every candidate face, a face
+            //  without a normal flux included (the tangential shift still
+            //  moves the plane across it); (2) the donor plane among the cells
+            //  sharing a vertex with f (the vertex ring of the DAVOF normal
+            //  d_k, nothing wider; on other ranks the packed ring cells of
+            //  sweptExchange that hold a vertex of f): the interface cell at
+            //  t^n holding the centroid of f^- if it has a plane, else the
+            //  interface cell with a plane nearest to that centroid; if none
+            //  in the ring has a plane, the state of the cell holding the
+            //  centroid decides all or nothing (counted: noPlaneFaces, the
+            //  first five of a step dumped with their ring); (3) one clip of
+            //  P_f by that plane gives both the flux, V_wet = (1/3) sum_T
+            //  (x_T - x_0) . a_T over the wet polygons (the cap closes the
+            //  surface and contributes nothing; T. Tolle, D. Gruending, D.
+            //  Bothe, T. Maric, triSurfaceImmersion: Computing volume fractions
+            //  and signed distances from triangulated surfaces immersed in
+            //  unstructured meshes, Comput. Phys. Commun. 273 (2022) 108249,
             //  doi:10.1016/j.cpc.2021.108249, arXiv:2101.08511; the swept
-            //  volume of the unsplit face-vertex flux calculation,
-            //  T. Maric, H. Marschall, D. Bothe, An enhanced un-split
-            //  face-vertex flux-based VoF method, J. Comput. Phys. 371
-            //  (2018) 967-993, doi:10.1016/j.jcp.2018.03.048). The face
-            //  fraction is the PRE-IMAGE fan clipped by the same plane,
-            //  alpha_f = a_wet . A_pre/|A_pre|^2 (the fraction at t^(n+1) is
-            //  the pre-image's under the plane of t^n; the Eulerian face's
-            //  own fan gives the fraction at t^n, which the plane gate of
-            //  2026-11-09 falsified). A donor without a plane gives its
-            //  alpha: V_wet = alpha_D V_swept, alpha_f = alpha_D (a full or
-            //  an empty cell within the interface tolerance; a partial cell
-            //  without a plane, a wisp, the same, counted; a wisp with a
-            //  matched surface, sweptWispSurface, is clipped by it: the wisp
-            //  rule unchanged). No piece volumes, no cap system, no rank
-            //  test, no fallback, no signed tetrahedra. The zero-flux rule
-            //  of a face that does not sweep (pre-registered): the owner's
-            //  plane if it has one, else the neighbour's, else alpha of the
-            //  upwind cell (the lexicographic tie of phi_f = 0).
-            //  Key sweptOnePlaneBound none | donorContent (default
-            //  donorContent): per donor cell D, when the sum of the wet
-            //  volumes leaving it exceeds alpha_D V_D they are scaled by the
-            //  ratio, then the gas complements likewise against
-            //  (1 - alpha_D) V_D; volumes only, the face fractions untouched;
-            //  one pass; a face whose donor is a cell of another rank is not
-            //  bounded (counted). Rule 2, after the step and the defaults: a
-            //  cell with alpha <= eps gets 0 on all its faces, one with
-            //  alpha >= 1 - eps gets 1 (eps = surfCellTol, the interface-cell
-            //  tolerance; a full cell wins over an empty one at a shared
-            //  face; the flags synchronised over the processor patches).
-            //  Counted before the reset: the seeds (cells with alpha <= eps
-            //  and a wet face) and the corner-arrival slivers (eps < alpha
-            //  < 1e-3 with a wet face). davofSweptAdvectionFlux.C
-            //  sweptOnePlaneFlux, onePlaneBoundDonors, onePlaneResetFaces.
+            //  volume of the unsplit face-vertex flux calculation, T. Maric,
+            //  H. Marschall, D. Bothe, An enhanced un-split face-vertex
+            //  flux-based VoF method, J. Comput. Phys. 371 (2018) 967-993,
+            //  doi:10.1016/j.jcp.2018.03.048), and alpha_f^(n+1), the wet
+            //  fraction of f^- from the same clipped object. Deleted in round
+            //  3: the Lagrangian pre-image-centroid donor and the face-ring
+            //  fallback of rule (2), the zero-flux rule, rule 2 and its eps
+            //  (a counter remains: the faces of cells at 0 or 1 to round-off
+            //  whose fraction is off 0/1 by more than 1e-12, never reset), the
+            //  donorContent bound and the per-donor scaling
+            //  (sweptOnePlaneBound), the diagnostic sweptOnePlaneDonor. The
+            //  overlap or gap of adjacent prisms under a non-uniform velocity,
+            //  O(Co^2 h |grad U|), is bounded by the per-cell net-balance
+            //  redistribution the scheme already has (limitFluxes,
+            //  nAlphaBounds), called after all one-plane fluxes are known, as
+            //  is; counted: the faces it changed, the cells touched, the
+            //  volume it moved (on a plane it must never fire). The pieces
+            //  path keeps its own scaling. davofSweptAdvectionFlux.C
+            //  sweptOnePlaneFlux, onePlaneCountOffFaces.
             word sweptClip_;
             bool sweptOnePlane_;
-            word sweptOnePlaneBound_;
-            //- The donor of the one-plane path (a diagnostic of the plane gate's
-            //  localisation, 2026-11-09): lagrangian (the default: the cell
-            //  holding the pre-image centroid, as above) or upwind (the Eulerian
-            //  upwind cell, no search; the swept volume's part in another cell
-            //  then takes this cell's plane or alpha)
-            word sweptOnePlaneDonor_;
             label nOnePlaneFaces_;
-            label nOnePlaneClipped_;
+            label nOnePlaneSwept_;
             label nOnePlaneClipTris_;
-            label nOnePlaneDonorUpwind_;
-            label nOnePlaneDonorDownwind_;
-            label nOnePlaneDonorRing_;
+            label nOnePlaneDonorCentroid_;
+            label nOnePlaneDonorNearest_;
             label nOnePlaneDonorRemote_;
-            label nOnePlaneDonorBeyond_;
-            label nOnePlaneDonorOutside_;
-            label nOnePlaneFull_;
-            label nOnePlaneEmpty_;
-            label nOnePlaneWisp_;
-            label nOnePlaneWispPlane_;
-            //- The amendment of rule (2) (2026-11-10, before the second plane
-            //  gate): a donor without a plane while the swept volume overlaps
-            //  an interface cell takes the plane of the overlapping interface
-            //  cell nearest to the pre-image centroid (the upwind and downwind
-            //  cells, the vertex ring, the ring cells of other ranks; the
-            //  overlap by bounding boxes); the faces per step, those with a
-            //  remote cell's plane
-            label nOnePlaneFallbackPlane_;
-            label nOnePlaneFallbackRemote_;
-            label nOnePlaneZeroFlux_;
-            label nOnePlaneClamped_;
-            label nOnePlaneBoundLiq_;
-            label nOnePlaneBoundGas_;
-            scalar onePlaneBoundMin_;
-            label nOnePlaneBoundSkipped_;
-            label nOnePlaneReset0_;
-            label nOnePlaneReset1_;
-            label nOnePlaneSeeds_;
-            label nOnePlaneSlivers_;
-
-            //- The faces of the step for the donorContent bound: the face,
-            //  its donor (-1: not bounded), the wet and the total volume,
-            //  the sign of phi_f, whether the face is a patch face
-            struct onePlaneRecord
-            {
-                label facei;
-                label donor;
-                scalar vLiq;
-                scalar vTotal;
-                scalar sgn;
-                bool patchFace;
-            };
-            DynamicList<onePlaneRecord> onePlaneRecords_;
+            label nOnePlaneNoPlane_;
+            label nOnePlaneNoPlaneDumped_;
+            label nOnePlaneOutOfRange_;
+            label nOnePlaneLimFaces_;
+            label nOnePlaneLimCells_;
+            scalar onePlaneLimVolume_;
+            label nOnePlaneOffFaces_;
             mutable vectorField upLazy_;
             mutable bitSet upDone_;
             mutable bitSet anyPatchPoint_;
@@ -1347,16 +1295,14 @@ public:
                 point* xqOut = nullptr
             );
 
-            //- sweptClip onePlane (davofSweptAdvectionFlux.C, 2026-11-09): the
-            //  flux of a face from ONE plane, its Lagrangian donor's. local
-            //  is the cell whose velocity interpolates the displacement (the
-            //  upwind cell, or the local cell of a processor face), up and
-            //  other the local upwind and downwind cells (-1 when remote or
-            //  none), boundary whether the face is a patch face, remoteNb the
-            //  surface of the cell across a processor face (nullptr when none:
-            //  the neighbour of the zero-flux rule, as the local one in serial);
-            //  af, aWet and vLiq as sweptFaceFlux (vLiq positive, the caller
-            //  gives it the sign of phi_f)
+            //- sweptClip onePlane (davofSweptAdvectionFlux.C; round 3,
+            //  2026-11-12): the flux of a face from ONE plane, the donor plane
+            //  of its vertex ring. local is the cell whose velocity
+            //  interpolates the displacement (the upwind cell, or the local
+            //  cell of a processor face), up and other the local upwind and
+            //  downwind cells (-1 when remote or none), boundary whether the
+            //  face is a patch face; af, aWet and vLiq as sweptFaceFlux (vLiq
+            //  positive, the caller gives it the sign of phi_f)
             void sweptOnePlaneFlux
             (
                 const label facei,
@@ -1367,7 +1313,6 @@ public:
                 const scalar phiF,
                 const bool sweeps,
                 const bool boundary,
-                const davof::cellSurface* remoteNb,
                 const davof::velocityAt& UInterp,
                 const vectorField& Up,
                 scalar& af,
@@ -1375,17 +1320,11 @@ public:
                 scalar& vLiq
             );
 
-            //- sweptOnePlaneBound donorContent: the wet volumes leaving a
-            //  donor scaled to its liquid content, then the gas complements
-            //  to its gas content; dVf rewritten where a ratio applied
-            //  (davofSweptAdvectionFlux.C)
-            void onePlaneBoundDonors();
-
-            //- Rule 2 of sweptClip onePlane: the face fractions of the empty
-            //  cells to 0 and of the full cells to 1 after the step and the
-            //  defaults, the seeds and the slivers counted before the reset
-            //  (davofSweptAdvectionFlux.C)
-            void onePlaneResetFaces();
+            //- The counters after the step of sweptClip onePlane: the faces of
+            //  the cells at 0 or 1 to round-off whose fraction is off 0/1 by
+            //  more than 1e-12 (never reset), printed with the limiter's
+            //  counters (davofSweptAdvectionFlux.C)
+            void onePlaneCountOffFaces();
 
             //- fluxIntegration sweptFaceCells (davofSweptAdvectionFlux.C,
             //  davofSweptPieces.H): the same arguments and results as

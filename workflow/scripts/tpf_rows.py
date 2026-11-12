@@ -326,7 +326,7 @@ ENRIGHT_SETTINGS = OrderedDict([
     ("fragmentLog",        ("closure",         "false", "none",    "normalOnly",         "true")),
     ("recommended",        ("signedTets",      "false", "scale",   "normalAndAlpha",     "false")),
     # THE KISS VARIANT (Tomislav, 2026-11-09; leia davof-kiss): one plane per face, the
-    # Lagrangian donor's (sweptClip onePlane, sweptOnePlaneBound donorContent), the
+    # donor plane of the face's vertex ring (sweptClip onePlane; round 3 of 2026-11-12), the
     # interface cells by normal and alpha, no bounded face fractions (rule 2 instead);
     # the sixth field, the clip, is "pieces" for every other setting and renders nothing
     ("onePlane",           ("signedTets",      "false", "none",    "normalAndAlpha",     "false", "onePlane")),
@@ -377,8 +377,7 @@ def enright_setting_tokens(name):
             # dictionary of a pieces setting stays byte for byte as before
             out["TPF_ENRIGHT_KEYS"] += (
                 "\n        // the KISS variant (Tomislav, 2026-11-09; leia davof-kiss): one plane per face"
-                "\n        sweptClip onePlane;"
-                "\n        sweptOnePlaneBound donorContent;")
+                "\n        sweptClip onePlane;")
     return out
 
 

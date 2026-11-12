@@ -27,7 +27,7 @@ setfields_args: ""
 post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
 # The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM dictionaries.
 axes_override:
-  TPF_ENRIGHT_SETTING: [onePlane, recommended]
+  TPF_ENRIGHT_SETTING: [onePlane]
   TPF_GRAZING_CUT: [fork]
   N_CELLS: [20, 40, 80, 160]
   TARGET_ADVECTIVE_CO: [0.124, 0.3101, 0.6202]

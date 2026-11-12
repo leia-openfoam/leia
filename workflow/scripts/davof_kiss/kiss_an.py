@@ -32,15 +32,13 @@ IDENT_TOL = 1e-12
 P1_TOL = 1e-12
 
 ONEPLANE_RE = re.compile(
-    r"; one plane: faces (\d+), clipped (\d+), clipped triangles (\d+); donors: upwind (\d+), downwind (\d+), "
-    r"ring (\d+), remote (\d+), beyond \(upwind taken\) (\d+), outside \(boundary value\) (\d+); "
-    r"without a plane: full (\d+), empty (\d+), wisps (\d+), wisp planes (\d+); fallback planes (\d+) \(remote (\d+)\); zero-flux faces (\d+), clamped (\d+)"
-    r"(?:; donor content: donors scaled liquid (\d+), gas (\d+), min ratio (\S+), faces with a remote donor not bounded (\d+))?")
-ONEPLANE_KEYS = ("faces", "clipped", "clipTris", "donorUp", "donorDown", "donorRing", "donorRemote", "donorBeyond",
-                 "donorOutside", "full", "empty", "wisps", "wispPlanes", "fallbackPlanes", "fallbackRemote", "zeroFlux", "clamped",
-                 "boundLiq", "boundGas", "boundMin", "boundSkipped")
-RULE2_RE = re.compile(r"one plane, rule 2: faces reset to 0 (\d+), to 1 (\d+); before the reset: seeds \(alpha <= \S+ with a wet face\) (\d+), "
-                      r"slivers \(eps < alpha < 1e-3 with a wet face\) (\d+)")
+    r"; one plane: faces (\d+) \(sweeping (\d+)\), clipped triangles (\d+); donor plane: centroid cell (\d+), "
+    r"nearest interface cell (\d+), of another rank (\d+), none \(noPlaneFaces\) (\d+); wet volume out of range (\d+)")
+ONEPLANE_KEYS = ("faces", "sweeping", "clipTris", "donorCentroid", "donorNearest", "donorRemote", "noPlane", "outOfRange")
+RULE2_RE = re.compile(r"one plane: limiter faces changed (\d+), cells (\d+), volume moved (\S+); faces of 0/1 cells with alphaf off 0/1 by more than 1e-12: (\d+)")
+P1_E = 1e-15
+P1_MIN = -1e-12
+
 
 
 def num(x):
@@ -77,6 +75,7 @@ def read_case(c):
     last = rows[-1] if rows else {}
     rec.update(Eshape=num(last.get("Eshape")), L1x=num(last.get("LCentreDiff1")), L1n=num(last.get("LNormalDiff1")),
                L1af=num(last.get("L1_alphaf")) if rec["row"].startswith("davof") else None,
+               Linfaf=num(last.get("Linf_alphaf")) if rec["row"].startswith("davof") else None,
                massDevPct=num(last.get("devPercent")), nInterfaceEnd=num(last.get("nInterfaceCells")),
                tLast=num(last.get("TIME")), status=last.get("status", "noCSV"), abortStep=last.get("abortStep", ""))
     st = [num(r.get("timeStepTime")) for r in rows]
@@ -114,25 +113,9 @@ def read_case(c):
             rec["onePlane"] = agg
         r2 = RULE2_RE.findall(log)
         if r2:
-            reset0 = [int(x[0]) for x in r2]; reset1 = [int(x[1]) for x in r2]
-            seeds = [int(x[2]) for x in r2]; sliv = [int(x[3]) for x in r2]
-            rec["rule2"] = dict(reset0Sum=sum(reset0), reset1Sum=sum(reset1), reset0Max=max(reset0), reset1Max=max(reset1))
-            rec["seedsMax"] = max(seeds); rec["seedsSteps"] = sum(1 for s in seeds if s > 0)
-            rec["sliversMax"] = max(sliv); rec["sliversSteps"] = sum(1 for s in sliv if s > 0)
-            # the step at T/2: the rule 2 line of the time block nearest END_TIME/2
-            if rec["T"]:
-                blocks = log.split("\nTime = ")[1:]
-                best = None
-                for b in blocks:
-                    tm = num(b.split("\n", 1)[0].strip())
-                    m = RULE2_RE.search(b)
-                    if tm is None or not m:
-                        continue
-                    d = abs(tm - rec["T"]/2)
-                    if best is None or d < best[0]:
-                        best = (d, tm, int(m.group(3)), int(m.group(4)))
-                if best:
-                    rec["seedsHalf"] = best[2]; rec["sliversHalf"] = best[3]; rec["tHalf"] = best[1]
+            rec["rule2"] = dict(limFacesSum=sum(int(x[0]) for x in r2), limCellsSum=sum(int(x[1]) for x in r2),
+                                limVolumeSum=sum(float(x[2]) for x in r2), offFacesSum=sum(int(x[3]) for x in r2),
+                                limFacesMax=max(int(x[0]) for x in r2), offFacesMax=max(int(x[3]) for x in r2))
     launch = {}
     lp = os.path.join(c, ".leia_launch")
     if os.path.isfile(lp):
@@ -244,32 +227,35 @@ def mode_plane(args):
     recs = collect(args.studies_dir, "kiss_plane_*_np[18]")
     write_csv(os.path.join(args.out, "kiss_plane_cases.csv"), [flat(r) for r in recs])
     rows = []
-    worstAf = worstN = 0.0; nCells = 0; fails = []
-    for r in sorted(recs, key=lambda r: (r["study"], r["setting"], r["arm"], r["co"], r["N"])):
-        op = r["onePlane"]
+    nCells = 0; fails = []
+    for r in sorted(recs, key=lambda r: (r["arm"], r["co"], r["N"], r["study"], r["setting"])):
+        op = r["onePlane"]; r2 = r["rule2"]
+        steps = max(r["steps"] or 1, 1)
         v = ""
         if r["setting"] == "onePlane":
-            ok = (r["L1af"] is not None and r["L1n"] is not None and r["L1af"] <= P1_TOL and r["L1n"] <= P1_TOL and r["status"] != "aborted")
-            v = "P1 ok" if ok else "P1 FAIL"
+            noPlane = int(op.get("noPlaneSum", 0)) if op else None
+            lim = int(r2.get("limFacesSum", 0)) if r2 else None
+            checks = dict(L1=(r["L1af"] is not None and r["L1af"] < P1_TOL), Linf=(r["Linfaf"] is not None and r["Linfaf"] < P1_TOL),
+                          E=(r["Eshape"] is not None and r["Eshape"] < P1_E), minA=(r["minAlpha"] is not None and r["minAlpha"] > P1_MIN),
+                          lim=(lim == 0), noPlane=(noPlane == 0), done=(r["status"] != "aborted"))
+            ok = all(checks.values())
+            v = "P1 ok" if ok else "P1 FAIL (" + ", ".join(k for k, c in checks.items() if not c) + ")"
             nCells += 1
-            if r["L1af"] is not None: worstAf = max(worstAf, r["L1af"])
-            if r["L1n"] is not None: worstN = max(worstN, r["L1n"])
             if not ok: fails.append(r)
         rows.append(dict(study=r["study"], setting=r["setting"], arm=r["arm"], N=r["N"], Co=r["co"], ofCo=g(r["ofCo"]),
-                         L1af=f(r["L1af"]), L1n=f(r["L1n"]), Eshape=f(r["Eshape"]), L1x=f(r["L1x"]),
+                         L1af=f(r["L1af"]), Linfaf=f(r["Linfaf"]), Eshape=f(r["Eshape"]), L1x=f(r["L1x"]), L1n=f(r["L1n"]),
                          minAlpha=g(r["minAlpha"], 6), excess=g(r["excess"]), massDev=g(r["massDevPct"]),
-                         steps=r["steps"], wall_s=g(r["wall"], 4), np=r["np"], status=r["status"],
-                         donors="up %s dn %s ring %s rem %s bey %s out %s" % tuple(int(op.get(k + "Sum", 0)) for k in ("donorUp", "donorDown", "donorRing", "donorRemote", "donorBeyond", "donorOutside")) if op else "",
-                         noPlane="full %s empty %s wisp %s fallbackPl %s" % tuple(int(op.get(k + "Sum", 0)) for k in ("full", "empty", "wisps", "fallbackPlanes")) if op else "",
-                         bound="liq %s gas %s min %s" % (int(op.get("boundLiqSum", 0)), int(op.get("boundGasSum", 0)), g(op.get("boundMin"))) if op else "",
-                         zeroFlux=int(op.get("zeroFluxSum", 0)) if op else "", clamped=int(op.get("clampedSum", 0)) if op else "",
-                         reset="0:%s 1:%s" % (r["rule2"].get("reset0Sum", ""), r["rule2"].get("reset1Sum", "")) if r["rule2"] else "",
-                         seedsMax=r["seedsMax"], verdict=v))
-    table(rows, ["study", "setting", "arm", "N", "Co", "ofCo", "L1af", "L1n", "Eshape", "L1x", "minAlpha", "excess", "massDev", "steps", "wall_s", "np", "status", "verdict"], "P1 the plane gate")
-    table(rows, ["study", "setting", "arm", "N", "Co", "donors", "noPlane", "bound", "zeroFlux", "clamped", "reset", "seedsMax"], "the one-plane counters (sums over the run)")
+                         steps=r["steps"], wall_s=g(r["wall"], 4), stepMedian_s=g(r["stepMedian"]), np=r["np"], status=r["status"],
+                         noPlane=int(op.get("noPlaneSum", 0)) if op else "", limFaces=int(r2.get("limFacesSum", 0)) if r2 else "",
+                         limCells=int(r2.get("limCellsSum", 0)) if r2 else "", limVolume=g(r2.get("limVolumeSum")) if r2 else "",
+                         offFaces=int(r2.get("offFacesSum", 0)) if r2 else "", outOfRange=int(op.get("outOfRangeSum", 0)) if op else "",
+                         donorsPerStep="centroid %.0f, nearest %.0f, remote %.0f" % tuple(op.get(k + "Sum", 0)/steps for k in ("donorCentroid", "donorNearest", "donorRemote")) if op else "",
+                         facesPerStep="%.0f (sweeping %.0f)" % (op.get("facesSum", 0)/steps, op.get("sweepingSum", 0)/steps) if op else "",
+                         clipTrisPerStep=g(op.get("clipTrisSum", 0)/steps) if op else "", verdict=v))
+    table(rows, ["study", "setting", "arm", "N", "Co", "ofCo", "L1af", "Linfaf", "Eshape", "minAlpha", "noPlane", "limFaces", "limCells", "limVolume", "offFaces", "outOfRange", "steps", "wall_s", "np", "status", "verdict"], "P1 the plane gate, round 3")
+    table(rows, ["study", "setting", "arm", "N", "Co", "facesPerStep", "donorsPerStep", "clipTrisPerStep", "stepMedian_s", "wall_s", "np"], "the one-plane counters per step and the cost")
     write_csv(os.path.join(args.out, "kiss_plane_table.csv"), rows)
-    print(f"\nP1: {nCells} onePlane cells, max L1(alphaf) {worstAf:.3e}, max L1(n) {worstN:.3e}, failing {len(fails)}: "
-          + ("HELD" if nCells and not fails else "FALSIFIED" if fails else "no cells"))
+    print(f"\nP1 (round 3): {nCells} onePlane cells, failing {len(fails)}: " + ("HELD" if nCells and not fails else "FALSIFIED" if fails else "no cells"))
     r1 = [r for r in recs if r["study"].endswith("np1")]; r8 = [r for r in recs if r["study"].endswith("np8")]
     pairs = identity_pairs(r1, r8, lambda r: (r["setting"], r["arm"], r["N"], r["co"]))
     for p in pairs:
@@ -277,11 +263,11 @@ def mode_plane(args):
     prow = [dict(setting=p["setting"], arm=p["arm"], N=p["N"], Co=p["Co"], steps=f"{p['steps1']}/{p['steps8']}",
                  Eshape=g(p["rel_Eshape"]), L1x=g(p["rel_L1x"]), L1n=g(p["rel_L1n"]), L1af=g(p["rel_L1af"]), mass=g(p["rel_massDevPct"]),
                  minAlpha=g(p["rel_minAlpha"]), bounds=g(p["boundsRel"]), worst=g(p["worstRel"]), verdict=p["verdict"]) for p in pairs]
-    table(prow, ["setting", "arm", "N", "Co", "steps", "Eshape", "L1x", "L1n", "L1af", "mass", "minAlpha", "bounds", "worst", "verdict"], "the plane identity np1 vs np8 (the errors relative, mass / min alpha / excess / bounds absolute)")
+    table(prow, ["setting", "arm", "N", "Co", "steps", "Eshape", "L1x", "L1n", "L1af", "mass", "minAlpha", "bounds", "worst", "verdict"], "the plane identity np1 vs np8 (the errors relative above 1e-12, else absolute)")
     write_csv(os.path.join(args.out, "kiss_plane_identity.csv"), prow)
     if pairs:
         w = max(p["worstRel"] for p in pairs)
-        print(f"identity (plane): {len(pairs)} pairs, worst relative difference {w:.3e}: " + ("HELD" if w <= IDENT_TOL else "FALSIFIED"))
+        print(f"identity (plane): {len(pairs)} pairs, worst difference {w:.3e}: " + ("HELD" if w <= IDENT_TOL else "FALSIFIED"))
 
 
 def mode_identity(args):

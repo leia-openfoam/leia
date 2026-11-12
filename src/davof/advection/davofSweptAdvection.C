@@ -274,34 +274,19 @@ Foam::davofSweptAdvection::davofSweptAdvection
     sweptFaceHasPlane_(),
     sweptClip_(modelDict().getOrDefault<word>("sweptClip", "pieces")),
     sweptOnePlane_(sweptClip_ == "onePlane"),
-    sweptOnePlaneBound_(modelDict().getOrDefault<word>("sweptOnePlaneBound", "donorContent")),
-    sweptOnePlaneDonor_(modelDict().getOrDefault<word>("sweptOnePlaneDonor", "lagrangian")),
     nOnePlaneFaces_(0),
-    nOnePlaneClipped_(0),
+    nOnePlaneSwept_(0),
     nOnePlaneClipTris_(0),
-    nOnePlaneDonorUpwind_(0),
-    nOnePlaneDonorDownwind_(0),
-    nOnePlaneDonorRing_(0),
+    nOnePlaneDonorCentroid_(0),
+    nOnePlaneDonorNearest_(0),
     nOnePlaneDonorRemote_(0),
-    nOnePlaneDonorBeyond_(0),
-    nOnePlaneDonorOutside_(0),
-    nOnePlaneFull_(0),
-    nOnePlaneEmpty_(0),
-    nOnePlaneWisp_(0),
-    nOnePlaneWispPlane_(0),
-    nOnePlaneFallbackPlane_(0),
-    nOnePlaneFallbackRemote_(0),
-    nOnePlaneZeroFlux_(0),
-    nOnePlaneClamped_(0),
-    nOnePlaneBoundLiq_(0),
-    nOnePlaneBoundGas_(0),
-    onePlaneBoundMin_(1),
-    nOnePlaneBoundSkipped_(0),
-    nOnePlaneReset0_(0),
-    nOnePlaneReset1_(0),
-    nOnePlaneSeeds_(0),
-    nOnePlaneSlivers_(0),
-    onePlaneRecords_(),
+    nOnePlaneNoPlane_(0),
+    nOnePlaneNoPlaneDumped_(0),
+    nOnePlaneOutOfRange_(0),
+    nOnePlaneLimFaces_(0),
+    nOnePlaneLimCells_(0),
+    onePlaneLimVolume_(0),
+    nOnePlaneOffFaces_(0),
     upLazy_(),
     upDone_(),
     anyPatchPoint_(),
@@ -483,10 +468,10 @@ Foam::davofSweptAdvection::davofSweptAdvection
         << ", sweptBoundedFaceFraction " << sweptBoundedFaceFraction_ << endl;
     if (sweptOnePlane_)
     {
-        Info<< "davofSwept: sweptClip onePlane (one plane per face, the Lagrangian"
-            << " donor's; 2026-11-09), sweptOnePlaneBound " << sweptOnePlaneBound_
-            << ", sweptOnePlaneDonor " << sweptOnePlaneDonor_
-            << ", rule 2 with eps " << surfCellTol_ << endl;
+        Info<< "davofSwept: sweptClip onePlane (round 3, 2026-11-12: one plane per"
+            << " face, the donor plane of the vertex ring, one clip for the flux"
+            << " and the face fraction, no rule 2, no donor bound; the"
+            << " redistribution of limitFluxes as the only limiter)" << endl;
     }
 
     initAreaFractions();
@@ -629,18 +614,6 @@ Foam::davofSweptAdvection::davofSweptAdvection
                         << "sweptClip onePlane needs flux sweptFaceCells, not "
                         << fluxIntegration_ << exit(FatalIOError);
                 }
-                if (sweptOnePlaneBound_ != "none" && sweptOnePlaneBound_ != "donorContent")
-                {
-                    FatalIOErrorInFunction(modelDict())
-                        << "sweptOnePlaneBound '" << sweptOnePlaneBound_
-                        << "' unknown. Valid: none, donorContent." << exit(FatalIOError);
-                }
-                if (sweptOnePlaneDonor_ != "lagrangian" && sweptOnePlaneDonor_ != "upwind")
-                {
-                    FatalIOErrorInFunction(modelDict())
-                        << "sweptOnePlaneDonor '" << sweptOnePlaneDonor_
-                        << "' unknown. Valid: lagrangian, upwind." << exit(FatalIOError);
-                }
                 if (sweptClassify_ || sweptConsistencyLog_ || sweptFaceDump_)
                 {
                     FatalIOErrorInFunction(modelDict())
@@ -652,7 +625,7 @@ Foam::davofSweptAdvection::davofSweptAdvection
                 {
                     FatalIOErrorInFunction(modelDict())
                         << "sweptClip onePlane leaves the face fractions to the"
-                        << " donor's plane and rule 2: sweptBoundedFaceFraction"
+                        << " donor plane's clip: sweptBoundedFaceFraction"
                         << " must be none, not " << sweptBoundedFaceFraction_
                         << exit(FatalIOError);
                 }

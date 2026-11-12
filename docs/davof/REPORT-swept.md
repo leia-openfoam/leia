@@ -6148,3 +6148,78 @@ enright/kiss` (the clone `leia` at 1f34653e with the round-1 and round-2 studies
 `locate/`). P1 falsified: the matrix (P2 `kiss_rotation_N*` / `kiss_rotationRDF_N*`, P3-P5
 `config/davof/standing/<family>_N<N>_kiss.yaml`) is not submitted; the decision on rule 2's
 tolerance and on the OF Co 1 regime is Tomislav's.
+
+## The KISS variant, round 3 (Tomislav, 2026-11-12): a deletion from round 2, the plane gate only
+
+PRE-REGISTERED before the first run (the header of this round). The prediction: on every cell
+of the plane ladder (both arms, N 20 / 40 / 80 / 160, OF Co 0.2 / 0.5 / 1, np1 and np8, the
+normal arm at OF Co 1 included) max L1(alpha_f) < 1e-12, max Linf(alpha_f) < 1e-12, E_shape <
+1e-15, min alpha > -1e-12, the limiter count 0, noPlaneFaces 0, and np8 equal to np1 to the
+digit. Falsifier: any case above these, or any limiter firing on the plane; then the
+one-plane path is a Co <= 0.5 scheme and the pieces path stays the Co 1 scheme. No matrix
+launch after the gate either way.
+
+### The scheme (branch davof-kiss, `sweptClip onePlane`), three operations per face
+
+1. The trace: the prism P_f between f and f - U_f dt with the back polygon f^- (the midpoint
+   trace of the face vertices and the pyramid correction of `sweptTriangles`, unchanged).
+   Every candidate face goes through it (the candidate set of `sweptConsistent`: the faces
+   of the cells with a surface, the interface cells and the wisps and their vertex rings),
+   a face without a normal flux included: its prism has no volume, its pre-image is the
+   face shifted along itself, and the plane still moves across it. The zero-flux rule
+   (owner's plane, else the neighbour's, else the upwind alpha) is deleted.
+2. The donor plane: among the cells sharing a vertex with f (the vertex ring of the DAVOF
+   normal d_k, nothing wider; on other ranks the packed ring cells of `sweptExchange` that
+   hold a vertex of f), the interface cell at t^n that holds the centroid of f^- if it has a
+   plane, else the interface cell with a plane nearest to that centroid (by the cell centre;
+   a tie by the lexicographic order of the centres, the same on every rank). The
+   pre-image-centroid (Lagrangian) donor of rounds 1-2 and the face-ring fallback of the
+   amendment of rule (2) are deleted. If no cell of the vertex ring has a plane, the state
+   of the cell holding the centroid of f^- decides all or nothing (alpha^n >= 1/2 wet);
+   these faces are counted (noPlaneFaces) and reported per step, the first five of a step
+   dumped with their ring (`Pout`). By the geometry at per-face Co <= 1 a cut prism always
+   has a plane in the vertex ring, so this count must be zero on the gate.
+3. One clip of P_f by the donor plane gives both the flux (the wet volume of P_f by the
+   closed form with the apex on the plane, the rank-1 cap closure as in round 2, geometry
+   not a rule) and alpha_f^(n+1) (the wet fraction of f^-, the pre-image fan) from the same
+   clipped object.
+
+Deleted (one commit, this round): rule 2 and its eps (a counter remains: the faces of
+cells with alpha^(n+1) at 0 or 1 to round-off, 1e-12, whose alpha_f is off 0/1 by more than
+1e-12, reported per step, never reset); the donorContent bound and the per-donor scaling
+(the key `sweptOnePlaneBound`, `onePlaneBoundDonors`, the records); the diagnostic
+`sweptOnePlaneDonor`; the clamp of the wet volume (a counter remains: the wet volume outside
+[0, V_swept] by more than 1e-12 V_swept). No new limiter. For a non-uniform velocity the
+adjacent prisms overlap or gap at O(Co^2 h |grad U|); that is bounded by the per-cell
+net-balance redistribution the scheme already has (`limitFluxes`, `nAlphaBounds`, as it is,
+called after all one-plane fluxes are known), with a counter of the faces it changed, the
+cells touched and the volume it moved; on the plane it must never fire. The pieces path
+keeps its own scaling untouched. The round-2 code is not kept behind a switch: the deleted
+rules (the donor search order, the fallback, rule 2, the bound) would have cost a key, a
+member and a branch each in the one function, and round 2 stays reachable at 1f34653e ..
+1dc922e8.
+
+### The Courant number of the configs and the measured displacement
+
+The configs set `TARGET_ADVECTIVE_CO` = |U| dt / h with REFERENCE_SPEED 1 (|U| = 1 on both
+arms); the table reports OpenFOAM's L1 definition, Co_OF = 0.5 dt sum_f |phi_f| / V =
+(|U_x| + |U_y| + |U_z|) dt / h on a hexahedral cell. On the normal arm (U = n = (0.3, 0.5,
+0.8124)) Co_OF = 1.6124 x the target, so the targets 0.124 / 0.3101 / 0.6202 give Co_OF 0.2 /
+0.5 / 1 and the displacement |U| dt / h = 0.124 / 0.310 / 0.620 (round 2 measured 0.504 h as
+the largest per-axis displacement at the target 0.6202, 0.8124 x 0.620); the per-face Co
+|U . n_f| dt / h is 0.037 / 0.062 / 0.101 (x / y / z faces) at Co_OF 0.2, 0.093 / 0.155 /
+0.252 at 0.5 and 0.186 / 0.310 / 0.504 at 1. On the oblique arm (U = (1, 0, 0)) Co_OF = the
+target, the displacement 0.2 / 0.5 / 1.0 h, the per-face Co of the x-faces 0.2 / 0.5 / 1.0
+and 0 on the y- and z-faces. No face is swept across a whole cell except the oblique arm's
+x-faces at exactly Co 1, where the prism is the upwind cell.
+
+### The gate
+
+The plane ladder of round 2 with the one-plane row only (the pieces row's numbers of round
+2 stand beside it in the table: wall clock at the same ranks and N): `kiss_plane_normal_np1
+/ np8`, `kiss_plane_oblique_np1 / np8` with `TPF_ENRIGHT_SETTING: [onePlane]`, on Lichtenberg
+through the existing configs (the round-2 cases kept as `*_round2`). Reported per arm x Co x
+N: max L1(alpha_f), max Linf(alpha_f), E_shape, min alpha, the three counters (noPlaneFaces,
+limiter cells, dry/full faces off 0/1), the donors per step (the centroid cell's plane, the
+nearest interface cell's, of another rank), the wall clock np1 and np8 next to the pieces
+row.
