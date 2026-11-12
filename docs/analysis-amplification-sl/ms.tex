@@ -2113,6 +2113,260 @@ $1.01639260$: agreement to \textbf{nine significant figures}.
 \measured{} The largest value on the whole mesh, $1.0527251$, sits on a \textbf{boundary}
 cell, and it is the number previously recorded as the mesh's $\Lambda_{\max}$.
 
+\section{The scheme matrix: every named scheme on every mesh}
+\label{sec:scheme-matrix}
+
+The sections before this one examined the schemes one at a time. This section examines
+all of them with one tool, on every mesh type that the two goals need: a solver with
+adaptive mesh refinement (2:1 transitions between quadrilaterals and between hexahedra)
+and unstructured hexahedral meshes (perturbed cells). It contains measurements only. No
+solver was changed.
+
+\subsection{The names}
+
+A scheme name has four parts, \texttt{OWN-NEIGHBOUR/SPACE+TRANSITION}
+(Figure~\ref{fig:scheme-names}). \texttt{OWN} is the set of points of a cell that carry
+advected unknowns. \texttt{NEIGHBOUR} is the set of cell-centre values that the cell reads
+from other cells. \texttt{SPACE} is the polynomial. \texttt{TRANSITION} is the treatment
+of a 2:1 transition. The original scheme of the solver is \texttt{C-Cp/L2}. The tensor
+point set of Section~\ref{sec:principle} is \texttt{BFC/I} in 2D and \texttt{T/I} in 3D.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{scheme_names.pdf}
+  \caption{The names of the schemes as a UML class diagram. A scheme is composed of one
+  alternative of each family. \texttt{NEIGHBOUR} and \texttt{TRANSITION} can be absent.}
+  \label{fig:scheme-names}
+\end{figure}
+
+\subsection{The method}
+
+The mesh is a periodic block of cells. One step multiplies every wave of the block by a
+matrix over the unknowns of the block. The growth factor is the largest eigenvalue
+magnitude over all waves. The smallest cell has size 1, and the Courant number is defined
+with it. Every unknown moves along its own trajectory: its departure point is located in
+a host cell, and the data of the host cell are interpolated there. A scheme with
+\texttt{OWN} = \texttt{C} uses the cell of the unknown itself, as the original scheme does.
+
+The script is \texttt{sympy/scheme\_matrix.py}. Its header holds the criteria, written
+before the runs:
+\begin{itemize}
+  \item A scheme \textbf{passes a lattice} (P) if its data carry a complete quadratic and
+        its growth factor is within $10^{-6}$ of 1 at every $\mathrm{Co} \le 1$.
+  \item A scheme \textbf{passes a perturbed mesh} (P) if it passes the lattice and its
+        growth is not larger than that of the original scheme at any Courant number.
+  \item A scheme \textbf{passes the 2:1 transition} (P) if growth factor minus 1 is at most
+        $4.41\cdot10^{-3}$ at every Courant number. That is the measured value of the
+        production mesh that completes its horizon. It \textbf{fails} (F) if growth factor
+        minus 1 is $1.03\cdot10^{-2}$ or more at any $\mathrm{Co} \le 0.5$, the measured
+        value of the mesh that fails. Between the two the symbol does not decide (?).
+  \item The letter r marks a scheme whose data do not carry a complete quadratic.
+\end{itemize}
+The validity gates pass (\texttt{scheme\_matrix.py --smoke}). Among them: the original
+scheme and the tensor set return 1.000000 on the square and the cube, a block of equal
+cells returns the value of the single-cell lattice, and the perturbed quadrilateral
+reproduces the earlier table to all digits. The free variant ran on Lichtenberg (job
+array 56254576). Seven of its ten tables were also computed on the laptop, and the two
+agree to round-off.
+
+\subsection{The verdicts}
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{4pt}
+\input{\tables/scheme_matrix_summary.tex}
+\caption{Scheme against mesh. sq: square, cube: cube, hc: honeycomb; -p: perturbed;
+-2:1: planar transition; -patch: refined patch. P: pass, F: fail, ?: not decided,
+r: no complete quadratic, --: not run. The \texttt{+c} schemes in 3D have not landed.}
+\label{tab:sm-summary}
+\end{table}
+
+Table~\ref{tab:sm-summary} holds one verdict per scheme and mesh.
+Tables~\ref{tab:sm-square} to~\ref{tab:sm-honeycombPert} hold the numbers.
+
+\paragraph{Lattices.} \measured{} Only the original scheme (\texttt{C-Cp/L2},
+\texttt{C-Cp/I}) and the tensor set (\texttt{BFC/I} and \texttt{FCC/I} in 2D,
+\texttt{T/I} in 3D) have growth factor 1 on the square and on the cube. Every hybrid
+scheme, which adds neighbour centres to own points, amplifies weakly on the perfect
+lattice. In 3D, centre plus vertices (\texttt{BCC}) carries rank 8 of 10, as predicted;
+with face-neighbour centres the rank is full. In 3D the sets without edge midpoints
+(\texttt{FCC}, \texttt{BFC}) amplify. On the honeycomb the original scheme (there \texttt{C-Cf/L2}) has growth factor 1 up to
+$\mathrm{Co} = 0.5$ and fails at $\mathrm{Co} = 1$, above its limit $\sqrt{3}/2$. Only
+\texttt{BFC-Cf/I} passes the perfect honeycomb, and it fails the perturbed one.
+
+\paragraph{Perturbed meshes.} \measured{} The original scheme amplifies weakly on
+perturbed quadrilaterals and hexahedra (Tables~\ref{tab:sm-quadPert}
+and~\ref{tab:sm-hexPert}). The tensor set (and \texttt{FCC/I} in 2D) is the only second-order scheme with smaller
+growth there, in 2D and in 3D. This closes the 3D question that the earlier script could
+not answer.
+
+\paragraph{The 2:1 transition, hanging points as unknowns.} \measured{} The original
+scheme \textbf{fails} the planar transition, in 2D and in 3D, with nearly the same
+numbers: growth factor minus 1 is $2.0\cdot10^{-2}$ at $\mathrm{Co} = 0.1$, and
+$9.7\cdot10^{-2}$ (2D) and $9.6\cdot10^{-2}$ (3D) at $\mathrm{Co} = 0.5$ (Tables~\ref{tab:sm-quad21}
+and~\ref{tab:sm-hex21}). The worst flow direction is normal to the transition. At the
+Courant number of the coupled runs, 0.0164, it is $3.3\cdot10^{-3}$ in 2D and
+$3.5\cdot10^{-3}$ in 3D, below the pass threshold. The tensor set also fails the planar
+transition when the hanging points are independent unknowns. In 2D, \texttt{BCC-Cf/L2}
+and \texttt{BFC-Cf/L2} pass. In 3D, only \texttt{T-Cf/L2} passes.
+
+\paragraph{Planar transition against refined patch.} The tensor set fails the planar
+transition and has growth factor 1 on the refined patch. Both results are valid. On the
+unbounded planar transition a disturbance travels along the transition for ever, and it
+grows while it does so. On the patch it leaves the transition after a finite distance.
+The growth on the patch is transient, and the eigenvalue does not see it. The planar
+transition is therefore the conservative measure, and the verdicts use it.
+
+\subsection{Hanging points as constrained values: \texttt{+c}}
+
+The octree level-set codes do not give a hanging node its own update. They give it a value
+interpolated from the coarse cell. The variant \texttt{+c} does the same. Every cell is
+read as an unrefined cell: its data are its corners, the centres of its unsplit faces,
+the midpoints of its unsplit edges and its centre. A point that lies on the boundary of a
+cell and is not one of these points hangs on that cell. It carries no unknown, and its
+value is the interpolant of that cell, read at the point.
+
+\measured{} In 2D the tensor set with constrained hanging points, \texttt{BFC/I+c}, has
+growth factor 1.000000 at every $\mathrm{Co} \le 1$, in five flow directions, on the
+planar transition and on the refined patch. So has \texttt{FCC/I+c}. The prediction
+written before the run holds. The reason is that the interpolant is then continuous
+across the transition, and the hanging values add no degree of freedom. The least-squares
+schemes do not gain from the constraint, also as predicted: a least-squares fit does not
+return its data, so the constraint does not make it continuous. In 3D one check ran:
+\texttt{T/I+c} has growth factor 1.000000 at $\mathrm{Co} = 0.3$ on the planar
+transition. The complete 3D tables have not landed.
+
+\subsection{Ghost cells for the cell-centred schemes: \texttt{+g}}
+
+A scheme with \texttt{OWN} = \texttt{C} has no hanging points. Its counterpart of
+\texttt{+c} is the ghost cell, as Basilisk uses it: every cell reads a uniform stencil at
+its own cell size, so it applies the weights of the perfect lattice. A coarse cell that
+needs the value of a refined block takes the mean of the fine values (restriction). A
+fine cell that needs a value inside a coarse cell takes the reconstruction of that coarse
+cell, read at the ghost position (prolongation). Both are explicit. The mean of the fine
+values is not the centre value of a quadratic: it differs by $h_\text{fine}^2/8$ times
+the Laplacian. So a \texttt{+g} scheme does not return a quadratic exactly in the cells
+at the transition.
+
+\measured{} \texttt{C-Cp/L2+g} passes the planar transition in 2D and in 3D. The largest
+growth factor minus 1 is $3.3\cdot10^{-3}$ in 2D and $4.4\cdot10^{-3}$ in 3D, against
+$2.1\cdot10^{-1}$ and $2.3\cdot10^{-1}$ without ghost cells. The margin to the threshold
+$4.41\cdot10^{-3}$ is small in 3D. The growth is not zero, and the worst direction is
+tangential to the transition. On the refined patches it is at most $2.2\cdot10^{-4}$.
+
+\subsection{What is known}
+
+A literature survey (\texttt{literature-survey.md}, next to this document) compared these
+results with publications.
+\begin{itemize}
+  \item \textbf{Known.} The one-dimensional result is classical (Strang 1962; Besse and
+        Mehrenberger 2008). The tensor quadratic on nodes is stable in computed
+        eigenvalues, without a proof (Baptista 1987; Oliveira and Baptista 1995; Bradley
+        2024). Weak growth of node-based tensor schemes on perturbed meshes is known
+        (Bradley 2024).
+  \item \textbf{Known in a weaker form.} The growth $1 + 2\,\mathrm{Co}$ of a boundary
+        cell is known only qualitatively (Trefethen 1985).
+  \item \textbf{Not found.} The symbol of the least-squares scheme in 2D and 3D, the
+        honeycomb limit, the hybrid schemes, and any analysis of a 2:1 transition for a
+        cell-centred quadratic scheme. One report is negative: quadratic semi-Lagrangian
+        interpolation was unstable on a graded octree (Olshanskii, Terekhov and
+        Vassilevski 2013).
+  \item \textbf{Consistent with practice.} The octree level-set codes (Min and Gibou
+        2007; Mirzadeh et al.\ 2016) store the level set at vertices, give a hanging node
+        an interpolated value and limit the quadratic term. Basilisk gives each cell a
+        uniform stencil through ghost cells. The measurements of this section agree with
+        both choices: \texttt{+c} and \texttt{+g} are the two treatments that pass.
+\end{itemize}
+
+\subsection{What the supervisor must decide}
+
+For the goal of adaptive mesh refinement, three candidates pass the planar transition
+with second-order accuracy: the original scheme with ghost cells (\texttt{C-Cp/L2+g},
+one unknown per cell, small growth), the tensor set with constrained hanging points
+(\texttt{BFC/I+c} in 2D, growth factor 1; \texttt{T/I+c} in 3D not complete), and
+\texttt{T-Cf/L2} (8 unknowns per cell in 3D, small growth). For the goal of unstructured
+hexahedra, the tensor set is the only scheme with less growth than the original scheme.
+\opn{} The tensor set needs edge midpoints in 3D, which OpenFOAM does not store.
+
+\begin{table}[p]
+\centering\setlength{\tabcolsep}{4pt}
+\resizebox{\linewidth}{!}{\input{\tables/scheme_matrix_square.tex}}
+\caption{Scheme matrix, square lattice. Growth factor minus 1, the largest value over the flow
+directions. The one-step error is for a wave with $kh = 0.2$ at $\mathrm{Co} = 0.3$.}
+\label{tab:sm-square}
+\end{table}
+
+\begin{table}[p]
+\centering\setlength{\tabcolsep}{4pt}
+\resizebox{\linewidth}{!}{\input{\tables/scheme_matrix_quadPert.tex}}
+\caption{Scheme matrix, perturbed quadrilaterals, the largest value over 5, 10 and 20\,\% displacement and two seeds. Growth factor minus 1, the largest value over the flow
+directions. The one-step error is for a wave with $kh = 0.2$ at $\mathrm{Co} = 0.3$.}
+\label{tab:sm-quadPert}
+\end{table}
+
+\begin{table}[p]
+\centering\setlength{\tabcolsep}{4pt}
+\resizebox{\linewidth}{!}{\input{\tables/scheme_matrix_quad21.tex}}
+\caption{Scheme matrix, quadrilaterals, planar 2:1 transition. Growth factor minus 1, the largest value over the flow
+directions. The one-step error is for a wave with $kh = 0.2$ at $\mathrm{Co} = 0.3$.}
+\label{tab:sm-quad21}
+\end{table}
+
+\begin{table}[p]
+\centering\setlength{\tabcolsep}{4pt}
+\resizebox{\linewidth}{!}{\input{\tables/scheme_matrix_quad21patch.tex}}
+\caption{Scheme matrix, quadrilaterals, refined patch. Growth factor minus 1, the largest value over the flow
+directions. The one-step error is for a wave with $kh = 0.2$ at $\mathrm{Co} = 0.3$.}
+\label{tab:sm-quad21patch}
+\end{table}
+
+\begin{table}[p]
+\centering\setlength{\tabcolsep}{4pt}
+\resizebox{\linewidth}{!}{\input{\tables/scheme_matrix_cube.tex}}
+\caption{Scheme matrix, cube lattice. Growth factor minus 1, the largest value over the flow
+directions. The one-step error is for a wave with $kh = 0.2$ at $\mathrm{Co} = 0.3$.}
+\label{tab:sm-cube}
+\end{table}
+
+\begin{table}[p]
+\centering\setlength{\tabcolsep}{4pt}
+\resizebox{\linewidth}{!}{\input{\tables/scheme_matrix_hexPert.tex}}
+\caption{Scheme matrix, perturbed hexahedra, the largest value over 5, 10 and 20\,\% displacement. Growth factor minus 1, the largest value over the flow
+directions. The one-step error is for a wave with $kh = 0.2$ at $\mathrm{Co} = 0.3$.}
+\label{tab:sm-hexPert}
+\end{table}
+
+\begin{table}[p]
+\centering\setlength{\tabcolsep}{4pt}
+\resizebox{\linewidth}{!}{\input{\tables/scheme_matrix_hex21.tex}}
+\caption{Scheme matrix, hexahedra, planar 2:1 transition. Growth factor minus 1, the largest value over the flow
+directions. The one-step error is for a wave with $kh = 0.2$ at $\mathrm{Co} = 0.3$.}
+\label{tab:sm-hex21}
+\end{table}
+
+\begin{table}[p]
+\centering\setlength{\tabcolsep}{4pt}
+\resizebox{\linewidth}{!}{\input{\tables/scheme_matrix_hex21patch.tex}}
+\caption{Scheme matrix, hexahedra, refined patch. Growth factor minus 1, the largest value over the flow
+directions. The one-step error is for a wave with $kh = 0.2$ at $\mathrm{Co} = 0.3$.}
+\label{tab:sm-hex21patch}
+\end{table}
+
+\begin{table}[p]
+\centering\setlength{\tabcolsep}{4pt}
+\resizebox{\linewidth}{!}{\input{\tables/scheme_matrix_honeycomb.tex}}
+\caption{Scheme matrix, honeycomb. Growth factor minus 1, the largest value over the flow
+directions. The one-step error is for a wave with $kh = 0.2$ at $\mathrm{Co} = 0.3$.}
+\label{tab:sm-honeycomb}
+\end{table}
+
+\begin{table}[p]
+\centering\setlength{\tabcolsep}{4pt}
+\resizebox{\linewidth}{!}{\input{\tables/scheme_matrix_honeycombPert.tex}}
+\caption{Scheme matrix, perturbed honeycomb, the largest value over 5, 10 and 20\,\% displacement and two seeds. Growth factor minus 1, the largest value over the flow
+directions. The one-step error is for a wave with $kh = 0.2$ at $\mathrm{Co} = 0.3$.}
+\label{tab:sm-honeycombPert}
+\end{table}
+
 \part{What it all amounts to, and what to change}
 
 \section{Three conditions decide whether a scheme amplifies}
@@ -2337,6 +2591,10 @@ python3 docs/analysis-amplification-sl/sympy/corner_face_data.py   # corner and 
 python3 docs/analysis-amplification-sl/sympy/degree_on_irregular_stencil.py  # degree 1/2/3
 python3 docs/analysis-amplification-sl/sympy/multipoint_unknowns.py  # vertex/face unknowns
 python3 docs/analysis-amplification-sl/sympy/multipoint_hexagon.py   # the same on a honeycomb
+cd docs/analysis-amplification-sl/sympy
+python3 scheme_matrix.py --smoke                      # the gates of the scheme matrix
+python3 scheme_matrix.py --mesh quad21 --variant all  # one mesh, every variant
+python3 scheme_matrix_tables.py                       # the LaTeX tables
 
 workflow/scripts/fit_amplification_probe.sh \
     studies/popinet3D_La12000_hex_smoke4/popinetTranslating3D_00000 reuse <out>
