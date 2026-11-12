@@ -17,8 +17,12 @@ import re
 LABELS = {"DA + quadratic faces": "DA-Q", "Detrixhe-Aslam": "DA"}
 COMPARATORS = {"plicRDF", "gradAlpha", "isoAlpha"}
 # column index -> True if higher is better (orders), False if lower is better (errors)
-STATIC_COLS = {3: True, 4: True, 5: False, 6: False, 7: True, 8: False, 9: True, 10: False}
-TRANSPORT_COLS = {4: False, 5: True, 6: False, 7: True, 8: False}
+# (since 2026-11-12 the static tables carry p, L1 and Linf of 1 - n.n_Sigma after
+# Linf(n), columns 7-9, and the sphere transport table L1(1 - n.n_Sigma) and its order
+# after L1(n), columns 6-7)
+STATIC_COLS = {3: True, 4: True, 5: False, 6: False, 7: True, 8: False, 9: False,
+               10: True, 11: False, 12: True, 13: False}
+TRANSPORT_COLS = {4: False, 5: True, 6: False, 7: True, 8: False, 9: True, 10: False}
 
 
 def num(cell):
