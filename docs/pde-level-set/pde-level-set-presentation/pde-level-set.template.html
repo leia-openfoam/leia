@@ -472,6 +472,33 @@
 </section>
 
 <!-- =================================================================== -->
+<!-- 7c. ON LICHTENBERG: STEP 0 AND STEP A0                                -->
+<!-- =================================================================== -->
+<section>
+<section>
+  <h2>On Lichtenberg since 2026-11-12: what runs, and what each run predicts</h2>
+  <table style="font-size:0.74em">
+    <tr><th>gate</th><th>question</th><th>pass, written before the run</th></tr>
+    <tr><td><b>0.1</b> one-way translation, N 32–256, serial and np 4</td>
+        <td>Is the Eulerian transport right where \(\phi\) must stay a distance exactly?</td>
+        <td>band gradient error order \(\ge 0.8\), shape order \(\ge 1\); serial = np 4. Order \(\le 0.3\) = a transport defect</td></tr>
+    <tr><td><b>0.2</b> vortex, a few steps, serial and np 4</td>
+        <td>Where do serial and np 4 differ (1.6e-6 at step 1)?</td>
+        <td>at the processor seams = a defect, located by switching parts off; spread at solver round-off = not a defect</td></tr>
+    <tr><td><b>A0.1a</b> the flux refactor</td>
+        <td>Is the new flux code identical in its default form?</td>
+        <td>old and new binaries identical at tolerance 0</td></tr>
+    <tr><td><b>A0.1b</b> an inert extension against <code>none</code></td>
+        <td>How large is the far-field flux confound?</td>
+        <td>correction form = <code>none</code> bit for bit; the interpolate form's difference <b>is</b> the confound, reported</td></tr>
+  </table>
+  <p class="muted">Own clones <code>leia-pde</code> (before the flux change) and <code>leia-pde-a0</code> (after it); no other session's clone is touched.
+     Every job id is in the clone's ledger.</p>
+  <p class="footnote">Configs: <code>config/pdeLevelSet/</code>. Read-outs: <code>pde_step0_analysis.py</code>, <code>pde_a0_analysis.py</code>. STATUS 11.29.</p>
+</section>
+</section>
+
+<!-- =================================================================== -->
 <!-- 8. QUESTIONS                                                          -->
 <!-- =================================================================== -->
 <section>
