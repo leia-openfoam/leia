@@ -1,0 +1,44 @@
+# PDE LEVEL SET, STEP A (first ladder): every velocity extension against the EXACT extension
+# u(Pi(x)) at one instant, with no transport. docs/plan-velocity-extension-verification.md, section 5.
+# leiaTestVelocityExtension (extended 2026-11-12) writes leiaTestVelocityExtensionExact.csv:
+# E_EXT_L1/L2 over |d| <= 1h..4h and over the fixed physical band |d| <= W (W = 4 h_max of each
+# rung: so W shrinks with h; the fixed-W ladder follows), the face-flux error the transport sees
+# (E_FLUX_*), and the raw-velocity reference E_RAW_* (what "no extension" scores).
+# Case: 2Dvortex, the circle R = 0.15 at (0.5, 0.75) in shear2D at t = 0, signed distance input,
+# serial. LIMITATION: the centre sits on a mesh vertex for N divisible by 4; the off-lattice
+# ellipse and the q != 1 inputs follow in the next ladder (step A proper).
+# All models with the correction flux form (VE_FLUX_FORM correction, repair A0.1).
+#
+# PRE-REGISTERED PREDICTIONS (2026-11-12, before any run; the plan, section 5):
+#   none                      E_EXT = E_RAW (by definition), order ~1 in the band (u differs from
+#                             u(Pi) by O(d), and the band scales with h)
+#   closestPoint              order ~2 in E_EXT_*_2H..4H
+#   projectionBlend           order <= 1 (its first-order Taylor step, and delta blends beyond 1.5 h)
+#   steadyUpwind, meshWave    order ~1
+#   steadyUpwindLinear        linear along the normal by design: no better than order 1 against u(Pi)
+#   anisotropicDiffusion, pseudoTime   undetermined (the audit: lagged tensor term; reach 2.5 h)
+#   haloLimited               u(Pi) only for |d| <= h by design: order ~2 in 1H, not in 3H-4H
+# A model whose E_EXT is not below E_RAW in the band does nothing useful at this instant.
+# HOW IT COULD PASS FOR THE WRONG REASON: the test reading a different surface than the one the
+# fields were initialised from (check: E_EXT of none equals E_RAW to round-off), a model failing
+# silently to Uext = U (check: E_EXT = E_RAW for that model).
+study_name: aStatic2D
+case: 2Dvortex
+mesh: hex
+mode: serial
+np: 1
+solver: leiaTestVelocityExtension
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 60
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  END_TIME: [1]
+  N_CELLS: [32, 64, 128, 256]
+  VELOCITY_EXTENSION: [none, anisotropicDiffusion, pseudoTime, steadyUpwind, steadyUpwindLinear, closestPoint, meshWave, projectionBlend, haloLimited]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  PHASE_INDICATOR: [detrixheAslam]

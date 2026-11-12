@@ -35,6 +35,7 @@ Description
 #include "phaseIndicator.H"
 #include "velocityModel.H"
 #include "velocityExtension.H"
+#include "levelSetImplicitSurfaces.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -261,6 +262,124 @@ int main(int argc, char *argv[])
         csv << h << "," << l2 << "," << maxE << "," << l2raw << ","
             << maxRaw << "," << l2/Foam::max(l2raw, SMALL) << ","
             << l2in << "," << l2out << "\n";
+    }
+
+    // ------------------------------------------------------------------ //
+    // THE EXACT REFERENCE (2026-11-12, docs/plan-velocity-extension-
+    // verification.md, step A). The metric above, |nHat . grad Uext|, is zero
+    // for ANY field that is constant along the normals, a wrong one included.
+    // Here the computed extension is compared with the exact one,
+    //     ue*(x) = u(Pi(x)),   Pi(x) = x - d(x) grad d/|grad d|,
+    // where d is the analytic signed distance of levelSet.implicitSurface
+    // (implicitSphere, implicitPlane with gradient 1, signedDistanceEllipse,
+    // signedDistanceEllipsoid: exact signed distances) and u the prescribed
+    // velocity model evaluated AT THE FOOT POINT. Written to a separate CSV,
+    // so the CSV above is unchanged. Norms: volume-weighted L1 and L2 (never
+    // L_inf), over the cells with |d| <= k h (k = 1..4, h the cell size) and
+    // over the fixed physical band |d| <= W (exactBandWidth, default 4 h_max);
+    // the face-flux error over the faces with |d(x_f)| <= W, which is what the
+    // transport sees; and the same norms for the raw velocity U as the
+    // "no extension" reference.
+    // ------------------------------------------------------------------ //
+    const dictionary& lsDict = fvSol.subDict("levelSet");
+    if (lsDict.found("implicitSurface"))
+    {
+        const dictionary& sDict = lsDict.subDict("implicitSurface");
+        autoPtr<implicitSurface> surf =
+            implicitSurface::New(sDict.get<word>("type"), sDict);
+        const volVectorField& C = mesh.C();
+        const volVectorField& Ue = velExt->Uext();
+        const scalar hMax = gMax(cellSize);
+        const scalar W =
+            velExtDict.getOrDefault<scalar>("exactBandWidth", 4*hMax);
+
+        auto footVelocity = [&](const vector& x, scalar& d) -> vector
+        {
+            d = surf->value(x);
+            vector g = surf->grad(x);
+            g /= Foam::max(Foam::mag(g), SMALL);
+            return velModel->velocity(x - d*g);
+        };
+
+        const label nK = 4;
+        scalarField e1(nK + 1, 0), e2(nK + 1, 0), r1(nK + 1, 0), r2(nK + 1, 0), vv(nK + 1, 0);
+        forAll(C, c)
+        {
+            scalar d = 0;
+            const vector ueStar = footVelocity(C[c], d);
+            const scalar e = Foam::mag(Ue[c] - ueStar);
+            const scalar r = Foam::mag(U[c] - ueStar);
+            const scalar V = mesh.V()[c];
+            for (label k = 0; k <= nK; ++k)
+            {
+                const bool in = (k < nK)
+                    ? (Foam::mag(d) <= (k + 1)*cellSize[c])
+                    : (Foam::mag(d) <= W);
+                if (!in) continue;
+                e1[k] += e*V; e2[k] += e*e*V; r1[k] += r*V; r2[k] += r*r*V; vv[k] += V;
+            }
+        }
+        // face flux: internal faces only (a coupled face is counted by both
+        // ranks; the internal faces carry the comparison in serial and np 4)
+        const surfaceScalarField& phiE = velExt->phi();
+        const surfaceVectorField& Cf = mesh.Cf();
+        const surfaceScalarField& magSf = mesh.magSf();
+        scalar f1 = 0, f2 = 0, fr1 = 0, fr2 = 0, fa = 0;
+        forAll(phiE, f)
+        {
+            scalar d = 0;
+            const vector ueStar = footVelocity(Cf[f], d);
+            if (Foam::mag(d) > W) continue;
+            const scalar A = magSf[f];
+            const scalar ref = ueStar & mesh.Sf()[f];
+            const scalar e = Foam::mag(phiE[f] - ref)/A;
+            const scalar r = Foam::mag(phi[f] - ref)/A;
+            f1 += e*A; f2 += e*e*A; fr1 += r*A; fr2 += r*r*A; fa += A;
+        }
+        reduce(e1, sumOp<scalarField>()); reduce(e2, sumOp<scalarField>());
+        reduce(r1, sumOp<scalarField>()); reduce(r2, sumOp<scalarField>());
+        reduce(vv, sumOp<scalarField>());
+        reduce(f1, sumOp<scalar>()); reduce(f2, sumOp<scalar>());
+        reduce(fr1, sumOp<scalar>()); reduce(fr2, sumOp<scalar>()); reduce(fa, sumOp<scalar>());
+
+        Info<< "Exact extension reference ue* = u(Pi(x)) (" << sDict.get<word>("type")
+            << "), W = " << W << ":" << nl;
+        for (label k = 0; k <= nK; ++k)
+        {
+            const scalar V = Foam::max(vv[k], SMALL);
+            Info<< "  " << (k < nK ? word("|d|<=" + Foam::name(k + 1) + "h") : word("|d|<=W"))
+                << "  L1 " << e1[k]/V << "  L2 " << Foam::sqrt(e2[k]/V)
+                << "   (raw U: L1 " << r1[k]/V << "  L2 " << Foam::sqrt(r2[k]/V) << ")" << nl;
+        }
+        const scalar FA = Foam::max(fa, SMALL);
+        Info<< "  face flux |d|<=W  L1 " << f1/FA << "  L2 " << Foam::sqrt(f2/FA)
+            << "   (base flux: L1 " << fr1/FA << "  L2 " << Foam::sqrt(fr2/FA) << ")" << endl;
+
+        if (Pstream::master())
+        {
+            OFstream csv("leiaTestVelocityExtensionExact.csv");
+            csv << "DELTA_X,W";
+            for (label k = 0; k <= nK; ++k)
+            {
+                const word t = (k < nK) ? word(Foam::name(k + 1) + "H") : word("W");
+                csv << ",E_EXT_L1_" << t << ",E_EXT_L2_" << t
+                    << ",E_RAW_L1_" << t << ",E_RAW_L2_" << t;
+            }
+            csv << ",E_FLUX_L1_W,E_FLUX_L2_W,E_FLUX_RAW_L1_W,E_FLUX_RAW_L2_W\n";
+            csv << h << "," << W;
+            for (label k = 0; k <= nK; ++k)
+            {
+                const scalar V = Foam::max(vv[k], SMALL);
+                csv << "," << e1[k]/V << "," << Foam::sqrt(e2[k]/V)
+                    << "," << r1[k]/V << "," << Foam::sqrt(r2[k]/V);
+            }
+            csv << "," << f1/FA << "," << Foam::sqrt(f2/FA)
+                << "," << fr1/FA << "," << Foam::sqrt(fr2/FA) << "\n";
+        }
+    }
+    else
+    {
+        Info<< "No levelSet.implicitSurface: the exact extension reference is skipped." << endl;
     }
 
     Info<< nl;
