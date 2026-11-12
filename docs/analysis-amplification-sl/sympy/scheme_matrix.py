@@ -15,6 +15,17 @@ THE NAMES.  OWN-NEIGHBOUR/SPACE.
              /L2  least-squares complete quadratic, weights 1/distance to the cell centre,
                   anchored on the centre value when the centre is a datum
   The original scheme is C-Cp/L2.
+  HANGING POINTS, suffix +c (constrained), e.g. BFC/I+c. Without the suffix a hanging point
+  is an independent unknown and a coarse cell reads all the points on its boundary. With
+  +c every cell is read as an unrefined cell: its data are its REGULAR points only (corners,
+  centres of its unsplit faces, midpoints of its unsplit edges, centre). A point HANGS on a
+  cell if it lies on the boundary of that cell and is not a regular point of it. A hanging
+  point carries no unknown. Its value is the interpolant of the cell it hangs on, read at
+  the point (the mean over the cells, if it hangs on more than one). This is the ghost
+  value of the octree level-set codes (Min and Gibou 2007). Whether a point hangs depends
+  on OWN: the midpoint of a coarse edge in 2D hangs for SC and BCC, and is the regular
+  face centre of the coarse cell for FCC and BFC. Schemes with OWN = C have no hanging
+  points, so they have no +c variant.
 
 THE STEP.  Every unknown moves along its own trajectory. Its departure point is located in
 its host cell, and the data of the host cell are interpolated there. Exception: a scheme
@@ -50,7 +61,22 @@ PRE-REGISTERED (2026-11-12, before any run on a refined mesh or of a hybrid sche
   A scheme PASSES the 2:1 transition if growth - 1 <= 4.41e-3 at every Co. It FAILS if
   growth - 1 >= 1.03e-2 at any Co <= 0.5. Between the two the symbol does not decide.
 
-Usage: scheme_matrix.py --mesh NAME [--csv FILE] [--jobs N] | --smoke | --list
+PRE-REGISTERED FOR THE +c VARIANT (2026-11-12, before its first run).
+    G5. On a mesh without hanging points (squareBlock) every +c scheme returns the value
+        of the scheme without the suffix, within 1e-9.
+    G6. SC/I+c on the planar 2:1 transition (quad21) has growth factor <= 1 + 1e-9 at every
+        Co <= 1. Reason: the multilinear weights and the linear hanging-point weights are
+        non-negative and sum to 1, so no value can leave the range of the old values.
+    P2. The tensor set with constrained hanging points (BFC/I+c in 2D, T/I+c in 3D) PASSES
+        the planar transition: growth - 1 <= 4.41e-3 at every Co <= 0.5. Reason: the
+        interpolant is then continuous across the transition and the hanging values add no
+        degree of freedom. Without the constraint BFC/I has 5.0e-2 at Co 0.5.
+        FALSIFIED IF growth - 1 >= 1.03e-2 at any Co <= 0.5.
+    P3. No /L2 scheme gains from +c by more than a factor 2 in growth - 1: a least-squares
+        fit does not return its data, so the constraint does not make it continuous.
+
+Usage: scheme_matrix.py --mesh NAME [--variant free|constrained|both] [--csv FILE] [--jobs N]
+       | --smoke | --list
 """
 import argparse, itertools, math, os, sys
 # The matrices are small. BLAS threads on small matrices cost more than they give, and they
@@ -65,10 +91,14 @@ NUDGE = 1e-7*np.array([0.37, 0.61, 0.83])      # fixed tie-break for a point on 
 class PMesh:
     """Periodic block. cells: list of cells, a cell is a list of faces, a face is an (n, d)
     array of reference coordinates (2D: n = 2; 3D: the polygon in order)."""
-    def __init__(self, d, box, cells, name, lattice=None, centre="centroid"):
+    def __init__(self, d, box, cells, name, lattice=None, centre="centroid", plain=None, shared=False):
         self.d, self.box, self.ref, self.name = d, np.asarray(box, float), cells, name
         self.lattice, self.centre_mode = lattice, centre
-        self.disp = {}
+        # plain: every cell without hanging nodes and split faces. shared: vertices, face
+        # centres and edge midpoints share one index per position (the +c variant needs it:
+        # the midpoint of a coarse edge is a vertex of the fine cells).
+        self.plain, self.shared = plain, shared
+        self.disp = {}; self.hcache = {}
         self.build()
 
     def key(self, x):
@@ -113,6 +143,8 @@ class PMesh:
 
     def build(self):
         d = self.d; self.cells = []; self.uid = {t: {} for t in "CVFE"}; self.upos = {t: [] for t in "CVFE"}
+        if self.shared:
+            for t in "FE": self.uid[t], self.upos[t] = self.uid["V"], self.upos["V"]
         def reg(t, xref, xact):
             k, s = self.key(xref)
             if k not in self.uid[t]:
@@ -135,7 +167,18 @@ class PMesh:
                 if d == 3:
                     for i in range(len(Pr)):
                         i2 = (i+1) % len(Pr); add("E", (Pr[i]+Pr[i2])/2, (Pa[i]+Pa[i2])/2)
-            self.cells.append({"pts": pts, "cref": cr, "c": ca, "faces": fa,
+            regp = pts
+            if self.shared:                      # the regular points: from the unrefined cell
+                regp = {"C": pts["C"], "V": [], "F": [], "E": []}; seen2 = set()
+                def add2(t, x):
+                    k, s = self.key(x)
+                    if (k, tuple(s)) not in seen2: seen2.add((k, tuple(s))); regp[t].append(reg(t, x, x))
+                for P in self.plain[j]:
+                    for x in P: add2("V", x)
+                    add2("F", self.fcentre(P))
+                    if d == 3:
+                        for i in range(len(P)): add2("E", (P[i]+P[(i+1) % len(P)])/2)
+            self.cells.append({"pts": pts, "reg": regp, "cref": cr, "c": ca, "faces": fa,
                                "href": max(np.linalg.norm(v - cr) for P in fr for v in P)})
         # neighbours, with their periodic shift
         inv = {t: {i: k for k, i in self.uid[t].items()} for t in "VF"}
@@ -175,22 +218,24 @@ def box_mesh(d, boxes, L, name, **kw):
             a, b = P[i], P[(i+1) % len(P)]; out.append(a)
             if key((a+b)/2) in allv: out.append((a+b)/2)
         return out
-    cells = []
+    cells = []; plain = []
     for o, sz in boxes:
         o = np.array(o, float); e = np.eye(d)*sz
         if d == 2:
-            poly = with_mid([o, o+e[0], o+e[0]+e[1], o+e[1]])
+            q = [o, o+e[0], o+e[0]+e[1], o+e[1]]; plain.append([np.array([q[i], q[(i+1) % 4]]) for i in range(4)])
+            poly = with_mid(q)
             cells.append([np.array([poly[i], poly[(i+1) % len(poly)]]) for i in range(len(poly))]); continue
-        faces = []
+        faces = []; pf = []
         for ax in range(3):
             u, v = [a for a in range(3) if a != ax]
             for side in (0, 1):
                 b = o + side*e[ax]; c = [b, b+e[u], b+e[u]+e[v], b+e[v]]; ctr = b + (e[u]+e[v])/2
+                pf.append(np.array(c))
                 quads = [c] if key(ctr) not in allv else \
                         [[c[i], (c[i]+c[(i+1) % 4])/2, ctr, (c[i-1]+c[i])/2] for i in range(4)]
                 faces += [np.array(with_mid(q)) for q in quads]
-        cells.append(faces)
-    return PMesh(d, L, cells, name, **kw)
+        cells.append(faces); plain.append(pf)
+    return PMesh(d, L, cells, name, plain=plain, **kw)
 
 def lattice_mesh(d, P, name, **kw):
     return box_mesh(d, [(o, 1) for o in itertools.product(range(P), repeat=d)], (P,)*d, name, lattice=P, **kw)
@@ -268,11 +313,11 @@ def feval(fs, X):
 
 class CellRule:
     """The data of one host cell for one scheme, and the weights of a point in it."""
-    def __init__(self, mesh, j, own, nbr, space):
+    def __init__(self, mesh, j, own, nbr, space, pts="pts"):
         d = mesh.d; c = mesh.cells[j]; self.xc = c["c"]; self.h = c["href"]; self.space = space
         data = []                                   # (type, uid, shift, x actual, x reference-local)
         for t in own:
-            for (u, s, xa) in c["pts"][t]:
+            for (u, s, xa) in c[pts][t]:
                 data.append((t, u, s, xa))
         if nbr:
             for (j2, sh) in c[nbr]:
@@ -317,8 +362,11 @@ class CellRule:
 
 # ---------------------------------------------------------------------------- the symbol
 def parse(name):
-    sch, space = name.split("/"); own, _, nbr = sch.partition("-")
+    sch, space = name.replace("+c", "").split("/"); own, _, nbr = sch.partition("-")
     return own, nbr, space
+
+def constrained_list(d):
+    return [s + "+c" for s in scheme_list(d) if parse(s)[0] != "C"]
 
 def scheme_list(d, honeycomb=False):
     owns = ["C", "SC", "BCC", "FCC", "BFC"] + (["T"] if d == 3 else [])
@@ -331,7 +379,56 @@ def scheme_list(d, honeycomb=False):
             out += [f"{o}{'-'+n if n else ''}/{s}" for s in ("I", "L2")]
     return out
 
+def hanging(mesh, pt):
+    """For the point types pt: the active points, and for each hanging point the cells it
+    hangs on, as (cell, shift of the point in the frame of that cell, position there)."""
+    if pt in mesh.hcache: return mesh.hcache[pt]
+    regset = [{(u, tuple(s)) for t in pt for (u, s, _) in c["reg"][t]} for c in mesh.cells]
+    used = sorted({u for R in regset for u, _ in R}); isused = set(used); masters = {}
+    for j, c in enumerate(mesh.cells):
+        seen = set()
+        for t in "VFE":
+            for (u, s, xa) in c["pts"][t] + c["reg"][t]:
+                k = (u, tuple(s))
+                if u in isused and k not in regset[j] and k not in seen:
+                    seen.add(k); masters.setdefault(u, []).append((j, np.array(s), xa))
+    col = {u: i for i, u in enumerate(u for u in used if u not in masters)}
+    mesh.hcache[pt] = (col, masters); return col, masters
+
+def assemble_c(mesh, name, c, rules):
+    own, nbr, space = parse(name); types = OWN[own]; pt = "".join(t for t in types if t != "C")
+    col, masters = hanging(mesh, pt); nC = len(mesh.upos["C"]) if "C" in types else 0; n = nC + len(col)
+    def rule(j):
+        if j not in rules: rules[j] = CellRule(mesh, j, types, nbr, space, pts="reg")
+        return rules[j]
+    def expand(u, sh, w, out, depth=0):
+        if u in col:
+            out.append((nC + col[u], sh, mesh.upos["V"][u] + sh*mesh.box, w)); return True
+        if depth > 4: raise RuntimeError("hanging points depend on each other")
+        M = masters[u]
+        for (jm, sm, xa) in M:
+            R = rule(jm)
+            if not R.ok: return False
+            for (t2, u2, s2, x2), w2 in zip(R.data, R.weights(xa)):
+                s3 = s2 + sh - sm
+                if t2 == "C": out.append((u2, s3, x2 + (sh - sm)*mesh.box, w*w2/len(M)))
+                elif not expand(u2, s3, w*w2/len(M), out, depth+1): return False
+        return True
+    ent = []; pos = []
+    X = [(u, x) for u, x in enumerate(mesh.upos["C"])] if nC else []
+    X += [(nC + i, mesh.upos["V"][u]) for u, i in col.items()]
+    for row, x in X:
+        p = x - c; j, s = mesh.locate(p); R = rule(j)
+        if not R.ok: return None
+        lst = []
+        for (tt, uu, ss, xx), ww in zip(R.data, R.weights(p - s*mesh.box)):
+            if tt == "C": lst.append((uu, ss + s, xx + s*mesh.box, ww))
+            elif not expand(uu, ss + s, ww, lst): return None
+        ent.append((row, lst)); pos.append(x)
+    return n, ent, np.array(pos)
+
 def assemble(mesh, name, c, rules):
+    if name.endswith("+c"): return assemble_c(mesh, name, c, rules)
     own, nbr, space = parse(name); types = OWN[own]
     off = {}; n = 0
     for t in types:
@@ -369,7 +466,7 @@ def step_error(ent, pos, c, kappa):
 
 MESH = None
 def run_one(task):
-    name, amp, seed, COS, dirs, target = task; mesh = MESH[(amp, seed)]
+    name, amp, seed, COS, dirs, target = task; mesh = MESH[(amp, seed, name.endswith("+c"))]
     own, nbr, space = parse(name); rows = []
     for v in dirs:
         v = np.array(v, float); g = []; info = None; rules = {}
@@ -390,15 +487,21 @@ def run_one(task):
     return rows
 
 def run(mesh_name, schemes=None, COS=(0.0164, 0.1, 0.3, 0.5, 1.0), centre="centroid", jobs=1, csv_path=None,
-        cases=None, quiet=False):
+        cases=None, quiet=False, variant="free"):
     global MESH
     build, dirs, pert = MESHES[mesh_name]; cases = cases or pert; MESH = {}
     for amp, seed in cases:
         m = build(centre=centre)
         if amp: m._ref_mesh = build(centre=centre); m.perturb(amp, seed)
-        MESH[(amp, seed)] = m
+        MESH[(amp, seed, False)] = m
     m0 = next(iter(MESH.values())); d = m0.d
-    schemes = schemes or scheme_list(d, mesh_name.startswith("honeycomb"))
+    if not schemes:
+        free = scheme_list(d, mesh_name.startswith("honeycomb"))
+        schemes = {"free": free, "constrained": constrained_list(d), "both": free + constrained_list(d)}[variant]
+    if any(s.endswith("+c") for s in schemes):
+        if m0.plain is None or any(amp for amp, _ in cases):
+            sys.exit("the +c variant needs an unperturbed mesh of cubes")
+        for amp, seed in cases: MESH[(amp, seed, True)] = build(centre=centre, shared=True)
     target = {2: 48, 3: 24}[d]
     tasks = [(s, amp, seed, tuple(COS), dirs, target) for amp, seed in cases for s in schemes]
     if jobs > 1:
@@ -417,7 +520,7 @@ def run(mesh_name, schemes=None, COS=(0.0164, 0.1, 0.3, 0.5, 1.0), centre="centr
 
 def summary(rows, COS, d):
     full = {2: 6, 3: 10}[d]; nC = len(COS)
-    print(f"{'mesh':14s} {'amp':>5} {'scheme':10s} {'unk/cell':>8} {'pts':>7} {'rank':>5} {'deg':>3} "
+    print(f"{'mesh':14s} {'amp':>5} {'scheme':12s} {'unk/cell':>8} {'pts':>7} {'rank':>5} {'deg':>3} "
           + " ".join(f"{'Co '+str(c):>10}" for c in COS) + "   one-step error k=0.2, order")
     keys = []
     for r in rows:
@@ -429,7 +532,7 @@ def summary(rows, COS, d):
         e2 = max(float(r[12+nC]) for r in R); e1 = max(float(r[13+nC]) for r in R)
         order = np.log2(e2/e1) if e1 > 0 else float("nan")
         upc = R[0][5]/R[0][6] if R[0][5] else 0
-        print(f"{k[0]:14s} {k[1]:5.2f} {k[2]:10s} {upc:8.2f} {str(R[0][7])+'-'+str(R[0][8]):>7} "
+        print(f"{k[0]:14s} {k[1]:5.2f} {k[2]:12s} {upc:8.2f} {str(R[0][7])+'-'+str(R[0][8]):>7} "
               f"{R[0][9]:>2}/{full:<2} {R[0][10]:>3} " + " ".join(f"{x:10.6f}" for x in g)
               + f"   {e2:.2e} {order:5.2f}" + ("" if R[0][11] else "  (space not unique)"), flush=True)
 
@@ -462,6 +565,12 @@ def smoke():
     r = run("honeycomb", ["BCC/I"], COS=(0.0164, 0.1, 0.25, 0.5, 0.75, 1.0), quiet=True)
     refv = np.array([1.00030, 1.00127, 1.00148, 1.00035, 1.00020, 1.00024]); dev = abs(worst(r, "BCC/I", 6) - refv).max()
     check(f"G4 honeycomb BCC/I reproduces multipoint_hexagon.py C+V interp (largest deviation {dev:.1e})", dev < 5e-5)
+    sl = ["SC/I", "BCC-Cf/L2", "FCC/I", "BFC/I", "BFC-Cp/L2"]
+    a = run("squareBlock", sl, quiet=True); b = run("squareBlock", [s + "+c" for s in sl], quiet=True)
+    dev = max(abs(worst(a, s) - worst(b, s + "+c")).max() for s in sl)
+    check(f"G5 without hanging points +c changes nothing (largest deviation {dev:.1e})", dev < 1e-9)
+    r = run("quad21", ["SC/I+c"], quiet=True); g = worst(r, "SC/I+c").max()
+    check(f"G6 SC/I+c on the planar 2:1 transition does not amplify (growth - 1 = {g-1:.1e})", g <= 1 + 1e-9)
     return 0 if ok else 1
 
 def main():
@@ -470,13 +579,15 @@ def main():
     ap.add_argument("--cos", type=float, nargs="+", default=[0.0164, 0.1, 0.3, 0.5, 1.0])
     ap.add_argument("--centre", choices=("centroid", "mean"), default="centroid")
     ap.add_argument("--jobs", type=int, default=1); ap.add_argument("--csv")
+    ap.add_argument("--variant", choices=("free", "constrained", "both"), default="free",
+                    help="hanging points: independent unknowns (free), ghost values (constrained, +c), or both")
     ap.add_argument("--smoke", action="store_true"); ap.add_argument("--list", action="store_true")
     a = ap.parse_args()
     if a.smoke: return smoke()
     if a.list or not a.mesh:
         for m in MESHES: print(m)
         return 0
-    run(a.mesh, a.schemes, tuple(a.cos), a.centre, a.jobs, a.csv)
+    run(a.mesh, a.schemes, tuple(a.cos), a.centre, a.jobs, a.csv, variant=a.variant)
     return 0
 
 if __name__ == "__main__":
