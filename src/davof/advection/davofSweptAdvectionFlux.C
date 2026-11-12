@@ -2449,7 +2449,7 @@ void Foam::davofSweptAdvection::onePlaneCountOffFaces()
                 }
             }
             const scalar af = faceValue(*alphafPtr_, facei);
-            if (mag(af - Foam::round(af)) > 1e-12) ++nOnePlaneOffFaces_;
+            if (min(mag(af), mag(1 - af)) > 1e-12) ++nOnePlaneOffFaces_;
         }
     }
     label nOff = nOnePlaneOffFaces_, nLf = nOnePlaneLimFaces_, nLc = nOnePlaneLimCells_;

@@ -27,6 +27,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include "processorPolyPatch.H"
 #include "davofSweptAdvection.H"
 #include "fvcSurfaceIntegrate.H"
 #include "upwind.H"
