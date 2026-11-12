@@ -97,7 +97,7 @@ ART_GRL := docs/geometrically-redistanced-levelset/grl-level-set-article
 ART_GCLS := docs/gradient-controlled-level-set/gcls-level-set-article
 ANA_AMP := docs/analysis-amplification-sl
 
-.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-davof davof-proposal studies-sdpls studies-euler studies-one studies-one-file gate print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl article-gcls comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
+.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-davof davof-proposal studies-sdpls studies-euler studies-one studies-one-file gate print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl article-gcls scheme-names-figure comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
 .DEFAULT_GOAL := help
 
 help:
@@ -290,6 +290,20 @@ article-amplification:
 	  || echo "[skip] latexmk not found; install a LaTeX toolchain to build the article PDF"
 
 articles: article-sl article-lsl article-grl article-gcls article-amplification
+
+# The UML class diagram of the scheme names (OWN-NEIGHBOUR/SPACE+TRANSITION). The source is
+# docs/analysis-amplification-sl/figures/scheme_names.tex. It needs tikz-uml.sty, which is
+# not in TeX Live: download it from the tikz-uml project page and give its folder as
+# TIKZUML_DIR=<folder>. The built PDF and PNG are versioned, so the pre-print, the report
+# and the deck build without the package. The build folder is git-ignored.
+TIKZUML_DIR ?= $(HOME)/texmf/tex/latex/tikz-uml
+SCHEME_FIG_DESTS = docs/semi-lagrangian-level-set/sl-level-set-article/data/figures $(ANA_AMP)/data/figures
+scheme-names-figure: ## build the UML figure of the scheme names (TIKZUML_DIR=<folder of tikz-uml.sty>)
+	@test -f $(TIKZUML_DIR)/tikz-uml.sty || { echo "tikz-uml.sty not found in $(TIKZUML_DIR); set TIKZUML_DIR"; exit 1; }
+	@mkdir -p $(ANA_AMP)/figures/build
+	@cd $(ANA_AMP)/figures && TEXINPUTS=$(TIKZUML_DIR): pdflatex -interaction=nonstopmode -halt-on-error -output-directory=build scheme_names.tex >/dev/null \
+	  && pdftocairo -png -r 200 -singlefile build/scheme_names.pdf build/scheme_names
+	@for d in $(SCHEME_FIG_DESTS); do cp $(ANA_AMP)/figures/build/scheme_names.pdf $(ANA_AMP)/figures/build/scheme_names.png $$d/; echo "[ok] $$d/scheme_names.pdf and .png"; done
 
 # Read a reviewed PDF back. Annotate $(ANA_AMP)/ms.pdf in any viewer that SAVES into the
 # file (Edge, Firefox, Acrobat, Okular), save it next to the source as ms_reviewed.pdf, and

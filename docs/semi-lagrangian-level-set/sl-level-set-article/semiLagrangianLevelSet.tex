@@ -2764,6 +2764,45 @@ partner or a gradient-control source must first show a gain.
   \label{fig:oscdrift}
 \end{figure}
 
+\subsection{Names for semi-Lagrangian point schemes}
+\label{sec:scheme-names}
+The reconstruction of this work is one member of a family. Every member advects point
+values with the same semi-Lagrangian step and differs only in the data that a cell reads.
+Figure~\ref{fig:scheme-names} gives every member a name with four parts,
+\texttt{OWN-NEIGHBOUR/SPACE+TRANSITION}.
+\begin{itemize}
+  \item \texttt{OWN} names the points of a cell that carry advected unknowns. The names
+        follow the crystal lattices that the points form on a mesh of cubes: \texttt{C}
+        (cell centre), \texttt{SC} (vertices), \texttt{BCC} (centre and vertices),
+        \texttt{FCC} (vertices and face centres), \texttt{BFC} (centre, vertices and face
+        centres) and \texttt{T} (the tensor set, which adds the edge midpoints in 3D).
+  \item \texttt{NEIGHBOUR} names the cell-centre values that a cell reads from other
+        cells: \texttt{-Cf} for the face neighbours (CFC) and \texttt{-Cp} for the point
+        neighbours (CPC).
+  \item \texttt{SPACE} names the polynomial: \texttt{/I} is the lowest-degree space that
+        returns every datum exactly, and \texttt{/L2} is the weighted least-squares
+        complete quadratic.
+  \item \texttt{TRANSITION} names the treatment of a 2:1 refinement transition. Without a
+        suffix a hanging point is an independent unknown. With \texttt{+c} a hanging
+        point carries no unknown and takes the value of the interpolant of the cell it
+        hangs on. With \texttt{+g} every cell reads a uniform stencil at its own cell
+        size through ghost cells.
+\end{itemize}
+In these names the method of this work is \texttt{C-Cp/L2} on hexahedra and
+\texttt{C-Cf/L2} on polyhedra (Section~\ref{sec:method}). The executable definition of
+every name is the script \texttt{docs/analysis-amplification-sl/sympy/scheme\_matrix.py},
+which computes the growth factor of each scheme on each mesh type.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{scheme_names.pdf}
+  \caption{The names of the semi-Lagrangian point schemes as a UML class diagram. A scheme
+  is composed of one alternative of each of the four families. The numbers at the
+  composition lines are the multiplicities: \texttt{NEIGHBOUR} and \texttt{TRANSITION}
+  can be absent.}
+  \label{fig:scheme-names}
+\end{figure}
+
 % =============================================================================
 \section{Conclusions}
 \label{sec:conclusions}

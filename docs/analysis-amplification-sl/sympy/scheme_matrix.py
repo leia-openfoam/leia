@@ -26,6 +26,18 @@ THE NAMES.  OWN-NEIGHBOUR/SPACE.
   on OWN: the midpoint of a coarse edge in 2D hangs for SC and BCC, and is the regular
   face centre of the coarse cell for FCC and BFC. Schemes with OWN = C have no hanging
   points, so they have no +c variant.
+  GHOST CELLS, suffix +g, for the schemes with OWN = C, e.g. C-Cp/L2+g. Every cell reads a
+  uniform stencil at its own cell size, as Basilisk does, so every cell applies the weights
+  of the perfect lattice. A stencil position that is not the centre of a cell of that size
+  gets a ghost value:
+    restriction   a coarse cell needs the value of a refined block: the mean of the 2^d
+                  fine values of the block;
+    prolongation  a fine cell needs a value inside a coarse cell: the reconstruction of
+                  that coarse cell (the same scheme, on its uniform coarse stencil), read
+                  at the ghost position.
+  Both are explicit. The mean of the fine values is not the centre value of a quadratic
+  (it differs by h_fine^2/8 times the Laplacian), so the +g schemes do not return a
+  quadratic exactly in the cells at the transition.
 
 THE STEP.  Every unknown moves along its own trajectory. Its departure point is located in
 its host cell, and the data of the host cell are interpolated there. Exception: a scheme
@@ -75,7 +87,15 @@ PRE-REGISTERED FOR THE +c VARIANT (2026-11-12, before its first run).
     P3. No /L2 scheme gains from +c by more than a factor 2 in growth - 1: a least-squares
         fit does not return its data, so the constraint does not make it continuous.
 
-Usage: scheme_matrix.py --mesh NAME [--variant free|constrained|both] [--csv FILE] [--jobs N]
+PRE-REGISTERED FOR THE +g VARIANT (2026-11-12, before its first run).
+    G7. On a mesh of equal cells (squareBlock, cube) every +g scheme returns the value of
+        the scheme without the suffix, within 1e-9.
+    P4. C-Cp/L2+g PASSES the planar 2:1 transition: growth - 1 <= 4.41e-3 at every
+        Co <= 0.5. Reason: the free scheme fails there (2.0e-2 at Co 0.1) because the
+        stencil of a cell at the transition is irregular; with ghost cells it is the
+        stencil of the lattice. FALSIFIED IF growth - 1 >= 1.03e-2 at any Co <= 0.5.
+
+Usage: scheme_matrix.py --mesh NAME [--variant free|constrained|ghost|both|all] [--csv FILE] [--jobs N]
        | --smoke | --list
 """
 import argparse, itertools, math, os, sys
@@ -362,7 +382,7 @@ class CellRule:
 
 # ---------------------------------------------------------------------------- the symbol
 def parse(name):
-    sch, space = name.replace("+c", "").split("/"); own, _, nbr = sch.partition("-")
+    sch, space = name.replace("+c", "").replace("+g", "").split("/"); own, _, nbr = sch.partition("-")
     return own, nbr, space
 
 def constrained_list(d):
@@ -378,6 +398,63 @@ def scheme_list(d, honeycomb=False):
             if honeycomb and n == "Cp": continue      # the same six cells as Cf
             out += [f"{o}{'-'+n if n else ''}/{s}" for s in ("I", "L2")]
     return out
+
+def ghost_list(d):
+    return [s + "+g" for s in scheme_list(d) if parse(s)[0] == "C"]
+
+class LatticeRule:
+    """The weights of a C scheme on the uniform stencil of a cube cell, in units of the cell size."""
+    def __init__(self, d, nbr, space):
+        self.offs = np.array([e for e in itertools.product((-1, 0, 1), repeat=d)
+                              if any(e) and (nbr == "Cp" or sum(map(abs, e)) == 1)])
+        self.sc = 2/np.sqrt(d); self.space = space       # the scale of CellRule: half the cell diagonal
+        X = np.vstack([np.zeros(d), self.offs])*self.sc
+        full = np.hstack([mono(X, exps(d, k), False) for k in range(3)])
+        self.rank = int(np.linalg.matrix_rank(full, tol=1e-9)); self.deg, self.unique = 2, True
+        if space == "I":
+            self.fs, self.deg, self.unique = least_space(X)
+            self.B = feval(self.fs, X); self.ok = np.linalg.cond(self.B) < 1e12
+        else:
+            self.ok = self.rank == full.shape[1]; D = X[1:]; self.W = 1/np.sum(D**2, axis=1)
+            self.Bq = np.hstack([mono(D, exps(d, k), False) for k in (1, 2)])
+            if self.ok: self.Minv = np.linalg.inv((self.Bq*self.W[:, None]).T@self.Bq)
+
+    def weights(self, x):
+        d = len(x); x = (x*self.sc)[None, :]
+        if self.space == "I": return np.linalg.solve(self.B.T, feval(self.fs, x)[0])
+        b = np.hstack([mono(x, exps(d, k), False) for k in (1, 2)])[0]
+        g = self.W*(self.Bq@(self.Minv@b)); return np.concatenate([[1 - g.sum()], g])
+
+def assemble_g(mesh, name, c, rules):
+    own, nbr, space = parse(name); d = mesh.d
+    if "lat" not in rules: rules["lat"] = LatticeRule(d, nbr, space)
+    R = rules["lat"]
+    if not R.ok: return None
+    if "size" not in mesh.hcache:
+        mesh.hcache["size"] = [float(np.ptp(np.vstack(P)[:, 0])) for P in mesh.plain]
+    size = mesh.hcache["size"]; uid = mesh.uid["C"]; smin = min(size)
+    kids = 0.5*smin*np.array(list(itertools.product((-1, 1), repeat=d)))
+    def real(q, sz):
+        k, s = mesh.key(q); j = uid.get(k)
+        return (j, s) if j is not None and size[j] == sz else None
+    def stencil(j, xc, x, w, out, depth=0):
+        """Add w times the reconstruction of cell j (centre xc) read at x."""
+        if depth > 2: raise RuntimeError("ghost values depend on each other")
+        sz = size[j]
+        for q, wi in zip(np.vstack([xc, xc + sz*R.offs]), R.weights((x - xc)/sz)):
+            r = real(q, sz)
+            if r: out.append((r[0], r[1], q, w*wi))
+            elif sz > smin:                              # restriction: the mean of the fine values
+                for dq in kids:
+                    jj, ss = real(q + dq, smin); out.append((jj, ss, q + dq, w*wi/len(kids)))
+            else:                                        # prolongation: the coarse cell's reconstruction
+                jA, sA = mesh.locate(q)
+                if size[jA] == sz: raise RuntimeError("ghost position not in a coarse cell")
+                stencil(jA, mesh.cells[jA]["c"] + sA*mesh.box, q, w*wi, out, depth+1)
+    ent = []; pos = []
+    for j, x in enumerate(mesh.upos["C"]):
+        lst = []; stencil(j, x, x - c, 1.0, lst); ent.append((j, lst)); pos.append(x)
+    return len(ent), ent, np.array(pos)
 
 def hanging(mesh, pt):
     """For the point types pt: the active points, and for each hanging point the cells it
@@ -429,6 +506,7 @@ def assemble_c(mesh, name, c, rules):
 
 def assemble(mesh, name, c, rules):
     if name.endswith("+c"): return assemble_c(mesh, name, c, rules)
+    if name.endswith("+g"): return assemble_g(mesh, name, c, rules)
     own, nbr, space = parse(name); types = OWN[own]
     off = {}; n = 0
     for t in types:
@@ -497,7 +575,11 @@ def run(mesh_name, schemes=None, COS=(0.0164, 0.1, 0.3, 0.5, 1.0), centre="centr
     m0 = next(iter(MESH.values())); d = m0.d
     if not schemes:
         free = scheme_list(d, mesh_name.startswith("honeycomb"))
-        schemes = {"free": free, "constrained": constrained_list(d), "both": free + constrained_list(d)}[variant]
+        schemes = {"free": free, "constrained": constrained_list(d), "ghost": ghost_list(d),
+                   "both": free + constrained_list(d),
+                   "all": free + constrained_list(d) + ghost_list(d)}[variant]
+    if any(s.endswith("+g") for s in schemes) and (m0.plain is None or any(amp for amp, _ in cases)):
+        sys.exit("the +g variant needs an unperturbed mesh of cubes")
     if any(s.endswith("+c") for s in schemes):
         if m0.plain is None or any(amp for amp, _ in cases):
             sys.exit("the +c variant needs an unperturbed mesh of cubes")
@@ -569,6 +651,12 @@ def smoke():
     a = run("squareBlock", sl, quiet=True); b = run("squareBlock", [s + "+c" for s in sl], quiet=True)
     dev = max(abs(worst(a, s) - worst(b, s + "+c")).max() for s in sl)
     check(f"G5 without hanging points +c changes nothing (largest deviation {dev:.1e})", dev < 1e-9)
+    dev = 0.0
+    for m in ("squareBlock", "cube"):
+        sl = ["C-Cp/L2", "C-Cp/I", "C-Cf/I"]
+        a = run(m, sl, quiet=True); b = run(m, [x + "+g" for x in sl], quiet=True)
+        dev = max(dev, max(abs(worst(a, x) - worst(b, x + "+g")).max() for x in sl))
+    check(f"G7 on equal cells +g changes nothing (largest deviation {dev:.1e})", dev < 1e-9)
     r = run("quad21", ["SC/I+c"], quiet=True); g = worst(r, "SC/I+c").max()
     check(f"G6 SC/I+c on the planar 2:1 transition does not amplify (growth - 1 = {g-1:.1e})", g <= 1 + 1e-9)
     return 0 if ok else 1
@@ -579,8 +667,9 @@ def main():
     ap.add_argument("--cos", type=float, nargs="+", default=[0.0164, 0.1, 0.3, 0.5, 1.0])
     ap.add_argument("--centre", choices=("centroid", "mean"), default="centroid")
     ap.add_argument("--jobs", type=int, default=1); ap.add_argument("--csv")
-    ap.add_argument("--variant", choices=("free", "constrained", "both"), default="free",
-                    help="hanging points: independent unknowns (free), ghost values (constrained, +c), or both")
+    ap.add_argument("--variant", choices=("free", "constrained", "ghost", "both", "all"), default="free",
+                    help="free: hanging points are unknowns. constrained: +c, hanging points are ghost "
+                         "values. ghost: +g, ghost cells for the C schemes. both: free and +c. all: the three")
     ap.add_argument("--smoke", action="store_true"); ap.add_argument("--list", action="store_true")
     a = ap.parse_args()
     if a.smoke: return smoke()
