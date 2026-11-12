@@ -204,9 +204,17 @@ def main():
     ser = sorted(glob.glob(os.path.join(a.studies, "s0Seam2Dvortexserial", "2Dvortex_[0-9]*")))
     pa = sorted(glob.glob(os.path.join(a.studies, "s0Seam2Dvortex", "2Dvortex_[0-9]*")))
     if ser and pa:
-        times = sorted({os.path.basename(d) for d in glob.glob(os.path.join(ser[0], "[0-9]*")) if os.path.isdir(d)} &
-                       {os.path.basename(d) for d in glob.glob(os.path.join(pa[0], "[0-9]*")) if os.path.isdir(d)},
-                       key=float)
+        def tdirs(c):
+            out = set()
+            for d in glob.glob(os.path.join(c, "[0-9]*")):
+                try:
+                    float(os.path.basename(d))
+                except ValueError:
+                    continue          # 0.org and the like are not time directories
+                if os.path.isdir(d):
+                    out.add(os.path.basename(d))
+            return out
+        times = sorted(tdirs(ser[0]) & tdirs(pa[0]), key=float)
         for t in times:
             if float(t) == 0.0:
                 continue
