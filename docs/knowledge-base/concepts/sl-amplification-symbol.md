@@ -98,3 +98,6 @@ The scheme matrix of the free variant landed from Lichtenberg (job array 5625457
 
 ### 2026-11-12 (ninth entry)
 The figure of the scheme names is a TikZ drawing of the data stencils (`docs/analysis-amplification-sl/figures/scheme_stencils.tex`, `make scheme-stencils-figure`), in `ms.tex`, in the SL pre-print and in the SL deck. It replaces a UML class diagram of the same day, which the supervisor rejected: the figure must show each data stencil. Supervisor's decision: try `C-Cp/L2+g` first ([[decision-log]]).
+
+### 2026-11-12 (tenth entry)
+The `+c` tables in 3D landed (Lichtenberg, job array 56258883; the two 2D tables are byte-identical to the laptop tables). MEASURED: `T/I+c` has growth factor 1.000000 at every Co <= 1 in five flow directions on the planar hexahedral 2:1 transition, and at most 1 on the refined patch. Prediction P2 holds in 3D. The sets without edge midpoints do not gain (`BFC/I+c` 7.0e-2 at Co 0.5); `T-Cf/L2+c` 2.7e-3 at most, equal to the free variant within 3e-4 (P3 holds). `data/tables/scheme_matrix_{hex21,hex21patch}_constrained.csv`.

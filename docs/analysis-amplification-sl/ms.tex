@@ -2178,7 +2178,7 @@ agree to round-off.
 \input{\tables/scheme_matrix_summary.tex}
 \caption{Scheme against mesh. sq: square, cube: cube, hc: honeycomb; -p: perturbed;
 -2:1: planar transition; -patch: refined patch. P: pass, F: fail, ?: not decided,
-r: no complete quadratic, --: not run. The \texttt{+c} schemes in 3D have not landed.}
+r: no complete quadratic, --: not run.}
 \label{tab:sm-summary}
 \end{table}
 
@@ -2233,9 +2233,10 @@ planar transition and on the refined patch. So has \texttt{FCC/I+c}. The predict
 written before the run holds. The reason is that the interpolant is then continuous
 across the transition, and the hanging values add no degree of freedom. The least-squares
 schemes do not gain from the constraint, also as predicted: a least-squares fit does not
-return its data, so the constraint does not make it continuous. In 3D one check ran:
-\texttt{T/I+c} has growth factor 1.000000 at $\mathrm{Co} = 0.3$ on the planar
-transition. The complete 3D tables have not landed.
+return its data, so the constraint does not make it continuous. In 3D the result is the same (Lichtenberg, job array 56258883): \texttt{T/I+c} has
+growth factor 1.000000 at every $\mathrm{Co} \le 1$ on the planar transition and does
+not amplify on the refined patch. The sets without edge midpoints do not gain:
+\texttt{BFC/I+c} has $7.0\cdot10^{-2}$ at $\mathrm{Co} = 0.5$ on the planar transition.
 
 \subsection{Ghost cells for the cell-centred schemes: \texttt{+g}}
 
@@ -2284,7 +2285,7 @@ results with publications.
 For the goal of adaptive mesh refinement, three candidates pass the planar transition
 with second-order accuracy: the original scheme with ghost cells (\texttt{C-Cp/L2+g},
 one unknown per cell, small growth), the tensor set with constrained hanging points
-(\texttt{BFC/I+c} in 2D, growth factor 1; \texttt{T/I+c} in 3D not complete), and
+(\texttt{BFC/I+c} in 2D and \texttt{T/I+c} in 3D, growth factor 1), and
 \texttt{T-Cf/L2} (8 unknowns per cell in 3D, small growth). For the goal of unstructured
 hexahedra, the tensor set is the only scheme with less growth than the original scheme.
 \opn{} The tensor set needs edge midpoints in 3D, which OpenFOAM does not store.
