@@ -1964,27 +1964,30 @@ the scheme damps it quickly.
 directions \((1,0,0)\), \((1,1,0)\), \((1,1,1)\) and \((2,1,0)\).
 
 \begin{center}
-\begin{tabular}{lrrrrr}
+\begin{tabular}{lrrrr}
 \toprule
-unknowns & per cell & Co 0.0164 & Co 0.5 & Co 1.0 & Co 1.25 \\
+unknowns & per cell & Co 0.0164 & Co 0.5 & Co 1.0 \\
 \midrule
-current scheme, centres only                         & 1 & 1.000000 & 1.000000 & 1.000000 & \textbf{2.125} \\
-2D: centre + faces + vertices                        & 4 & 1.000000 & 1.000000 & 1.000000 & 1.000000 \\
-3D: centre + faces + vertices + \emph{edge midpoints} & 8 & 1.000000 & 1.000000 & 1.000000 & 1.000000 \\
-3D: centre + faces + vertices, least-squares quadratic & 5 & \textbf{1.278} & 1.025 & 1.299 & 1.050 \\
-3D: centre + faces + vertices, 15-term interpolant   & 5 & 1.009 & \textbf{1.276} & \textbf{1.908} & 1.273 \\
+current scheme, centres only                         & 1 & 1.000000 & 1.000000 & 1.000000 \\
+2D: centre + faces + vertices                        & 4 & 1.000000 & 1.000000 & 1.000000 \\
+3D: centre + faces + vertices + \emph{edge midpoints} & 8 & 1.000000 & 1.000000 & 1.000000 \\
+3D: centre + faces + vertices, least-squares quadratic & 5 & \textbf{1.278} & 1.025 & 1.299 \\
+3D: centre + faces + vertices, 15-term interpolant   & 5 & 1.009 & \textbf{1.276} & \textbf{1.908} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \derived{} Three results follow.
 \begin{itemize}
-\item \textbf{With a complete set of points the scheme does not amplify at any Courant number.}
-      The complete set is the \(3\times3\) set in 2D and the \(3\times3\times3\) set in 3D. The
-      departure point always lies inside its host cell, and the host has data on all sides of
-      it. So the fit always interpolates. This is the principle of
-      Section~\ref{sec:principle}, satisfied by construction. The stability limit
-      \(\mathrm{Co} = 1\) of the current scheme disappears.
+\item \textbf{With a complete set of points the scheme does not amplify for
+      \(\mathrm{Co} \le 1\).} The complete set is the \(3\times3\) set in 2D and the
+      \(3\times3\times3\) set in 3D. The departure point always lies inside its host cell, and
+      the host has data on all sides of it. So the fit always interpolates. This is the
+      principle of Section~\ref{sec:principle}, satisfied by construction. Courant numbers above
+      one are outside the scope of this project and are not considered. \textbf{In the interior
+      of a perfect lattice the current scheme has the same growth factor of one in this range.}
+      The gain of the new scheme is therefore not in the interior growth factor; it is in the
+      error and at the boundary, below.
 \item \textbf{In 3D, vertices and face centres alone are not sufficient.} Both 15-point
       variants amplify. The least-squares quadratic does not return a point's own value at zero
       displacement. The 15-term interpolant does, but its growth factor reaches \(1.9\). The
