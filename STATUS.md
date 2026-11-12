@@ -7655,4 +7655,16 @@ base: `concepts/pde-level-set-verification`.
    correction form; its difference in the interpolate form is the size of the confound); read-out
    `workflow/scripts/pde_a0_analysis.py`. Lichtenberg: clone `leia-pde` (fb6a0ada, before the
    change) and clone `leia-pde-a0` (after it).
+7. **Step A, the exact reference** (f3b8cd90). `leiaTestVelocityExtension` also compares Uext with
+   u(Pi(x)) (Pi from the analytic signed distance of `levelSet.implicitSurface`, u the prescribed
+   velocity at the foot point): L1 and L2 over |d| <= 1h..4h and |d| <= W, the face-flux error,
+   and the raw velocity as the no-extension reference, in `leiaTestVelocityExtensionExact.csv` (the
+   existing CSV unchanged). First ladder `config/pdeLevelSet/aStatic2D.yaml` (nine models, the
+   correction flux form, N 32 to 256, serial; predictions pre-registered).
+8. **Lichtenberg ledger** (`/work/scratch/tm83tomy/leia-pde/.my_jobs`): builds 56253375 (clone
+   `leia-pde`, fb6a0ada) and 56253537 (clone `leia-pde-a0`, f3b8cd90); step 0 drivers 56253382 to
+   56253385 and analysis 56253408; A0 drivers 56253538 (identity, old binaries), 56253539
+   (identity, new), 56253540 (flux form) and analysis 56253541; step A driver 56253589 and
+   analysis 56253590. Note: the "new" identity arm runs at f3b8cd90, which adds only the test
+   application's exact reference to 00706283; the solver path is the same.
 

@@ -491,6 +491,10 @@
     <tr><td><b>A0.1b</b> an inert extension against <code>none</code></td>
         <td>How large is the far-field flux confound?</td>
         <td>correction form = <code>none</code> bit for bit; the interpolate form's difference <b>is</b> the confound, reported</td></tr>
+    <tr><td><b>A</b> (first ladder) nine extensions at one instant, N 32–256</td>
+        <td>How close is each extension to the exact \(\mathbf u(\Pi(x))\)?</td>
+        <td>my predictions: <code>closestPoint</code> order ~2; <code>projectionBlend</code>, <code>steadyUpwind</code>, <code>meshWave</code> order ~1;
+            a model no better than the raw velocity does nothing useful</td></tr>
   </table>
   <p class="muted">Own clones <code>leia-pde</code> (before the flux change) and <code>leia-pde-a0</code> (after it); no other session's clone is touched.
      Every job id is in the clone's ledger.</p>
