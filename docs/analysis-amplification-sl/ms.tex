@@ -1933,6 +1933,88 @@ of 2 to 6.
 Lower is unstable, higher is singular or ill-conditioned. A higher order needs a wider stencil,
 which this project's constraints rule out.
 
+\section{Vertex and face values as their own unknowns}
+\label{sec:multipoint}
+
+Section~\ref{sec:otherrecon} interpolated corner and face values from the cell centres, and that
+failed because interpolated values carry no new information. The scheme of this section is
+different. The vertex values and the face-centre values are \emph{independent unknowns}. They
+are set from the exact field at \(t = 0\), and the semi-Lagrangian step moves each of them along
+its own trajectory. The departure point of each unknown lies in some \emph{host cell}, and the
+host's own values are interpolated there.
+
+\paragraph{The tool changes in one place.} Each cell now holds several numbers, so one step
+multiplies a wave by a small matrix \(A(\theta)\), not by a number. The growth factor is the
+largest eigenvalue magnitude of \(A(\theta)\) over all waves.
+
+\paragraph{One dimension, closed form.} The unknowns are the centre value and one face value per
+cell. The host interpolant is the parabola through left face, centre and right face. For
+\(0 < C \le 1/2\),
+\begin{equation}
+  A(\theta) = \begin{pmatrix}
+     1 - 4C^2 & C\bigl[(2C+1)e^{-\mathrm{i}\theta} + (2C-1)\bigr] \\[3pt]
+     4C(1-C) & (2C-1)\bigl[C e^{-\mathrm{i}\theta} + (C-1)\bigr]
+  \end{pmatrix}.
+\end{equation}
+\derived{} The growth factor is \(1.0000000000\) at \(C = 0.0164\), \(0.1\), \(0.25\), \(0.4\)
+and \(0.5\). The second eigenvalue, which has no physical meaning, has magnitude near \(0.2\), so
+the scheme damps it quickly.
+
+\paragraph{Two and three dimensions.} The table gives the largest growth factor over the flow
+directions \((1,0,0)\), \((1,1,0)\), \((1,1,1)\) and \((2,1,0)\).
+
+\begin{center}
+\begin{tabular}{lrrrrr}
+\toprule
+unknowns & per cell & Co 0.0164 & Co 0.5 & Co 1.0 & Co 1.25 \\
+\midrule
+current scheme, centres only                         & 1 & 1.000000 & 1.000000 & 1.000000 & \textbf{2.125} \\
+2D: centre + faces + vertices                        & 4 & 1.000000 & 1.000000 & 1.000000 & 1.000000 \\
+3D: centre + faces + vertices + \emph{edge midpoints} & 8 & 1.000000 & 1.000000 & 1.000000 & 1.000000 \\
+3D: centre + faces + vertices, least-squares quadratic & 5 & \textbf{1.278} & 1.025 & 1.299 & 1.050 \\
+3D: centre + faces + vertices, 15-term interpolant   & 5 & 1.009 & \textbf{1.276} & \textbf{1.908} & 1.273 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\derived{} Three results follow.
+\begin{itemize}
+\item \textbf{With a complete set of points the scheme does not amplify at any Courant number.}
+      The complete set is the \(3\times3\) set in 2D and the \(3\times3\times3\) set in 3D. The
+      departure point always lies inside its host cell, and the host has data on all sides of
+      it. So the fit always interpolates. This is the principle of
+      Section~\ref{sec:principle}, satisfied by construction. The stability limit
+      \(\mathrm{Co} = 1\) of the current scheme disappears.
+\item \textbf{In 3D, vertices and face centres alone are not sufficient.} Both 15-point
+      variants amplify. The least-squares quadratic does not return a point's own value at zero
+      displacement. The 15-term interpolant does, but its growth factor reaches \(1.9\). The
+      12 edge midpoints complete the tensor set, and with them the growth factor is exactly
+      one.
+\item \textbf{The error of one step is 13 times smaller.} For a long wave at
+      \(\mathrm{Co} = 0.3\) the error is \(2.8\times10^{-5}\), against \(3.6\times10^{-4}\) for
+      the current scheme at the same cell size. Both are third order per step.
+\end{itemize}
+
+\paragraph{What it changes at a boundary.} A wall cell holds a complete set of points, and some
+of them lie on the wall. There is no one-sided stencil and no boundary face datum copied from
+the cell. The defect of Section~\ref{sec:boundary} does not occur for a flow along the wall or
+out of the domain. At an inflow the departure point lies outside the domain, and the scheme
+needs the incoming value there, as every scheme does.
+
+\opn{} This analysis covers a uniform lattice of cubes only. Four questions are open.
+\begin{itemize}
+\item \textbf{Cost.} In 3D there are 8 unknowns per cell, against 1. OpenFOAM has point fields
+      and face fields, but no edge field.
+\item \textbf{Polyhedral cells.} A general polyhedron has no tensor set of points. Each cell
+      shape needs an interpolation space that returns the point values exactly, and the
+      15-point result shows that a wrong choice amplifies.
+\item \textbf{The departure point search.} Each unknown needs its host cell. Across a processor
+      boundary the host is on another rank.
+\item \textbf{The phase indicator.} The volume fraction needs the cell-centred value and a
+      gradient. The vertex and face values give a better gradient, and this is not measured
+      here.
+\end{itemize}
+
 \section{Checking all of this against the running code}
 \label{sec:symbol-valid}
 
@@ -2163,6 +2245,7 @@ python3 docs/analysis-amplification-sl/sympy/hexagonal_lattice.py  # the honeyco
 python3 docs/analysis-amplification-sl/sympy/perturbed_stencil.py  # perturbed hex + weights
 python3 docs/analysis-amplification-sl/sympy/corner_face_data.py   # corner and face data
 python3 docs/analysis-amplification-sl/sympy/degree_on_irregular_stencil.py  # degree 1/2/3
+python3 docs/analysis-amplification-sl/sympy/multipoint_unknowns.py  # vertex/face unknowns
 
 workflow/scripts/fit_amplification_probe.sh \
     studies/popinet3D_La12000_hex_smoke4/popinetTranslating3D_00000 reuse <out>

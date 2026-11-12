@@ -74,3 +74,7 @@ None taken. The analysis proposes, for the supervisor: an eikonal-consistent bou
 
 ### 2026-11-12
 Created, covering the analysis of 2026-10-13 to 2026-11-12 (`docs/analysis-amplification-sl/ms.tex`, three review passes in `review-log.md`). Added the corner and face data and the degree scan on this date.
+
+### 2026-11-12 (second entry)
+CANDIDATE, from the supervisor: vertex and face-centre values as independent unknowns, set exactly at t = 0 and advected by the same semi-Lagrangian step, each departure point interpolated in its host cell. Matrix symbol, uniform cubes: with the complete tensor point set (3x3 in 2D; 3x3x3 in 3D, which needs the 12 edge midpoints, 8 unknowns per cell) the growth factor is 1.000000 at every Courant number tested, 0.0164 to 1.25, in four flow directions; the current scheme has 2.125 at Co 1.25. The one-step error of a long wave at Co 0.3 is 2.8e-5 against 3.6e-4. In 3D, centre + faces + vertices WITHOUT edge midpoints amplifies with both spaces tried: least-squares quadratic 1.278 at Co 0.0164, 15-term interpolant 1.908 at Co 1.0. Open: cost, polyhedral cells, the departure point search in parallel. Script `docs/analysis-amplification-sl/sympy/multipoint_unknowns.py`; ms.tex section "Vertex and face values as their own unknowns".
+
