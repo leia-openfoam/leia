@@ -60,7 +60,7 @@ def pair_orders(ns, es):
     out = []
     for i in range(len(ns) - 1):
         a, b = es[i], es[i + 1]
-        if a and b and a > 0 and b > 0:
+        if a and b and a > 0 and b > 0 and ns[i + 1] != ns[i]:
             out.append(math.log(a / b) / math.log(ns[i + 1] / ns[i]))
         else:
             out.append(None)
@@ -68,8 +68,10 @@ def pair_orders(ns, es):
 
 
 def family(study):
-    s = re.sub(r"_N\d+.*$", "", study)
-    return s
+    """The study name without its resolution: standing_shear3D_N32_variants ->
+    standing_shear3D_variants, port_ladder_sphereN128_leia -> port_ladder_sphere_leia,
+    nor_trans_N32_np1 -> nor_trans_np1."""
+    return re.sub(r"_?N\d+(?=_|$)", "", study)
 
 
 def measure(c):
@@ -110,6 +112,7 @@ def measure(c):
         corrector=tok.get("TPF_FACE_FRACTION_CORRECTOR", "none"),
         enright=tok.get("TPF_ENRIGHT_SETTING", "-"),
         Co=tok.get("TARGET_ADVECTIVE_CO"), N=int(float(tok["N_CELLS"])), np=tok.get("NP", "1"),
+        rep=tok.get("TPF_REPETITION", "1"),
         steps=len(rows), status=last.get("status"),
         angle1=a1, angle1_hi=a1_hi, angleInf=ainf, omd1=o1, omdInf=oinf, angleSource=src,
         srLinf=oinf, nd1=d1, nd2=d2, ndInf=dinf, identity=ident,
@@ -178,7 +181,12 @@ def main():
         groups.setdefault((r["family"], r["row"], r["arm"], r["enright"], r["corrector"], str(r["Co"]), r["np"]), []).append(r)
     orders = []
     for k, rs in sorted(groups.items()):
-        rs = sorted(rs, key=lambda r: r["N"])
+        # one case per N: the repetition 1 (the repetitions of the standing matrix
+        # are identical in their errors; their wall clock is in the case table)
+        byN = {}
+        for r in sorted(rs, key=lambda r: (r["N"], str(r["rep"]))):
+            byN.setdefault(r["N"], r)
+        rs = [byN[n] for n in sorted(byN)]
         ns = [r["N"] for r in rs]
         if len(set(ns)) < 2:
             continue
@@ -205,7 +213,12 @@ def main():
         orders.append(o)
     with open(os.path.join(a.out, "nor_orders.csv"), "w", newline="") as fh:
         if orders:
-            w = csv.DictWriter(fh, fieldnames=list(orders[0].keys()))
+            fields = []
+            for o in orders:
+                for kk in o:
+                    if kk not in fields:
+                        fields.append(kk)
+            w = csv.DictWriter(fh, fieldnames=fields, restval="")
             w.writeheader()
             for r in orders:
                 w.writerow(r)
