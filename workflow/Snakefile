@@ -230,7 +230,13 @@ _solve = ["cd {params.d}", f"rm -f {SOLVER_CSV} .leia_solver_failed .leia_launch
 if SOLVER == "advectorVoF":
     _solve.append("rm -rf postProcessing")
 if INIT_END:
-    _solve.append(INIT_END)
+    # The legacy support case of 3Dtranslation writes psiEnd/alphaEnd. With END_REFERENCE
+    # translate the pre-processing has written them already (write_end_reference.py), and
+    # the support case has no mesh in a workflow case, so its script fails there (MEASURED
+    # 2026-11-12, ghostCellSmoke3D: both arms stopped before the solver). Run it only when
+    # the end reference is missing.
+    _end = "processor0/0/psiEnd" if PARALLEL else "0/psiEnd"
+    _solve.append(f"[ -f {_end} ] || {INIT_END}")
 # The curvature test app reads the SAME -alphaName flag as leiaSetFields (its
 # default alpha.water fits the droplet cases; the 3D cases name the field
 # "alpha") -- forward the study's setfields_args to it.
