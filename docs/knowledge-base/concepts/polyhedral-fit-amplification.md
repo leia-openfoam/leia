@@ -79,3 +79,7 @@ The polyhedral far field fails because pMesh generates 27 191 cells below 0.4 h,
 
 ### 2026-09-28
 Created from STATUS section 4 (2026-09-08 and 2026-09-09), METHOD 8.1, 8.2 and 9, the README section on the bound, the curated census and the probe code.
+
+### 2026-11-12
+QUALIFIED by [[concepts/sl-amplification-symbol]]. The verdict above says `rho(B)` is above one on every mesh. The closed-form symbol shows the INTERIOR of a perfect cube lattice has `rho = 1` exactly for `Co <= 1`; the measured 1.00441 belongs to the whole mesh, and the solver's own `Lambda` field puts its maximum on a boundary cell while all 484 344 interior cells carry one value. So the measured growth is a boundary effect on a perfect lattice, plus an interior effect on a perturbed one (10 % displacement: 1.026 at Co 0.3). The numbers above stand; their attribution to the interior scheme does not.
+
