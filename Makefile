@@ -294,6 +294,19 @@ articles: article-sl article-lsl article-grl article-gcls article-amplification
 # Read a reviewed PDF back. Annotate $(ANA_AMP)/ms.pdf in any viewer that SAVES into the
 # file (Edge, Firefox, Acrobat, Okular), save it next to the source as ms_reviewed.pdf, and
 # run this: every comment comes back with the passage it sits on and the section it is in.
+amp-reproduce: ## regenerate every number of the amplification report (sympy/numpy only, no solver)
+	python3 workflow/scripts/sl_amplification_symbol.py validate-1d
+	python3 workflow/scripts/sl_amplification_symbol.py sweep
+	@for f in boundary_lambda boundary_bracketing boundary_options hexagonal_lattice \
+	          perturbed_stencil corner_face_data degree_on_irregular_stencil \
+	          multipoint_unknowns multipoint_hexagon; do \
+	    echo "==== $$f"; python3 $(ANA_AMP)/sympy/$$f.py || exit 1; done
+	rm -f $(ANA_AMP)/data/tables/multipoint_perturbed.csv
+	python3 $(ANA_AMP)/sympy/multipoint_perturbed.py --dim 2 \
+	    --csv $(ANA_AMP)/data/tables/multipoint_perturbed.csv
+	python3 $(ANA_AMP)/sympy/scheme_matrix.py --smoke
+	@echo "the scheme matrix on every mesh runs on Lichtenberg: $(ANA_AMP)/sympy/scheme_matrix.sbatch"
+
 amp-open: article-amplification ## open the amplification review copy (never overwrites it)
 	@if [ -f $(ANA_AMP)/ms_reviewed.pdf ]; then \
 	    n=$$(python3 workflow/scripts/read_pdf_comments.py $(ANA_AMP)/ms_reviewed.pdf --count 2>/dev/null || echo 0); \
