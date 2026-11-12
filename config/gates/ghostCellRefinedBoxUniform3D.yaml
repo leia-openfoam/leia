@@ -1,0 +1,42 @@
+# ============================================================================
+# CONTROLS of config/gates/ghostCellRefinedBox3D.yaml (2026-11-12): the same translation on
+# uniform hexahedral meshes with the original scheme. The read-out is in that file.
+# ============================================================================
+study_name: ghostCellRefinedBoxUniform3D
+case: 3Dtranslation
+mesh: hex
+mode: parallel
+np: 8
+solver: leiaSemiLagrangeLevelSetFoam
+theme: semi-lagrangian-level-set
+solve_runtime: 7200
+# cases/3Dtranslation names its volume fraction `alpha`, not `alpha.water`. The refinement
+# driver derives the field name from THIS string (leia_refine.alpha_name_from), and its
+# fallback is alpha.water, so band_check looks for a field that does not exist unless the
+# name is stated here.
+setfields_args: "-alphaName alpha"
+axes_override:
+  # Uniform meshes. N = 16, 32, 64 are the coarse controls of the refined rungs 32, 64, 128;
+  # N = 32, 64, 128 are the fine controls.
+  N_CELLS: ['16', '32', '64', '128']
+  CFL: ['0.5']
+  END_TIME: ['1.0']
+  OSCILLATION: ['off']
+  END_REFERENCE: ['translate']
+  ADVECTION: [semiLagrangian]
+  PHASE_INDICATOR: [detrixheAslam]
+  PROFILE: [signedDistance]
+  SL_SCHEME: [pointValue]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_VALUE_BOUND: ["none"]
+  SL_LIMITER: ["none"]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_STENCIL: ["point"]
+  SL_CLIP: ["false"]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_SOURCE: [none]
+  FLUX_PROJECTION: ["none"]
+  SDPLS_SOURCE: [noSource]
+  SOURCE_SCHEME: [explicit]
+collapse_other_axes: true
+export_slides: false
