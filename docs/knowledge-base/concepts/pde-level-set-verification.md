@@ -14,12 +14,13 @@ sources: [docs/plan-velocity-extension-verification.md, docs/pde-level-set/pde-l
 # The PDE level-set direction (Bothe and Soga): verify the parts one at a time
 
 > Open, 2026-11-12, by the author's decision. The goal is a PDE level-set method on the Eulerian
-> FVM line that is usable for multiphase flow ("better than interFoam is enough"). The model is
+> FVM line; since the third round of 2026-11-12 the goal is an accurate, resolved, adaptive solver,
+> judged against exact solutions and observed orders (interFoam is no reference). The model is
 > $\partial_t\phi + \mathbf u_e\cdot\nabla\phi = \beta\,\phi\,g(\lvert\nabla\phi\rvert)$ with the extended velocity
 > $\mathbf u_e = \mathbf u(\Pi(x))$ ([plan, section 1](https://github.com/leia-openfoam/leia/blob/development/docs/plan-velocity-extension-verification.md)).
 > The work verifies five parts one at a time, each against an exact reference: the transport
 > (step 0), the extension operator (A0 repairs, A static), the transport with the exact and with the
-> computed extension (B, C), the source (D), the assembly and the droplets against interFoam (E).
+> computed extension (B, C), the source (D), the assembly and the droplets against exact solutions, then on refined meshes (E).
 > An audit of the same day re-opens the earlier extension verdicts (below).
 > The deck for the supervisor: `docs/pde-level-set/pde-level-set-presentation/`.
 
@@ -72,3 +73,4 @@ the velocity-extension paper holds with the blend; which range of $q$ is enough 
 ### 2026-11-12
 Created with the plan, the deck and the audit (STATUS 11.29).
 The supervisor's second round: the reading of D. Bothe's notes is right; the q range waits for the static gate of plan step 0.5 (the function-reading operators are invariant under a uniform scaling of psi, the distance-reading ones are not); step 0 starts on Lichtenberg.
+The supervisor's third round: forget interFoam; an accurate, resolved, adaptive solver first. Plan rows 1 and 10, step E and the deck are updated.

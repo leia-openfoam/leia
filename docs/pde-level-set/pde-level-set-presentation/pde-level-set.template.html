@@ -86,8 +86,8 @@
   <p class="accent">The model of D. Bothe and K. Soga: velocity extension plus a gradient source</p>
   <p class="muted">Progress report for the supervisor · started 2026-11-12 · branch <code>development</code></p>
   <div class="box" style="text-align:left; font-size:0.85em">
-    <b>The goal (your decision of 2026-11-12):</b> a PDE level-set method in OpenFOAM that is usable for
-    multiphase flow. Better than interFoam is enough; Basilisk accuracy is not the target.<br>
+    <b>The goal (your decision of 2026-11-12, third round):</b> an <b>accurate, resolved, adaptive</b> PDE level-set solver in OpenFOAM,
+    judged against exact solutions and observed orders. interFoam is no reference.<br>
     <b>The line:</b> the Eulerian finite-volume transport only (<code>leiaLevelSetFoam</code>,
     <code>leiaLevelSetTwoPhaseFoam</code>). The semi-Lagrangian line is out of scope here.<br>
     <b>The method of work:</b> split the model into parts that each have an exact reference, and verify one part at a time.
@@ -333,7 +333,7 @@
     <tr><td><b>B</b></td><td>Does the transport keep \(\phi\) a distance with the <i>exact</i> extension?</td><td>\(\phi = d(x, \Gamma(t))\), \(\Gamma(t)\) in closed form</td></tr>
     <tr><td><b>C</b></td><td>How much survives with the <i>computed</i> extension?</td><td>the same; the cost of the loop \(\phi_h \to \Pi_h \to \mathbf u_e \to \phi_h\)</td></tr>
     <tr><td><b>D</b></td><td>Is the source right on its own, and with the exact extension?</td><td>the logistic law \(z' = \mu z(1-z)\) along every ray</td></tr>
-    <tr><td><b>E</b></td><td>The assembly, then the two-phase droplets</td><td>interFoam on the same mesh and step; exact curvature first</td></tr>
+    <tr><td><b>E</b></td><td>The assembly, then the two-phase droplets</td><td>exact solutions and observed orders; exact curvature first; then statically refined meshes</td></tr>
   </table>
   <p class="muted">Escalate only on a pass. Hexahedra, then perturbed hexahedra, then polyhedra. Serial against np 4 at every step. Every run on Lichtenberg.</p>
 </section>
@@ -395,8 +395,8 @@
     <li><b>Read-only geometry.</b> \(\hat d\) failed only when fed back into \(\phi\). A two-phase solver needs the normal, the curvature and
         \(\alpha\), not \(\phi\) itself. Transport \(\phi\) without control, and take the geometry from \(\hat d(\phi)\) each step without
         changing \(\phi\). If \(q\) stays in a moderate range, this may be the simplest usable method. It is the control arm of step E.</li>
-    <li><b>The target is a bound, not \(q = 1\).</b> Step E measures which range of \(q\) keeps the curvature and the volume at or below
-        interFoam's error. That range becomes the criterion.</li>
+    <li><b>The target is a bound, not \(q = 1\).</b> Step 0.5 and step E measure which range of \(q\) keeps the curvature, the normal and the volume
+        within a set factor of the same operators on \(\phi = d\), orders intact. That range becomes the criterion.</li>
     <li><b>Extension only where it is read</b>: Dieter's blend with \(\delta = 1\) outside a few cells.</li>
   </ol>
   <div class="ask"><b>For you:</b> idea 3 changes the question from "keep \(q = 1\)" to "is \(\phi\) good enough to read geometry from".

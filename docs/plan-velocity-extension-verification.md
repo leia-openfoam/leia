@@ -10,7 +10,7 @@ taken; nothing of sections 4 to 10 is implemented yet. Record: STATUS.md 11.29.
 
 | # | question | decision |
 |---|---|---|
-| 1 | the goal | assemble a PDE level-set method in OpenFOAM that is usable for multiphase flow; "better than interFoam" is enough, Basilisk accuracy is not the target |
+| 1 | the goal | SUPERSEDED 2026-11-12 by row 10: "usable for multiphase flow, better than interFoam is enough" |
 | 2 | the line | the Eulerian finite-volume line only (`leiaLevelSetFoam`, `leiaLevelSetTwoPhaseFoam`); the semi-Lagrangian line is out of scope for this plan |
 | 3 | the order | split the model into sub-problems that each have an exact reference; the velocity extension first (its verification test, then the existing models, then the best one), the source terms after it, then the assembly |
 | 4 | the attitude to old verdicts | every earlier verdict is re-read critically: the work moved fast, and a bug, a setting or a bottleneck may have decided a verdict that the method did not deserve |
@@ -19,6 +19,7 @@ taken; nothing of sections 4 to 10 is implemented yet. Record: STATUS.md 11.29.
 | 7 | the advected velocity-extension verdicts | re-opened and analysed (section 12) |
 | 8 | the target range of q | not yet decided; the supervisor asked for more material: section 4b and the deck's q stack |
 | 9 | start | step 0 and step A0 start on Lichtenberg |
+| 10 | the goal (supervisor, 2026-11-12, third round) | an ACCURATE, RESOLVED solver first, adaptive; interFoam is no reference anywhere in this plan. Every gate is judged against exact solutions and observed orders; the method must keep its accuracy on locally refined meshes |
 
 ---
 
@@ -330,8 +331,9 @@ error.
    $q$ stays within, for example, $[0.5, 2]$ in the band over the run, this may be enough for the
    multiphase target and is the simplest method. It is the control arm of sub-problem E.
 4. **The target is a bound, not $q = 1$.** The dossier's target is $0.9 \le q \le 1.1$; the multiphase
-   need may be weaker. Sub-problem E measures which $q$ range keeps the curvature and the volume at
-   or below interFoam's error, and that range becomes the criterion.
+   need may be weaker. Step 0.5 and sub-problem E measure which $q$ range keeps the curvature, the
+   normal and the volume within a set factor of the same operators on $\phi = d$, with their
+   observed orders intact; that range becomes the criterion.
 5. **The extension only where it is needed.** With Bothe's blend, $\delta = 1$ outside a few cells:
    the extension acts where the phase indicator and the curvature read $\phi$.
 
@@ -342,9 +344,12 @@ error.
 1. **E1, kinematic**: the best extension of C plus the best source of D on the cases of B and C,
    against the oracle; the control arm of section 9 idea 3.
 2. **E2, coupled**: `leiaLevelSetTwoPhaseFoam` on the stationary, the translating and the oscillating
-   droplet, three resolutions, np 4, against interFoam (`interFoamDroplet2D`) on the same mesh, time
-   step and fluids, and against the Eulerian baseline. The whole vector: shape, volume, $q$ band,
-   curvature, spurious current, pressure jump, cost. Escalation to 3D and polyhedra only on a pass.
+   droplet, at least three resolutions, np 4, against the exact solutions (the Laplace jump, zero
+   velocity, the Lamb frequency and damping, the translated shape) and against the Eulerian baseline,
+   with the observed order of every metric. The whole vector: shape, volume, $q$ band, curvature,
+   spurious current, pressure jump, cost. Then the same on statically refined meshes
+   (`mesh: hexRefined | polyRefined`), because the goal is an adaptive resolved solver: the method
+   must keep its order across a refinement interface. Escalation to 3D and polyhedra only on a pass.
 3. Before E2: the well-balanced gate with exact curvature, which isolates the force balance from the
    level-set method (the CLAUDE.md research ladder).
 
@@ -449,4 +454,5 @@ Each item gets its unit gate (exact solution, exits nonzero) before any study us
 2. After A: which two or three extensions go on.
 3. After B and C: whether the extension needs the source at all for the multiphase target, and the
    $q$ range that is enough (section 9 idea 4).
-4. Before E2: the interFoam comparison set (cases, resolutions, fluids).
+4. Before E2: the coupled case set (resolutions, fluids, the refined-mesh rungs) and the factor by which the
+   method may lose against its own signed-distance reference.

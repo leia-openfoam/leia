@@ -7675,4 +7675,9 @@ base: `concepts/pde-level-set-verification`.
    foot-point re-referencing. The static gate of plan 4b also used interFoam's curvature as the bar;
    that bar is withdrawn (div(grad alpha/|grad alpha|) is the worst curvature approximation); the
    bar is the same operator on psi = d. Plan 4b and the deck are corrected.
+10. **The goal, third round (the supervisor, 2026-11-12):** "forget interFoam, we go for an accurate
+    adaptive resolved solver first". interFoam is removed from the plan as a reference; every gate is
+    judged against exact solutions and observed orders; step E adds the statically refined meshes
+    (`hexRefined`, `polyRefined`), because the method must keep its order across a refinement
+    interface. Plan rows 1 and 10, section 10, the deck's title slide and plan table.
 
