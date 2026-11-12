@@ -876,15 +876,15 @@
 <!-- ===== SL 4a2: THE NAMES OF THE POINT SCHEMES ===== -->
 <section>
   <h2>Names for semi-Lagrangian point schemes &mdash; <code>OWN-NEIGHBOUR/SPACE+TRANSITION</code></h2>
-  <img src="data/figures/scheme_names.png"
-       alt="UML class diagram: a scheme is composed of OWN (C, SC, BCC, FCC, BFC, T), NEIGHBOUR (none, -Cf, -Cp), SPACE (/I, /L2) and TRANSITION (free, +c, +g)"
+  <img src="data/figures/scheme_stencils.png"
+       alt="The data stencils: OWN point sets C, SC, BCC, FCC, BFC, T in 2D and 3D; NEIGHBOUR sets -Cf and -Cp; SPACE /I and /L2; the 2:1 TRANSITION treatments free, +c and +g"
        style="max-height:70vh; max-width:96%; width:auto; height:auto; background:#fff; border-radius:6px;">
   <p class="footnote muted center">Every scheme advects point values with the same semi-Lagrangian step.
      The name states which data a cell reads. The method of this deck is <code>C-Cp/L2</code> on
      hexahedra (CPC) and <code>C-Cf/L2</code> on polyhedra (CFC). <code>+c</code> and <code>+g</code>
      are the two treatments of a 2:1 refinement transition.</p>
   <aside class="notes">
-    Source: docs/analysis-amplification-sl/figures/scheme_names.tex (tikz-uml), make scheme-names-figure.
+    Source: docs/analysis-amplification-sl/figures/scheme_stencils.tex (TikZ), make scheme-stencils-figure.
     Executable definition of every name: docs/analysis-amplification-sl/sympy/scheme_matrix.py.
   </aside>
 </section>

@@ -2133,9 +2133,11 @@ point set of Section~\ref{sec:principle} is \texttt{BFC/I} in 2D and \texttt{T/I
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=\linewidth]{scheme_names.pdf}
-  \caption{The names of the schemes as a UML class diagram. A scheme is composed of one
-  alternative of each family. \texttt{NEIGHBOUR} and \texttt{TRANSITION} can be absent.}
+  \includegraphics[width=\linewidth]{scheme_stencils.pdf}
+  \caption{The data stencil of every part of a scheme name. Filled circles are the advected
+  unknowns of the shaded cell, open squares are centre values read from neighbour cells,
+  and open circles carry no unknown and take their value from another cell. The last row
+  shows the three treatments of a 2:1 transition.}
   \label{fig:scheme-names}
 \end{figure}
 
