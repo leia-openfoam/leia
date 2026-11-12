@@ -6336,3 +6336,15 @@ first two steps for that row and voids its N-3 verdict.
 
 The one-plane path (davof-kiss, KISS round 3: one plane per swept face) enters as rows 4-6
 in a second pass if its plane gate passes; it is not waited for.
+
+#### Addendum (2026-11-12, 22:50, after the first N 32 results and before any oblique run)
+
+The axial translation at OpenFOAM Co 1 is an exact transport: U = (1 0 0) and dt = h move
+the sphere by exactly one cell per step, the swept volume of every face is its upwind cell,
+and the N 32 runs end with E_shape 2.5e-15 to 1.2e-13, the per-step flux error 7.6e-14 and
+L1(alphaf) 7.7e-14 for all three normals (the normal errors at the end are those of the
+initial state, shifted). The axial Co 1 rows therefore carry no order information about the
+normal; N-2 and N-3 are not evaluated on them. Added, with the same predictions N-1 .. N-4:
+the oblique translation `nor_transOb_N{32,64,128}` (8 ranks), U = (0.3 0.5 0.8124), |U| = 1,
+over 0.3 (the sphere stays in the box), OpenFOAM Co = (|Ux| + |Uy| + |Uz|) dt/h = 1.6124
+Co_target, so the targets 0.124039 and 0.620194 give OpenFOAM Co 0.2 and 1.

@@ -68,6 +68,13 @@ SWEPT = {
 }
 TRANS = {"TPF_VELOCITY_ARM": ["axial"], "TARGET_ADVECTIVE_CO": ["0.2", "1"],
          "TPF_EXACT_FLUX_ERROR": ['"true"']}
+# the oblique translation (added 2026-11-12 AFTER the first results, the axial
+# translation at OpenFOAM Co 1 being an exact one-cell shift per step: U = (1 0 0) and
+# dt = h move the sphere by one cell, the swept volume of every face is the upwind cell,
+# and every error stays at round-off): U = (0.3 0.5 0.8124), |U| = 1, over 0.3 so that
+# the sphere stays in the box; OpenFOAM Co = (|Ux| + |Uy| + |Uz|) dt/h = 1.6124 Co_target
+TRANS_OB = {"TPF_VELOCITY_ARM": ["normal"], "TARGET_ADVECTIVE_CO": ["0.124039", "0.620194"],
+            "TPF_EXACT_FLUX_ERROR": ['"true"']}
 ROT = {"TPF_VELOCITY_ARM": ["rotation"], "TPF_ALPHA_BC": ["fixedValue"],
        "TARGET_ADVECTIVE_CO": ["0.0462996198086", "0.231498099043"],
        "TPF_EXACT_FLUX_ERROR": ['"false"']}
@@ -127,6 +134,19 @@ def main():
                   "# Youngs normals on the pieces path (Enright setting recommended), OpenFOAM Co 0.2\n"
                   "# and 1." % ({"trans": "the sphere translation", "rot": "the sphere rotation"}[test], N, np_),
                   rt, mem)
+    # the oblique translation (post hoc, see TRANS_OB): N 32 / 64 / 128 on 8 ranks
+    for N, rt, mem in ((32, 240, 4000), (64, 720, 4000), (128, 1440, 8000)):
+        axes = {"N_CELLS": [str(N)], "TPF_ROW": ROWS}
+        axes.update(TRANS_OB)
+        axes.update(SWEPT)
+        axes["END_TIME"] = ['"0.3"']
+        axes["TPF_WRITE_INTERVAL"] = ['"0.075"']
+        axes["TPF_AFE_WRITE_INTERVAL"] = ['"0.075"']
+        axes["TPF_VFE_WRITE_INTERVAL"] = ['"0.075"']
+        write("nor_transOb_N%d" % N, "sphereTranslation3D", 8, axes,
+              "The normal-order study, the oblique sphere translation (U = (0.3 0.5 0.8124), over\n"
+              "# 0.3) at N %d on 8 ranks, OpenFOAM Co 0.2 and 1; added after the first results (the\n"
+              "# axial translation at Co 1 is an exact one-cell shift per step)." % N, rt, mem)
 
 
 if __name__ == "__main__":
