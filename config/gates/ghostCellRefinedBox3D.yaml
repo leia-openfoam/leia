@@ -37,6 +37,13 @@
 #      tensor set with constrained hanging points and T-Cf/L2.
 #   No L_inf in any verdict.
 #
+# ADDED 2026-11-12 after the 4-rank smoke run at N = 32 (both arms complete, 111 steps; the
+# exact-solution gate E1 to E3 passes in serial and on 4 ranks), BEFORE any ladder result:
+# a fourth rung, N = 256. Reason: the sphere has R/h = 2.4, 4.8 and 9.6 on the COARSE cells
+# of the first three rungs, and only the fourth has R/h = 9.6 there and 19.2 in the box. The
+# criteria above are unchanged; the order is fitted over all four rungs. The coarse control
+# of N = 256 is the uniform N = 128; there is no uniform N = 256 control.
+#
 # BEFORE THIS STUDY. The exact-solution gate leiaTestGhostCellReconstruction (E1 to E3 in its
 # header) runs on the N = 32 mesh in serial and on 4 ranks, on Lichtenberg.
 #
@@ -71,7 +78,7 @@ axes_override:
   REFINE_LEVELS: ['1']
   REFINE_BOX_MIN: ["(0.8 -0.1 -0.1)"]
   REFINE_BOX_MAX: ["(1.2 1.1 1.1)"]
-  N_CELLS: ['32', '64', '128']
+  N_CELLS: ['32', '64', '128', '256']
   CFL: ['0.5']
   END_TIME: ['1.0']
   OSCILLATION: ['off']
