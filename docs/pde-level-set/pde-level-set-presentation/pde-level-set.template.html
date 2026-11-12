@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PDE level set</title>
+
+  <!-- reveal.js 4.6.x core + black theme, from cdnjs -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.css">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/theme/black.min.css"
+        id="theme">
+
+  <style>
+    :root {
+      --ls-fg:      #f2f2f2;
+      --ls-muted:   #b9c2cc;
+      --ls-accent:  #4fc3f7;
+      --ls-warn:    #ffb74d;
+      --ls-good:    #81c784;
+      --ls-bad:     #e57373;
+    }
+    .reveal h1 { font-size: 1.5em; line-height: 1.1; }
+    .reveal h2 { font-size: 1.2em; color: var(--ls-accent); }
+    .reveal section { font-size: 0.8em; }
+    .reveal p, .reveal li { color: var(--ls-fg); }
+    .reveal .muted { color: var(--ls-muted); }
+    .reveal .accent { color: var(--ls-accent); }
+    .reveal .warn { color: var(--ls-warn); }
+    .reveal .good { color: var(--ls-good); }
+    .reveal .bad { color: var(--ls-bad); }
+    .reveal code { color: var(--ls-warn); }
+    .reveal .mjx-container { color: var(--ls-fg) !important; }
+    .cols { display: flex; gap: 1.2em; align-items: flex-start; justify-content: center; }
+    .cols > div { flex: 1; }
+    .reveal ul.tight { margin: 0; }
+    .reveal ul.tight li { margin: 0.12em 0; }
+    .center { text-align: center; }
+    .footnote { font-size: 0.62em; color: var(--ls-muted); }
+    .reveal table { font-size: 0.85em; margin: 0.4em auto; }
+    .reveal table th { color: var(--ls-accent); }
+    .reveal table td, .reveal table th { padding: 0.14em 0.6em; border-bottom: 1px solid #444; }
+    .reveal .ask {
+      border-left: 4px solid var(--ls-warn); padding: 0.25em 0.7em; margin-top: 0.6em;
+      font-size: 0.82em; text-align: left; background: rgba(255,183,77,0.07);
+    }
+    .reveal .ask b { color: var(--ls-warn); }
+    .reveal .tag { font-size: 0.7em; padding: 0 0.3em; border-radius: 3px; border: 1px solid; }
+    .reveal .m { color: var(--ls-good); border-color: var(--ls-good); }
+    .reveal .d { color: var(--ls-accent); border-color: var(--ls-accent); }
+    .reveal .h { color: var(--ls-warn); border-color: var(--ls-warn); }
+    .reveal img.fig { max-height: 470px; border-radius: 4px; }
+    .reveal .box {
+      border: 1px solid var(--ls-accent); border-radius: 6px;
+      padding: 0.4em 0.8em; margin: 0.5em auto; display: inline-block;
+    }
+  </style>
+
+  <!-- MathJax 3 (loaded directly from cdnjs) -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes: true,
+        macros: { boldsymbol: ['{#1}', 1] }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
+      svg: { fontCache: 'local' }
+    };
+  </script>
+  <script id="MathJax-script" async
+          src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- =================================================================== -->
+<!-- 1. TITLE AND HOW TO READ                                              -->
+<!-- =================================================================== -->
+<section>
+<section>
+  <h1>A PDE level-set method on the Eulerian FVM line</h1>
+  <p class="accent">The model of D. Bothe and K. Soga: velocity extension plus a gradient source</p>
+  <p class="muted">Progress report for the supervisor · started 2026-11-12 · branch <code>development</code></p>
+  <div class="box" style="text-align:left; font-size:0.85em">
+    <b>The goal (your decision of 2026-11-12):</b> a PDE level-set method in OpenFOAM that is usable for
+    multiphase flow. Better than interFoam is enough; Basilisk accuracy is not the target.<br>
+    <b>The line:</b> the Eulerian finite-volume transport only (<code>leiaLevelSetFoam</code>,
+    <code>leiaLevelSetTwoPhaseFoam</code>). The semi-Lagrangian line is out of scope here.<br>
+    <b>The method of work:</b> split the model into parts that each have an exact reference, and verify one part at a time.
+  </div>
+  <p class="footnote">Plan: <code>docs/plan-velocity-extension-verification.md</code> · numbers: <code>STATUS.md</code> · knowledge base:
+    <code>concepts/pde-level-set-verification</code></p>
+</section>
+
+<section>
+  <h2>How to read this deck</h2>
+  <ul class="tight">
+    <li>One vertical stack per topic (press ↓ inside a topic, → for the next topic).</li>
+    <li>Few numbers. Every number has its source in <code>STATUS.md</code> or the plan; the deck gives the picture.</li>
+    <li>Each statement carries its evidence class:
+      <span class="tag m">MEASURED</span> <span class="tag d">DERIVED</span> <span class="tag h">HYPOTHESIS</span></li>
+    <li>The orange boxes are questions for you: where I need a decision or your judgement.</li>
+    <li>The deck grows: each sub-problem adds its stack when its gate lands.</li>
+  </ul>
+  <h2 style="margin-top:0.8em">Contents</h2>
+  <ol class="tight">
+    <li>The discussion with Dieter (2026-10-29) and my reading of it</li>
+    <li>The model, split into five parts</li>
+    <li>What we did with it so far</li>
+    <li>A critical review of the earlier verdicts</li>
+    <li>The plan: sub-problems with exact references</li>
+    <li>Ideas outside the plan's main path</li>
+    <li>Questions for you, and for Dieter and Kohei</li>
+  </ol>
+</section>
+</section>
+
+<!-- =================================================================== -->
+<!-- 2. THE DISCUSSION WITH DIETER                                         -->
+<!-- =================================================================== -->
+<section>
+<section>
+  <h2>The discussion with Dieter (2026-10-29): what was on the board (1/3)</h2>
+  <p class="muted" style="font-size:0.8em">My transcription of his handwritten notes ("Dieter-Besprechung-LevelSet", 5 pages, kept out of git like the dossiers).</p>
+  <p><b>The equation</b> (the source term marked "paper": Bothe, Fricke, Soga, Math. Ann. 2024):</p>
+  \[ \partial_t\phi + \mathbf v^{\rm ext}\cdot\nabla\phi = \beta\,\phi\,\bigl(1 - |\nabla\phi|\bigr) \]
+  <p><b>The extension point</b> (the Newton point, with a sketch of a ray from a cell centre to \(\phi=0\) through cells):</p>
+  \[ P_x := x - \frac{\phi(x)\,\nabla\phi(x)}{|\nabla\phi(x)|^2} \;\approx\; \Pi_\Sigma(x) \]
+  <p><b>A capped version</b> (green): \( x - \delta(x)\,\nabla\phi(x)/|\nabla\phi(x)|_{\max} \).</p>
+  <p><b>The blend:</b> \( \delta\, \mathbf v(t,x) + (1-\delta)\, \mathbf v(t,P_x) \), with "far away" under the first term and
+     "near \(\Sigma\)" under the second. On the page both terms read \(\mathbf v(t,x)\); I read the second one as \(\mathbf v(t,P_x)\).</p>
+  <p class="footnote">Also on page 1: \(\beta\) circled and linked to "\(v^{\max}\)" and "\(T\)". My reading: \(\beta\) is a rate, set from a velocity scale or a time scale.
+    I am not sure; see the questions.</p>
+</section>
+
+<section>
+  <h2>The discussion with Dieter (2/3): three routes</h2>
+  <div class="cols">
+    <div>
+      <p><b>Page 2 lists three routes, numbered by priority:</b></p>
+      <ol start="0" class="tight">
+        <li><b>Algebraic improvement</b> of \(\phi\) itself:
+          <ul class="tight">
+            <li>(a) \(\phi \to \phi/|\nabla\phi|\)</li>
+            <li>(b) \(\phi \to \hat d\), a second-order distance</li>
+          </ul></li>
+        <li><b>Velocity extension</b>, variants a), b), c), d), "&amp; blending"</li>
+        <li><b>Source term</b></li>
+      </ol>
+    </div>
+    <div>
+      <p><b>Pages 3 and 4: the derivation of \(\hat d\).</b></p>
+      <p style="font-size:0.85em">\(r = \phi/|\nabla\phi| \approx d\) has the same zero set and normal, but \(r = d - \frac{B}{2A}d^2 + O(d^3)\).
+         The distance \(d\) solves \(\phi(x - d\,n) = 0\); to second order:</p>
+      \[ \phi - d\,\partial_n\phi + \tfrac{d^2}{2}\,\partial_{nn}\phi = 0 \]
+      \[ \hat d = \frac{2\phi}{|\nabla\phi| + \sqrt{\bigl(|\nabla\phi|^2 - 2\phi\,\partial_{nn}\phi\bigr)^+}} \]
+      <p style="font-size:0.85em">Then the curvature from \(\hat d\): \(\nabla\cdot(-\nabla\hat d/|\nabla\hat d|)\), and a smooth
+         \(\sigma(\cdot)\) instead of \((\cdot)^+\) (a sketch of a softplus).</p>
+    </div>
+  </div>
+  <p class="footnote">The four extension variants a) to d) are not written out on the page. I do not know what they are.</p>
+</section>
+
+<section>
+  <h2>The discussion with Dieter (3/3): my reading</h2>
+  <ol class="tight">
+    <li><b>The model is two-layered.</b> The extension removes the cause of the gradient drift (the normal strain at the interface).
+        The source removes what remains: a wrong start and the discretisation drift. <span class="tag d">DERIVED</span></li>
+    <li><b>The Newton point is the continuum extension, not an approximation of it.</b> For a signed distance, \(P_x = \Pi_\Sigma(x)\) exactly.
+        For a general \(\phi\) it is one Newton step, and it fails where \(|\nabla\phi|\) is small: hence the cap with
+        \(|\nabla\phi|_{\max}\). <span class="tag d">DERIVED</span></li>
+    <li><b>The blend is there for locality, not for accuracy.</b> Far from \(\Sigma\) the physical velocity is kept, so the method
+        stays a compact-stencil FVM under MPI. <span class="tag h">HYPOTHESIS</span> on his intent</li>
+    <li><b>Route 0 is a cheap alternative to route 2.</b> If \(\hat d\) gives a second-order distance in one algebraic step,
+        no source is needed to fix \(q\). The open point is how often to apply it. <span class="tag d">DERIVED</span></li>
+    <li><b>His priority was 0 → 1 → 2</b>, the cheapest first.</li>
+  </ol>
+  <div class="ask"><b>For you:</b> is this reading right? In particular, what are the extension variants a) to d), and what sets \(\beta\)?</div>
+</section>
+
+<section>
+  <h2>What we measured on Dieter's three routes (2026-10-29 to 31)</h2>
+  <table>
+    <tr><th>route</th><th>what ran</th><th>result</th><th></th></tr>
+    <tr><td>0, \(\hat d\) once</td><td>static circle, 4 resolutions</td>
+        <td class="good">works as derived: second order, zero set and volume unchanged; exact for a quadratic \(\phi\)</td><td><span class="tag m">M</span></td></tr>
+    <tr><td>0, \(\hat d\) every step</td><td>same</td>
+        <td class="bad">diverges with the centred gradient; with a one-sided gradient it settles about 1 h away from \(d\)</td><td><span class="tag m">M</span></td></tr>
+    <tr><td>1, <code>projectionBlend</code></td><td>2D vortex, 3D shear, 3D deformation</td>
+        <td class="warn">gradient error halved at \(T/2\); shape and volume worse at \(T\) on the resolved flows; better on the unresolved one</td><td><span class="tag m">M</span></td></tr>
+    <tr><td>2, the source laws</td><td>static circle, \(\mathbf u = 0\), 8 starts</td>
+        <td class="bad">grid-scale extrema grow at the law's rate; the defect is the estimate of \(q\), not the law</td><td><span class="tag m">M</span></td></tr>
+  </table>
+  <p class="footnote">STATUS 11.27 and 11.28. The first static source run was VOID: the psi solver did zero iterations below its tolerance (found, fixed, re-run).</p>
+  <p>On the next stacks I argue that the route-1 verdict is weak, for reasons that are not in the method.</p>
+</section>
+</section>
+
+<!-- =================================================================== -->
+<!-- 3. THE MODEL IN FIVE PARTS                                            -->
+<!-- =================================================================== -->
+<section>
+<section>
+  <h2>The model, and why each part exists</h2>
+  \[ \partial_t\phi + \mathbf u_e\cdot\nabla\phi = \mu\,\phi\,g(q),\qquad q = |\nabla\phi|,\qquad \mathbf u_e(x) = \mathbf u\bigl(\Pi(x)\bigr) \]
+  <ul class="tight">
+    <li>Pure transport stretches the level set: \(D_t q = -a\,q\), with the normal strain \(a = \mathbf n\cdot\nabla\mathbf u\,\mathbf n\).
+        This is exact continuum behaviour, not a numerical error. <span class="tag d">DERIVED</span></li>
+    <li>With \(\mathbf u_e\) constant along the normals, \(a = 0\) for the transport: \(\phi\) stays a signed distance in a tube, for all time
+        (Bothe and Soga, J. Differential Equations 2026). <span class="tag d">DERIVED</span></li>
+    <li>The source multiplies \(\phi\), so it never moves the zero set in the continuum. With the law in \(z = q^2\),
+        \(z' = \mu z(1-z)\) exactly in the ideal extension. <span class="tag d">DERIVED</span></li>
+  </ul>
+  <p><b>Five parts that can fail separately:</b></p>
+  <ol class="tight">
+    <li>the foot point \(\Pi_h(x)\)</li>
+    <li>the velocity sample at the foot point</li>
+    <li>the transport of \(\phi\) with a non-solenoidal \(\mathbf u_e\)</li>
+    <li>the estimate of \(q\) inside the source</li>
+    <li>the coupling of all of these with the flow solver</li>
+  </ol>
+  <p class="muted">Every earlier test measured several of these at once. The plan measures one at a time.</p>
+</section>
+</section>
+
+<!-- =================================================================== -->
+<!-- 4. WHAT WE DID SO FAR                                                 -->
+<!-- =================================================================== -->
+<section>
+<section>
+  <h2>What we did with this direction so far (a timeline)</h2>
+  <table style="font-size:0.78em">
+    <tr><th>when</th><th>what</th><th>verdict then</th></tr>
+    <tr><td>2026-07</td><td>8 extension models in the Eulerian line; a static test; the reversed vortex</td><td><code>closestPoint</code> the static winner; extensions "dominated"</td></tr>
+    <tr><td>2026-08</td><td>SDPLS source (strain term \(R\)): pre-print</td><td>kinematic gain, coupled failure</td></tr>
+    <tr><td>2026-09-26/27</td><td>the dossiers implemented in the <b>semi-Lagrangian</b> line: HL0, HL1q/z, HL2, FP0, S1</td><td>every candidate fails the 2D method gate</td></tr>
+    <tr><td>2026-10-13</td><td>combined source \(a + \lambda(1-q)\); the one-sided \(q\)</td><td>one-sided \(q\) passes at \(\mathbf u = 0\); shape order lost in flow</td></tr>
+    <tr><td>2026-10-14</td><td>static test of every Eulerian source law</td><td>first run void (solver did nothing); re-run: the \(q\) estimate is the defect</td></tr>
+    <tr><td>2026-10-29/31</td><td>Dieter's \(\hat d\) and <code>projectionBlend</code> (Eulerian)</td><td>\(\hat d\) once works; extension trades gradient for shape</td></tr>
+  </table>
+  <p>Twelve weeks, about fifteen candidates, every one judged in a transport or coupled study.
+     <b>None was ever compared with the exact extension \(\mathbf u(\Pi(x))\).</b></p>
+</section>
+</section>
+
+<!-- =================================================================== -->
+<!-- 5. CRITICAL REVIEW                                                    -->
+<!-- =================================================================== -->
+<section>
+<section>
+  <h2>A critical review of the earlier verdicts</h2>
+  <p class="muted">Two read-only audits on 2026-11-12: the evidence chain of every negative verdict, and the code of the nine extension models.</p>
+  <p><b>Five ways a verdict could be decided by something other than the method:</b></p>
+  <ol class="tight">
+    <li><b>The read-out instant.</b> The vortex and the shear reverse. A linear transport with a prescribed velocity cancels much of
+        its own error on the way back; an extension depends on \(\phi\) and breaks that cancellation. Read at \(T/2\), the extensions
+        win in every data set the audit found. <span class="tag m">MEASURED</span> for the data, <span class="tag h">HYPOTHESIS</span> for the mechanism</li>
+    <li><b>Two changes at once.</b> The semi-Lagrangian gate changed the extension and the trace velocity together.</li>
+    <li><b>A flux confound in the code</b> (next slide). <span class="tag m">CONFIRMED in the code</span></li>
+    <li><b>Parallel defects</b> fixed only on 2026-08-26; the July parallel numbers carry them.</li>
+    <li><b>Setups and settings:</b> a voided closed box; configuration errors recorded as model failures; a pseudo-time reach shorter than the band.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Two defects in the code that touch every extension verdict</h2>
+  <div class="cols">
+    <div>
+      <p><b>1. The far-field flux is replaced.</b> Every model except <code>none</code> and <code>haloLimited</code> transports \(\phi\) with
+        <code>interpolate(Uext) &amp; Sf</code> on <i>every</i> face. Far from the interface \(\mathbf U_{\rm ext} = \mathbf U\), but the
+        flux is now an interpolated one, not the exact prescribed one.</p>
+      <p>So every comparison "extension against none" also compared two different far-field fluxes.
+        The check that was meant to catch this used a uniform translation, where the two fluxes are equal.</p>
+    </div>
+    <div>
+      <p><b>2. A velocity jump at the band edge.</b> <code>closestPoint</code> and <code>meshWave</code> write the extension only inside the band,
+        and the fade blends \(\mathbf U\) with itself outside it. The velocity jumps at \(|\phi| = L\). A comment in the code records a 10×
+        growth of the band gradient error from this jump.</p>
+    </div>
+  </div>
+  <div class="box"><b>The repair</b> is cheap: the correction form \(\Phi_e = \Phi + \mathrm{interp}(\mathbf U_{\rm ext} - \mathbf U)\cdot\mathbf S_f\),
+     and the extension computed to the end of the fade. A model with a zero extension must then equal <code>none</code> bit for bit.</div>
+</section>
+
+<section>
+  <h2>How strong is each earlier verdict?</h2>
+  <table style="font-size:0.74em">
+    <tr><th>verdict</th><th>main problem</th><th>strength</th></tr>
+    <tr><td>extensions give the worst accuracy at 12–27× the cost</td><td>compared with the SL method, not with Eulerian <code>none</code>; against <code>none</code> the extension is better at \(T/2\)</td><td class="bad">weak, near void</td></tr>
+    <tr><td><code>closestPoint</code> 2185× worse</td><td>read at \(T\) of a reversed flow</td><td class="bad">void as stated</td></tr>
+    <tr><td>FP0 and HL0 fail the method gate</td><td>semi-Lagrangian; extension and trace changed together; reversed flow; \(R \le h\) hard-coded</td><td class="warn">weak on accuracy</td></tr>
+    <tr><td>FP0 depends on the decomposition</td><td>an unfixed halo surrogate in this implementation</td><td class="good">strong, for the code</td></tr>
+    <tr><td><code>projectionBlend</code> fails</td><td>reversed flows at \(T\); the flux confound; a first-order Taylor sample</td><td class="warn">weak</td></tr>
+    <tr><td><code>pseudoTime</code> cannot converge</td><td>its reach is shorter than the band</td><td class="warn">a setting</td></tr>
+    <tr><td><code>meshWave</code> is first order</td><td>intrinsic (seed quantisation)</td><td class="good">strong</td></tr>
+    <tr><td>survival times of the translating droplet</td><td>the closed-box setup voided on 2026-09-02</td><td class="bad">void</td></tr>
+  </table>
+  <p><b>Reading:</b> your suspicion holds. Only a few static verdicts are clean. The extension was not given a fair test.</p>
+  <div class="ask"><b>For you:</b> do you agree to treat the advected extension verdicts as open, and to record that in the knowledge base?</div>
+</section>
+
+<section>
+  <h2>What still stands</h2>
+  <ul class="tight">
+    <li><b>The Eulerian transport is not verified on its own.</b> Its band gradient error does not converge on the reversed vortex,
+        and serial and np 4 differ at step 1 (1.6e-6). <span class="tag m">MEASURED</span> Both must be understood before an
+        extension is judged against it.</li>
+    <li><b>A centred \(q\) is not usable in a source.</b> Grid-scale extrema grow at the law's rate under every law.
+        <span class="tag m">MEASURED</span> (STATUS 11.27)</li>
+    <li><b>A one-sided \(q\) is stable at \(\mathbf u = 0\)</b> in the SL step. <span class="tag m">MEASURED</span> Not yet tried in the Eulerian source.</li>
+    <li><b>\(\hat d\) applied once is second order</b>; fed back every step it diverges. <span class="tag m">MEASURED</span></li>
+    <li><b>A strain source that reads the flow amplifies the curvature-seeded spurious current</b> (SDPLS, 260×).
+        <span class="tag m">MEASURED</span> The extension does not read the strain; this result does not transfer to it.</li>
+  </ul>
+</section>
+</section>
+
+<!-- =================================================================== -->
+<!-- 6. THE PLAN                                                           -->
+<!-- =================================================================== -->
+<section>
+<section>
+  <h2>The plan: one part at a time, each against an exact reference</h2>
+  <table style="font-size:0.78em">
+    <tr><th>step</th><th>question</th><th>exact reference</th></tr>
+    <tr><td><b>0</b></td><td>Is the Eulerian transport itself right?</td><td>translation, rotation, linear strain: \(\phi(t)\) in closed form; a manufactured solution</td></tr>
+    <tr><td><b>A0</b></td><td>Repair the flux confound, the band-edge jump and the settings</td><td>bit identity: a zero extension equals <code>none</code></td></tr>
+    <tr><td><b>A</b></td><td>How good is each extension operator at one instant?</td><td>\(\mathbf u(\Pi(x))\) with the analytic closest point</td></tr>
+    <tr><td><b>B</b></td><td>Does the transport keep \(\phi\) a distance with the <i>exact</i> extension?</td><td>\(\phi = d(x, \Gamma(t))\), \(\Gamma(t)\) in closed form</td></tr>
+    <tr><td><b>C</b></td><td>How much survives with the <i>computed</i> extension?</td><td>the same; the cost of the loop \(\phi_h \to \Pi_h \to \mathbf u_e \to \phi_h\)</td></tr>
+    <tr><td><b>D</b></td><td>Is the source right on its own, and with the exact extension?</td><td>the logistic law \(z' = \mu z(1-z)\) along every ray</td></tr>
+    <tr><td><b>E</b></td><td>The assembly, then the two-phase droplets</td><td>interFoam on the same mesh and step; exact curvature first</td></tr>
+  </table>
+  <p class="muted">Escalate only on a pass. Hexahedra, then perturbed hexahedra, then polyhedra. Serial against np 4 at every step. Every run on Lichtenberg.</p>
+</section>
+
+<section>
+  <h2>The key test idea: flows whose interface is known at every instant</h2>
+  <div class="cols">
+    <div>
+      <p>A <b>linear flow</b> \(\mathbf u = \mathbf A(\mathbf x - \mathbf x_0)\) maps a circle to an ellipse whose axes and angle follow from
+         \(e^{\mathbf A t}\). Translation, rotation, pure strain and simple shear are all of this kind.</p>
+      <ul class="tight">
+        <li>It has <b>strain</b>, so without an extension \(q\) drifts by a known law.</li>
+        <li>It does <b>not reverse</b>, so no error cancels on the way back.</li>
+        <li>With the exact extension, \(\phi(t)\) is the signed distance to that ellipse: leia already has its verified closest point.</li>
+      </ul>
+      <p>For the nonlinear vortex: a marker polygon integrated with RK4 on the analytic velocity, read forward.</p>
+    </div>
+    <div>
+      <p><b>The oracle extension</b> \(\mathbf u(\Pi(x))\), computed from the analytic interface, is a new model in the extension family.
+         With it, step B measures the transport alone and step C measures the computed extension alone.</p>
+      <p><b>Each gate also states how it could pass for the wrong reason</b>, and the control that excludes it:
+         solver iteration counts (the dead-zone lesson), a zero extension equal to <code>none</code>, the mesh patches,
+         serial against np 4.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Step A: the extension operator, static</h2>
+  <ul class="tight">
+    <li><b>Metric:</b> \(\lVert\mathbf u_e - \mathbf u(\Pi(x))\rVert\) in a band of fixed physical width (L1, L2, with the order), the error
+        of the face flux the transport actually uses, the foot-point error, the cost per call.</li>
+    <li><b>Four inputs with the same zero set:</b> \(d\); \(d\,g(x)\) with \(q \ne 1\); \(r^2 - R^2\); \(\hat d\).
+        Input 2 separates the Newton point (Bothe, Soga) from the geometric foot point (the joint dossier).</li>
+    <li><b>Candidates:</b> the nine models after the A0 repairs, plus the oracle, plus the Newton point sampled by cell location
+        (not by a Taylor step), plus Dieter's capped and blended form.</li>
+  </ul>
+  <p><b>My predictions</b> (to be written into the config headers before any run):</p>
+  <ul class="tight">
+    <li><code>closestPoint</code> and the Newton point: second order on \(d\); the Newton point loses order where \(q\) is far from 1.</li>
+    <li><code>projectionBlend</code>: first order at best (its Taylor step).</li>
+    <li><code>steadyUpwind</code>, <code>meshWave</code>: first order.</li>
+  </ul>
+  <div class="ask"><b>For you:</b> after step A, which two or three extensions continue is your decision.</div>
+</section>
+</section>
+
+<!-- =================================================================== -->
+<!-- 7. OUTSIDE THE MAIN PATH                                              -->
+<!-- =================================================================== -->
+<section>
+<section>
+  <h2>Ideas outside the main path (cheap to test inside the steps)</h2>
+  <ol class="tight">
+    <li><b>Only the normal component matters.</b> \(\mathbf u_e\cdot\nabla\phi = (\mathbf u_e\cdot\mathbf n)|\nabla\phi|\): the tangential part
+        does nothing in the continuum, but in the FVM it is a non-solenoidal flux to carry. Arm: \(\mathbf u_e = (\mathbf u(\Pi)\cdot\mathbf n)\,\mathbf n\).</li>
+    <li><b>Extend the face flux, not the cell velocity.</b> The transport sees \(\Phi_e\) at the faces. Evaluate
+        \(\mathbf u(\Pi(\mathbf x_f))\cdot\mathbf S_f\) directly: one interpolation less, and no cell-field kink at the medial axis.</li>
+    <li><b>Read-only geometry.</b> \(\hat d\) failed only when fed back into \(\phi\). A two-phase solver needs the normal, the curvature and
+        \(\alpha\), not \(\phi\) itself. Transport \(\phi\) without control, and take the geometry from \(\hat d(\phi)\) each step without
+        changing \(\phi\). If \(q\) stays in a moderate range, this may be the simplest usable method. It is the control arm of step E.</li>
+    <li><b>The target is a bound, not \(q = 1\).</b> Step E measures which range of \(q\) keeps the curvature and the volume at or below
+        interFoam's error. That range becomes the criterion.</li>
+    <li><b>Extension only where it is read</b>: Dieter's blend with \(\delta = 1\) outside a few cells.</li>
+  </ol>
+  <div class="ask"><b>For you:</b> idea 3 changes the question from "keep \(q = 1\)" to "is \(\phi\) good enough to read geometry from".
+     Is that an acceptable target for this direction?</div>
+</section>
+</section>
+
+<!-- =================================================================== -->
+<!-- 8. QUESTIONS                                                          -->
+<!-- =================================================================== -->
+<section>
+<section>
+  <h2>Questions</h2>
+  <div class="cols">
+    <div>
+      <p class="accent"><b>For you</b></p>
+      <ol class="tight">
+        <li>Is my reading of the discussion with Dieter right?</li>
+        <li>Do we treat the advected extension verdicts as open?</li>
+        <li>Is "a \(q\) range that is enough for multiphase" an acceptable target (idea 3)?</li>
+        <li>May step 0 and step A0 start now? They change no default; A0 is gated by bit identity.</li>
+      </ol>
+    </div>
+    <div>
+      <p class="accent"><b>For Dieter and Kohei</b></p>
+      <ol class="tight">
+        <li>What are the extension variants a) to d) on page 2?</li>
+        <li>What sets \(\beta\) (the circled link to \(v^{\max}\) and \(T\))?</li>
+        <li>Does the theorem of the velocity-extension paper survive the blend with \(\delta\)? With the cap?</li>
+        <li>Which range of \(q\) does the analysis need: \(q\) near 1, or only \(q\) bounded away from 0?</li>
+        <li>In the far field of the blend, is it \(\mathbf v(x)\) or \(\mathbf v(P_x)\) that carries \(\delta\)?</li>
+      </ol>
+    </div>
+  </div>
+</section>
+</section>
+
+</div>
+</div>
+
+<!-- reveal.js core + notes plugin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/plugin/notes/notes.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    width: 1280,
+    height: 800,
+    margin: 0.04,
+    plugins: [ RevealNotes ]
+  });
+</script>
+</body>
+</html>

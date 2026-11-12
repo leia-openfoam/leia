@@ -17,6 +17,10 @@ Can a source term in the level-set equation, or an extension of the velocity off
 
 ## Current verdict (2026-09-28)
 
+2026-11-12: the PDE level-set direction of D. Bothe and K. Soga is the current line, on the Eulerian
+FVM only, one part at a time against exact references ([[concepts/pde-level-set-verification]]); the
+advected velocity-extension verdicts are re-opened.
+
 2026-10-13: the combined source $F = a + \lambda(1 - q)$ of Bothe and Soga is the first line again,
 by the author's decision ([[concepts/combined-source-note]]). Gate E1 (STATUS 11.26) ran: the source
 step with the centred $q$ fails at zero velocity, but not by the growth law the report derived
@@ -29,6 +33,7 @@ Not yet. The first campaign tested six candidates against the production method 
 
 | kind | note | status | one line |
 |---|---|---|---|
+| concept | [[concepts/pde-level-set-verification]] | open | the Bothe-Soga direction on the Eulerian line: the plan, the audit, the deck |
 | concept | [[concepts/gradient-control-overview]] | open | the direction, the dossiers, the plan, the pre-print, the report |
 | model | [[models/gradient-control-law]] | settled | the eight laws and the strain weights |
 | model | [[models/sl-source]] | candidate | the SL source step (exponential update, band, clamp) |
@@ -104,3 +109,6 @@ volume; applied every step it fails in every variant (negative log). Use B, the 
 extension ([[concepts/projection-blend-extension]]): on the 2D vortex and the 3D shear it halves the band
 gradient error at T/2 and makes the shape and the volume at T worse (B1 FAIL); the 3D deformation runs
 again after a setup error. Task T6 (the SL version) waits for the SL session.
+
+### 2026-11-12
+The PDE level-set direction (Eulerian, Bothe and Soga) opened; the velocity-extension verdicts re-opened.

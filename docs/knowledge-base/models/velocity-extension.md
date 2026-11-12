@@ -2,7 +2,7 @@
 title: "velocityExtension: the eight extensions"
 description: "none, anisotropicDiffusion, pseudoTime, steadyUpwind, steadyUpwindLinear, closestPoint, meshWave and haloLimited: what each does, and the verdicts (legacy models dominated on pure advection; closestPoint decomposition-dependent; haloLimited relocates the strain)"
 kind: model
-status: settled
+status: open
 part: gradient-control
 tags: [model, part/gradient-control]
 date: 2026-09-28
@@ -10,6 +10,11 @@ code: [src/leiaLevelSet/velocityExtension/]
 sources: [VE deck, MC article, roadmap, STATUS 11.10, STATUS 11.15]
 ---
 # velocityExtension: the eight extensions
+
+> RE-OPENED 2026-11-12 ([[concepts/pde-level-set-verification]]): the verdicts below were not measured
+> against the exact extension, most were read at T of reversed flows, and the code replaces the
+> far-field flux in every model except `none` and `haloLimited`. They stand as verdicts on those
+> configurations; the models are measured again after the repairs of the plan's step A0.
 
 > Settled 2026-09-28: `none` is production. Every extension measured on pure advection has the
 > worst accuracy at 12 to 27 times the cost ([plan-combined-source-terms](https://github.com/leia-openfoam/leia/blob/8867581/docs/plan-combined-source-terms.md#L623-L625)),
@@ -77,3 +82,6 @@ with a 3-layer halo; the technical report puts it after the source repair and on
 
 ### 2026-09-28
 Created.
+
+### 2026-11-12
+Re-opened with the audit of [[concepts/pde-level-set-verification]]; status open. The ninth model `projectionBlend` is in [[concepts/projection-blend-extension]].

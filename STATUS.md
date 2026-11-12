@@ -7599,3 +7599,36 @@ pre-registered "below 1" baseline bin is empty by construction; verdict on the d
 CONFIRMED with that caveat. NOT shown: that removing the foreign input removes the growth (the
 consistency-measure row is that test). Preprint: one sentence in "What this says"; the
 "normal in the loop" paragraph states the mixed input and the weights.
+
+### 11.29 The PDE level-set direction of D. Bothe and K. Soga on the Eulerian line: plan and audit (2026-11-12)
+
+The author's decisions of 2026-11-12: the goal is a PDE level-set method on the Eulerian FVM line
+that is usable for multiphase flow ("better than interFoam is enough"); the semi-Lagrangian line is
+out of scope for this direction; the model is split into sub-problems with exact references, the
+velocity extension first; earlier verdicts are re-read critically; the progress goes into a deck for
+the supervisor. Plan: `docs/plan-velocity-extension-verification.md`. Deck:
+`docs/pde-level-set/pde-level-set-presentation/pde-level-set.template.html` (17 slides). Knowledge
+base: `concepts/pde-level-set-verification`.
+
+1. **Two read-only audits** (no run). (a) The evidence chain of every negative verdict on velocity
+   extension: no verdict was measured against the exact extension u(Pi(x)); every advected verdict
+   carries at least one confound (the reversed flow read at T, which favours a linear transport with
+   a prescribed velocity; the extension and the SL trace changed together; the seam defects fixed on
+   2026-08-26; the closed box voided on 2026-09-02); read at T/2 the extensions win in every data set
+   found (bench N = 512: band gradient error 0.87 against 1.67 for `none`). "closestPoint 2185x
+   worse" is the reversal artefact. (b) The code: every model except `none` and `haloLimited`
+   transports psi with `interpolate(Uext) & Sf` on every face (`interfaceExtension.C` 435-468,
+   `projectionBlend.C` 172), so the exact prescribed flux is replaced in the far field too, and every
+   comparison against `none` also compared two far-field fluxes; `closestPoint` and `meshWaveExt`
+   write the extension only inside the band, so the velocity jumps at the band edge; the
+   `closestPoint` far-field solve runs when any cell on any rank fails; `pseudoTime` reaches 2.5 h,
+   less than its band; `anisotropicDiffusion` never iterates its lagged tensor term; the static test
+   `leiaTestVelocityExtension` measures only |n . grad Uext|, which a wrong but constant field passes.
+   Tables: plan section 12.
+2. **Consequence.** The advected extension verdicts are re-opened (retraction log, 2026-11-12); the
+   static verdicts on `meshWave` (first order) and the code facts stand.
+3. **Next** (the plan's order): step 0, the Eulerian transport alone against closed-form solutions
+   (translation, rotation, linear strain, a manufactured solution), with the open serial/np 4
+   difference of 11.28 item 5 located; step A0, the repairs (the correction-form flux, the band
+   edge, the failure switch, the settings), each gated by bit identity; step A, every extension
+   against u(Pi(x)) at one instant. Nothing of this has run yet.
