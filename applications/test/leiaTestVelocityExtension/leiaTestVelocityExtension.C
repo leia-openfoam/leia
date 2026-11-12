@@ -325,17 +325,30 @@ int main(int argc, char *argv[])
         const surfaceVectorField& Cf = mesh.Cf();
         const surfaceScalarField& magSf = mesh.magSf();
         scalar f1 = 0, f2 = 0, fr1 = 0, fr2 = 0, fa = 0;
+        // The flux error also per shell |d(x_f)| <= k h (k = 1..4), so that an
+        // interpolation error inside the band can be told from a jump at the
+        // band edge (2026-11-12: the first ladder could not tell them apart).
+        scalarField g1(nK, 0), g2(nK, 0), ga(nK, 0);
+        const labelUList& fOwn = mesh.owner();
         forAll(phiE, f)
         {
             scalar d = 0;
             const vector ueStar = footVelocity(Cf[f], d);
-            if (Foam::mag(d) > W) continue;
             const scalar A = magSf[f];
             const scalar ref = ueStar & mesh.Sf()[f];
             const scalar e = Foam::mag(phiE[f] - ref)/A;
+            for (label k = 0; k < nK; ++k)
+            {
+                if (Foam::mag(d) <= (k + 1)*cellSize[fOwn[f]])
+                {
+                    g1[k] += e*A; g2[k] += e*e*A; ga[k] += A;
+                }
+            }
+            if (Foam::mag(d) > W) continue;
             const scalar r = Foam::mag(phi[f] - ref)/A;
             f1 += e*A; f2 += e*e*A; fr1 += r*A; fr2 += r*r*A; fa += A;
         }
+        reduce(g1, sumOp<scalarField>()); reduce(g2, sumOp<scalarField>()); reduce(ga, sumOp<scalarField>());
         reduce(e1, sumOp<scalarField>()); reduce(e2, sumOp<scalarField>());
         reduce(r1, sumOp<scalarField>()); reduce(r2, sumOp<scalarField>());
         reduce(vv, sumOp<scalarField>());
@@ -365,7 +378,12 @@ int main(int argc, char *argv[])
                 csv << ",E_EXT_L1_" << t << ",E_EXT_L2_" << t
                     << ",E_RAW_L1_" << t << ",E_RAW_L2_" << t;
             }
-            csv << ",E_FLUX_L1_W,E_FLUX_L2_W,E_FLUX_RAW_L1_W,E_FLUX_RAW_L2_W\n";
+            csv << ",E_FLUX_L1_W,E_FLUX_L2_W,E_FLUX_RAW_L1_W,E_FLUX_RAW_L2_W";
+            for (label k = 0; k < nK; ++k)
+            {
+                csv << ",E_FLUX_L1_" << (k + 1) << "H,E_FLUX_L2_" << (k + 1) << "H";
+            }
+            csv << "\n";
             csv << h << "," << W;
             for (label k = 0; k <= nK; ++k)
             {
@@ -374,7 +392,13 @@ int main(int argc, char *argv[])
                     << "," << r1[k]/V << "," << Foam::sqrt(r2[k]/V);
             }
             csv << "," << f1/FA << "," << Foam::sqrt(f2/FA)
-                << "," << fr1/FA << "," << Foam::sqrt(fr2/FA) << "\n";
+                << "," << fr1/FA << "," << Foam::sqrt(fr2/FA);
+            for (label k = 0; k < nK; ++k)
+            {
+                const scalar GA = Foam::max(ga[k], SMALL);
+                csv << "," << g1[k]/GA << "," << Foam::sqrt(g2[k]/GA);
+            }
+            csv << "\n";
         }
     }
     else

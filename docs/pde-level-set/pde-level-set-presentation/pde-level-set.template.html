@@ -549,10 +549,44 @@
     <tr><td><code>steadyUpwind</code></td><td class="bad">0.2–0.6</td><td>6× smaller, but does not converge</td><td>a defect or a setting</td></tr>
     <tr><td><code>steadyUpwindLinear</code></td><td class="bad">erratic</td><td>worse than nothing</td><td>by design not \(\mathbf u(\Pi)\); drop</td></tr>
   </table>
-  <p><b>The surprise:</b> <code>closestPoint</code>'s <b>face flux</b>, which the transport actually uses, converges only at order 0.6 to 1.2,
-     with an error 17× its cell error. Interpolating the cell field to the faces throws the second order away.
-     This supports the idea of extending the face flux directly. <span class="tag m">MEASURED</span></p>
+  <p><b>Open:</b> <code>closestPoint</code>'s <b>face flux</b>, which the transport actually uses, converges only at order 0.6 to 1.2,
+     with an error 17× its cell error. <span class="tag m">MEASURED</span></p>
+  <p class="warn" style="font-size:0.8em"><b>Withdrawn:</b> my first reading, "interpolating the cell field to the faces loses the
+     second order". The measurement does not separate interpolation from the velocity jump at the band edge. The next ladder writes the
+     flux error per shell and decides it.</p>
   <p class="footnote">Limitations: the circle centre sits on a mesh vertex; \(q \ne 1\) inputs and the off-lattice ellipse come next. STATUS 11.30.</p>
+</section>
+</section>
+
+<section>
+<section>
+  <h2>Your two questions (2026-11-12, late)</h2>
+  <div class="cols">
+    <div>
+      <p><b>Which narrow band?</b></p>
+      <ul class="tight">
+        <li>The cases: <code>signChange</code>, topological. The band metrics read it. My exact metric uses the analytic distance.</li>
+        <li class="warn">But the six models of the <code>interfaceExtension</code> base built their own band and fade on
+            \(|\phi| \le (n+1)h\): <b>that assumes a distance</b>. It was the code default, because these templates did not
+            render the fade token.</li>
+        <li>On the static ladder the input <b>is</b> a distance, so the effect is small there. Under strain it would be circular.</li>
+        <li><b>Fixed:</b> the token is rendered now; the next ladder compares both modes, and from step B on the extensions run on the
+            topological <code>layer</code> band.</li>
+      </ul>
+    </div>
+    <div>
+      <p><b>"We only have the scalar flux from Navier–Stokes."</b></p>
+      <ul class="tight">
+        <li>Right: in a two-phase run only the face flux \(\Phi_f\) and the cell velocity come from the flow solver.</li>
+        <li>So an extended face flux must be built from what exists:
+            \(\Phi_{e,f} = \Phi_f + [\tilde{\mathbf u}(\Pi(\mathbf x_f)) - \tilde{\mathbf u}(\mathbf x_f)]\cdot\mathbf S_f\),
+            with both samples from one reconstruction \(\tilde{\mathbf u}\) of the cell velocity.</li>
+        <li>At the interface \(\Pi(\mathbf x_f) = \mathbf x_f\): the Navier–Stokes flux is kept <b>exactly</b>, and only a difference of
+            two samples of one field is added.</li>
+        <li>This is the correction form of repair A0.1, evaluated at the face foot point instead of interpolated from the cells.</li>
+      </ul>
+    </div>
+  </div>
 </section>
 </section>
 

@@ -1,0 +1,39 @@
+# PDE LEVEL SET, STEP A, second ladder: the band of the extension and the face flux, by shell.
+# Two questions the supervisor raised on 2026-11-12:
+# (1) The models of the interfaceExtension base build their band and their fade on
+#     |psi| <= (nLayers+1) h (FADE_MODE levelSet, the code default), which ASSUMES psi is a distance.
+#     FADE_MODE layer builds both on the topological layer index from the alpha seed (no distance
+#     assumed; the knowledge base, models/narrow-band: a psi-based extension band is circular).
+# (2) The first ladder (aStatic2D) found closestPoint's face-flux error first order (0.6 to 1.2),
+#     17 times its cell error, and I read that as "interpolating the cell field to the faces loses the
+#     second order". That reading did not separate interpolation from the velocity jump at the band
+#     edge (closestPoint writes the extension inside the band only, and its fade blends U with U).
+#     The test now writes the flux error per shell |d(x_f)| <= 1h..4h.
+# PRE-REGISTERED (2026-11-12, before the run):
+#   P1 on this signed-distance input, layer and levelSet bands give the same error to within 10 %
+#      in the shells 1h-3h (the two bands coincide where |grad psi| = 1).
+#   P2 closestPoint's face-flux error is second order in the shells 1h-2h (inside the band) and
+#      loses the order only in the shell that holds the band edge: then the first-order flux of
+#      aStatic2D is the band-edge jump (a repairable defect, plan A0 repair 2), not interpolation.
+#      FALSIFIED if the flux is first order already in the 1h shell: then interpolation loses it.
+study_name: aStatic2Dfade
+case: 2Dvortex
+mesh: hex
+mode: serial
+np: 1
+solver: leiaTestVelocityExtension
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 60
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  END_TIME: [1]
+  N_CELLS: [32, 64, 128, 256]
+  VELOCITY_EXTENSION: [closestPoint, meshWave, pseudoTime, steadyUpwind, anisotropicDiffusion]
+  FADE_MODE: [levelSet, layer]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  PHASE_INDICATOR: [detrixheAslam]

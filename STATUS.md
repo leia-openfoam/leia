@@ -7731,4 +7731,20 @@ built on the login node, CI PASS. Read-outs in `studies/pdeLevelSet/{step0,a0,aS
    interpolation of the cell field to the faces loses the second order (plan, section 9 idea 2).
    LIMITATIONS: the circle centre lies on a mesh vertex; W = 4 h shrinks with h, so the W band equals
    the 4h shell; the q != 1 inputs and the off-lattice ellipse follow.
+7. **Two questions of the supervisor (2026-11-12, late).** (a) The narrow band: the cases use
+   `signChange` (topological), and the band metrics read that band; my exact-reference metric uses the
+   analytic distance. But the six models of the `interfaceExtension` base built their band and fade on
+   |psi| <= (nLayers+1) h (`fadeMode levelSet`, the code default, because the vortex and translation
+   templates did not render `FADE_MODE`): that band assumes psi is a distance. Harmless on the
+   signed-distance input of aStatic2D, circular under strain. The 16 templates with an extension block
+   now render `fadeMode @!FADE_MODE!@` (default `levelSet`, inert); from step B on, the extensions run
+   with `layer`. (b) The face flux: item 6 read closestPoint's first-order flux error as "the
+   interpolation of the cell field to the faces loses the second order". That reading is not
+   supported: the measurement did not separate interpolation from the velocity jump at the band edge.
+   Withdrawn until `config/pdeLevelSet/aStatic2Dfade.yaml` (flux error per shell, both fade modes,
+   pre-registered) decides it. The face-flux idea itself stands as the supervisor framed it: in a
+   two-phase run only the scalar flux and the cell velocity come from Navier-Stokes, so an extended
+   face flux has the form phi_f + [u(Pi(x_f)) - u(x_f)] . S_f with both u from the same cell-velocity
+   reconstruction: it keeps the Navier-Stokes flux exactly at the interface (Pi(x_f) = x_f) and adds
+   only a difference of two samples of one field.
 

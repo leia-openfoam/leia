@@ -20,12 +20,14 @@ def main():
         f = os.path.join(case, "leiaTestVelocityExtensionExact.csv")
         t = json.load(open(os.path.join(case, "case_params.json")))["tokens"]
         r = list(csv.DictReader(open(f)))[0] if os.path.isfile(f) and os.path.getsize(f) else {}
-        rows.append(dict(model=str(t["VELOCITY_EXTENSION"]), N=int(t["N_CELLS"]), case=os.path.basename(case), **r))
+        model = str(t["VELOCITY_EXTENSION"]) + ("/" + str(t["FADE_MODE"]) if "FADE_MODE" in t else "")
+        rows.append(dict(model=model, N=int(t["N_CELLS"]), case=os.path.basename(case), **r))
     out = os.path.join(a.study, "aStatic_table.csv")
     keys = ["model", "N", "case"] + [k for k in (rows[0].keys() if rows else []) if k not in ("model", "N", "case")]
     with open(out, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=keys, extrasaction="ignore"); w.writeheader(); w.writerows(rows)
-    cols = ("E_EXT_L1_2H", "E_EXT_L2_2H", "E_EXT_L1_4H", "E_EXT_L1_W", "E_EXT_L2_W", "E_FLUX_L1_W")
+    cols = ("E_EXT_L1_2H", "E_EXT_L2_2H", "E_EXT_L1_4H", "E_EXT_L1_W", "E_EXT_L2_W", "E_FLUX_L1_W",
+            "E_FLUX_L1_1H", "E_FLUX_L1_2H", "E_FLUX_L1_3H", "E_FLUX_L1_4H")
     print(f"{len(rows)} cases; columns: errors at the finest rung, then orders between rungs")
     for m in sorted({r["model"] for r in rows}):
         ms = sorted([r for r in rows if r["model"] == m], key=lambda r: r["N"])
