@@ -81,3 +81,6 @@ CANDIDATE, from the supervisor: vertex and face-centre values as independent unk
 ### 2026-11-12 (third entry)
 Supervisor's decision: Courant numbers above 1.0 are out of scope. The candidate of the second entry is therefore judged for Co <= 1 only. In that range the current scheme also has growth factor 1 in the interior of a perfect lattice, so the candidate's gain is not the interior growth factor. What remains: the 13 times smaller one-step error (2.8e-5 against 3.6e-4 at Co 0.3) and the complete point set of a wall cell. The Co 1.25 column is removed from ms.tex.
 
+### 2026-11-12 (fourth entry)
+The point-unknown candidate on the honeycomb, Co <= 1, worst of three flow directions (`sympy/multipoint_hexagon.py`). No combination of centre (C), edge midpoints (E) and vertices (V) has growth factor exactly 1. Best: C+V with the interpolating cubic, 3 unknowns per cell, 1.0002 to 1.0015, one-step error 2.8e-5 against 2.6e-4 for the current scheme. C+E: up to 1.092 (the edge midpoints do not enclose a departure point near a vertex). Interpolating degree 4 on V+E and C+V+E: up to 1.667 and 1.75. Least-squares quadratic on C+V+E: 1.000 to 1.032. The current scheme is exactly 1 up to Co 0.82 and 1.667 at Co 1.0. V alone and E alone: rank 5 of 6 for a quadratic.
+

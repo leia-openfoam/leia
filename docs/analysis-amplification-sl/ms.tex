@@ -2018,6 +2018,64 @@ needs the incoming value there, as every scheme does.
       here.
 \end{itemize}
 
+\subsection{The same scheme on a honeycomb, with different point sets}
+\label{sec:multipointhex}
+
+A hexagon has no tensor point set. Its natural points are the centre (C), the 6 edge midpoints
+(E) and the 6 vertices (V). Per cell of the tiling there are 1 centre, 3 edge midpoints and
+2 vertices. Two interpolation spaces are tested for each combination. The space ``interp'' is
+the polynomial space of lowest degree that returns every point value exactly. The space ``P2''
+is the least-squares fit of a complete quadratic. The table gives the largest growth factor over
+the flow directions \(0^\circ\), \(15^\circ\) and \(30^\circ\), for Courant numbers up to one.
+The first row is the current scheme of Section~\ref{sec:hexagon}: centres only, with the
+quadratic through the 6 neighbour centres.
+
+\begin{center}
+\small
+\begin{tabular}{llrrrrrrrr}
+\toprule
+points & space & unknowns & Co 0.0164 & 0.1 & 0.25 & 0.5 & 0.75 & 1.0 & step error \\
+\midrule
+current & P2, neighbours & 1 & 1.00000 & 1.00000 & 1.00000 & 1.00000 & 1.00000 & \textbf{1.667} & 2.6e-4 \\
+\midrule
+C+V   & interp, degree 3 & 3 & 1.00030 & 1.00127 & 1.00148 & 1.00035 & 1.00020 & 1.00024 & 2.8e-5 \\
+C+V   & P2               & 3 & 1.04272 & 1.03686 & 1.00590 & 1.01422 & 1.00847 & 1.06061 & 2.8e-5 \\
+C+E   & interp, degree 3 & 4 & 1.00617 & 1.03747 & 1.09213 & 1.05613 & 1.05696 & 1.06678 & 1.9e-5 \\
+C+E   & P2               & 4 & 1.02725 & 1.06482 & 1.09873 & 1.05613 & 1.08182 & 1.08942 & 2.8e-5 \\
+V+E   & interp, degree 4 & 5 & 1.12300 & 1.47600 & 1.27605 & 1.66667 & 1.49648 & 1.50337 & 2.1e-6 \\
+V+E   & P2               & 5 & 1.01462 & 1.00000 & 1.01326 & 1.09009 & 1.07417 & 1.02871 & 4.0e-5 \\
+C+V+E & interp, degree 4 & 6 & 1.12300 & 1.53973 & 1.75000 & 1.55037 & 1.75000 & 1.50337 & 2.9e-8 \\
+C+V+E & P2               & 6 & 1.01763 & 1.00000 & 1.00039 & 1.00058 & 1.00105 & 1.03234 & 2.8e-5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The last column is the error of one step for a long wave at \(\mathrm{Co} = 0.3\). The vertices
+alone and the edge midpoints alone cannot carry a quadratic: the 6 points lie on a circle,
+where \(x^2 + y^2\) is constant, so the fit has rank 5 of 6.
+
+\derived{} Four results follow.
+\begin{itemize}
+\item \textbf{No combination has a growth factor of exactly one.} On the cube the complete
+      tensor set gave exactly one. The hexagon has no such set.
+\item \textbf{The current scheme is better in growth up to \(\mathrm{Co} \approx 0.82\).} Its
+      growth factor is exactly one there. Above its limit it reaches \(1.667\) at
+      \(\mathrm{Co} = 1\), where every point-unknown variant is lower.
+\item \textbf{Centre plus vertices with the interpolating cubic is the best point set.} Its
+      growth factor is between \(1.0002\) and \(1.0015\) over the whole range, and its step
+      error is 9 times smaller than that of the current scheme. The vertices lie on the cell
+      boundary, so the data enclose every departure point. The edge midpoints do not: a
+      departure point near a vertex lies outside them, and the centre-plus-edges variant
+      amplifies by up to \(9\,\%\).
+\item \textbf{More points with a higher degree is worse.} The interpolating spaces of degree 4
+      on 12 and 13 points are the most accurate and amplify the most, up to \(1.75\). The
+      least-squares quadratic on all 13 points is the calmest variant with all three point
+      types, but it is not exactly one either.
+\end{itemize}
+
+\opn{} A growth factor of \(1.0015\) is small, but it is growth: over 1000 steps it is a factor
+of \(4.5\). Whether a different space on centre plus vertices removes it is not known.
+
 \section{Checking all of this against the running code}
 \label{sec:symbol-valid}
 
@@ -2249,6 +2307,7 @@ python3 docs/analysis-amplification-sl/sympy/perturbed_stencil.py  # perturbed h
 python3 docs/analysis-amplification-sl/sympy/corner_face_data.py   # corner and face data
 python3 docs/analysis-amplification-sl/sympy/degree_on_irregular_stencil.py  # degree 1/2/3
 python3 docs/analysis-amplification-sl/sympy/multipoint_unknowns.py  # vertex/face unknowns
+python3 docs/analysis-amplification-sl/sympy/multipoint_hexagon.py   # the same on a honeycomb
 
 workflow/scripts/fit_amplification_probe.sh \
     studies/popinet3D_La12000_hex_smoke4/popinetTranslating3D_00000 reuse <out>
