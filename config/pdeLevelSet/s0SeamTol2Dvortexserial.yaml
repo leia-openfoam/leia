@@ -1,0 +1,36 @@
+# SEAM TWIN of s0SeamTol2Dvortex.yaml (serial). Read-out: that file.
+# PDE LEVEL SET, STEP 0.2b: is the serial / np 4 difference of the Eulerian baseline solver noise
+# or a seam defect? (the read-out of s0Seam2Dvortex, 2026-11-12)
+# MEASURED (s0Seam2Dvortex, N = 64, 45 steps): psi differs between serial and np 4 by 3e-10 (L1)
+# and 1.7e-8 (max) relative to max|psi|; the difference is in 3998 of 4096 cells, and the 6.4 % of
+# cells next to a processor seam carry 41 % of it. Both readings fit: a block preconditioner that is
+# decoupled at the seams converges differently there (solver noise), or an operator that is wrong at
+# the seams (a defect). The psi tolerance (absolute, 1e-10) separates them.
+# PRE-REGISTERED: solver noise if the serial / np 4 difference falls by at least 1e3 from
+# PSI_TOLERANCE 1e-10 to 1e-14 (the step count is equal); a seam defect if it falls by less than 10;
+# in between: report, and run 1e-12. CONTROL: the 1e-10 arm reproduces s0Seam2Dvortex bit for bit
+# (the new token is inert).
+study_name: s0SeamTol2Dvortexserial
+case: 2Dvortex
+mesh: hex
+mode: serial
+np: 1
+solver: leiaLevelSetFoam
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 30
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [64]
+  CFL: [0.5]
+  END_TIME: [0.02]
+  PSI_TOLERANCE: [1e-10, 1e-14]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+  SDPLS_SOURCE: [noSource]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+  REPORT_WRITE_ONLY: ["false"]

@@ -282,6 +282,9 @@ PB_W2                  4;
 // before 2026-11-12, so the inert default); correction = phi + interpolate(Uext - U) & Sf, which keeps the
 // exact base flux wherever Uext = U. Read by the interfaceExtension models and projectionBlend.
 VE_FLUX_FORM           interpolate;
+// The absolute tolerance of the psi solve in cases/2Dvortex and cases/2Dtranslation (2026-11-12, the
+// seam discriminator of the PDE level-set plan, step 0.2): 1e-10, the value both templates had hard-coded.
+PSI_TOLERANCE          1e-10;
 RESCALE_GRAD_SCHEME    SdplsLSQ;
 RESCALE_HESSIAN_SCHEME SdplsLSQ;
 GRAD_PSI       fvc;

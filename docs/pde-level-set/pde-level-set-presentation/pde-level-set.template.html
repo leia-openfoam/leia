@@ -506,6 +506,57 @@
 </section>
 
 <!-- =================================================================== -->
+<!-- 7d. FIRST RESULTS (2026-11-12, evening)                               -->
+<!-- =================================================================== -->
+<section>
+<section>
+  <h2>First results (1/3): the Eulerian transport is right where it can be checked exactly</h2>
+  <p><b>Step 0.1, one-way translation</b>, N 32–256, serial and np 4: \(\phi\) must stay a signed distance exactly.</p>
+  <ul class="tight">
+    <li><span class="good">PASS as pre-registered.</span> The band gradient error converges at order 2.3 to 3.9, the shape at about 2.2,
+        the volume at 2 to 4. <span class="tag m">MEASURED</span></li>
+    <li>The solver check first: the first \(\phi\) solve of every step always iterates; the zero-iteration solves are converged
+        deferred-correction passes, not the dead zone of October.</li>
+    <li><b>What this changes:</b> on the reversed vortex the band gradient error "does not converge". I read that as a sign of an
+        unverified transport. <span class="warn">I was wrong:</span> under strain the exact \(\phi\) is not a distance
+        (\(D_t q = -a q\)), so \(|\nabla\phi| - 1\) is not an error there. The transport is fine; the strain is the target.</li>
+  </ul>
+  <p><b>Serial against np 4</b> differs by about 1e-8 relative, 41 % of it in the 6.4 % of cells at the processor seams.
+     Solver noise or a seam defect? The tolerance test (1e-10 against 1e-14) is running.</p>
+</section>
+
+<section>
+  <h2>First results (2/3): the flux confound is real, and small</h2>
+  <ul class="tight">
+    <li><b>The refactor is inert:</b> old and new binaries identical, 4 of 4. <span class="tag m">MEASURED</span></li>
+    <li><b>The repair works:</b> an extension made inert equals <code>none</code> bit for bit in the correction form.</li>
+    <li><b>The size of the confound</b> on the 2D vortex at \(T\): shape 0.1 to 0.2 %, volume 1 to 4 %.
+        It does not explain the 4.5 to 5 times losses of <code>projectionBlend</code>. The reversed-flow read-out remains the main suspect.</li>
+  </ul>
+  <div class="ask"><b>For you:</b> the audit's point was right in principle but small in size here. I keep the correction form for
+     every new measurement; the old verdicts stay open for the read-out reason, not for this one.</div>
+</section>
+
+<section>
+  <h2>First results (3/3): the extensions against the exact \(\mathbf u(\Pi(x))\)</h2>
+  <p class="muted">Circle in the shear flow at \(t = 0\), signed-distance input, N 32–256, band \(|d| \le 4h\). No extension scores order 1.</p>
+  <table style="font-size:0.76em">
+    <tr><th>model</th><th>order</th><th>error vs. no extension (N 256)</th><th>reading</th></tr>
+    <tr><td><code>closestPoint</code></td><td class="good">2.0</td><td>360× smaller</td><td>as predicted; the only second-order extension</td></tr>
+    <tr><td><code>projectionBlend</code></td><td>2 inside 1.5 h, 1 beyond</td><td>2× smaller</td><td>better than I predicted where its blend weight is 0</td></tr>
+    <tr><td><code>meshWave</code></td><td>1.0</td><td>10× smaller</td><td>as predicted</td></tr>
+    <tr><td><code>pseudoTime</code>, <code>anisotropicDiffusion</code>, <code>haloLimited</code></td><td>1.0</td><td>1.3 to 3× smaller</td><td>barely better than nothing in the band</td></tr>
+    <tr><td><code>steadyUpwind</code></td><td class="bad">0.2–0.6</td><td>6× smaller, but does not converge</td><td>a defect or a setting</td></tr>
+    <tr><td><code>steadyUpwindLinear</code></td><td class="bad">erratic</td><td>worse than nothing</td><td>by design not \(\mathbf u(\Pi)\); drop</td></tr>
+  </table>
+  <p><b>The surprise:</b> <code>closestPoint</code>'s <b>face flux</b>, which the transport actually uses, converges only at order 0.6 to 1.2,
+     with an error 17× its cell error. Interpolating the cell field to the faces throws the second order away.
+     This supports the idea of extending the face flux directly. <span class="tag m">MEASURED</span></p>
+  <p class="footnote">Limitations: the circle centre sits on a mesh vertex; \(q \ne 1\) inputs and the off-lattice ellipse come next. STATUS 11.30.</p>
+</section>
+</section>
+
+<!-- =================================================================== -->
 <!-- 8. QUESTIONS                                                          -->
 <!-- =================================================================== -->
 <section>

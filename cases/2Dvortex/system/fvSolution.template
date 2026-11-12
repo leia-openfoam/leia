@@ -21,7 +21,7 @@ solvers
     {
         solver          PBiCGStab;
         preconditioner  DILU;
-        tolerance       1e-10;
+        tolerance       @!PSI_TOLERANCE!@;   // 1e-10 by default (cases/default.parameter)
         relTol          0;
     }
 

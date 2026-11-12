@@ -7681,3 +7681,54 @@ base: `concepts/pde-level-set-verification`.
     (`hexRefined`, `polyRefined`), because the method must keep its order across a refinement
     interface. Plan rows 1 and 10, section 10, the deck's title slide and plan table.
 
+### 11.30 PDE level set: the first results of step 0, A0 and A (2026-11-12, Lichtenberg)
+
+Jobs 56255045 to 56255060 (account special00004; they started at 22:28, before the supervisor's
+switch to special00005 at 22:59; the resubmitted duplicates 56259200 to 56259210 were cancelled by
+id and submitted no solver job). Clones `leia-pde` (fb6a0ada) and `leia-pde-a0` (f3b8cd90), both
+built on the login node, CI PASS. Read-outs in `studies/pdeLevelSet/{step0,a0,aStatic2D}` of the clones.
+
+1. **The solver check first.** No psi solve of the first deferred-correction pass ran without an
+   iteration (0 of N in every case of every study); the 5046 zero-iteration solves are all in
+   passes 2 to 6, whose update starts below the absolute tolerance 1e-10: the correction loop has
+   converged. Not the dead zone of 11.27.
+2. **Step 0.1, the one-way translation: PASS as pre-registered** (all four arms). Observed orders
+   over N 64-128-256 at T: band gradient error L1 2.4 and 3.3, L2 2.3 to 3.9; shape 2.2 to 2.3;
+   volume 2.1 to 4.1. Finest rung (N 256, CFL 0.5, nDefCorr 3): band gradient L1 2.1e-4, shape
+   1.8e-4, volume 8.4e-6. CONTROLS: CFL 0.25 is not better than 0.5 (the time error does not
+   dominate); nDefCorr 6 against 3 changes the errors by less than 1 % (e.g. band gradient L1 at
+   N 256: 2.163e-4 against 2.147e-4) -- the control as written (identical to 1e-10) FAILS, the
+   effect is small. READING: where the exact solution stays a signed distance, the Eulerian
+   transport keeps |grad psi| = 1 to second order and better. So the non-convergence of the band
+   gradient error on the reversed vortex (11.28 item 9) is NOT a transport defect: under strain the
+   exact psi is not a signed distance (D_t q = -a q), so "|grad psi| - 1" is not an error there. I
+   was wrong to list that non-convergence as evidence that the transport is unverified.
+3. **Seam, serial against np 4: 32 of 32 CSV pairs differ at 1e-12** (max relative column
+   difference 1e-8 to 1.3e-6, the largest in E_GEOM_ALPHA_REL at N 64). Step 0.2 (vortex, N 64,
+   45 steps): psi differs by 3.3e-10 (L1) and 1.7e-8 (max) relative to max|psi|, in 3998 of 4096
+   cells; the 6.4 % of cells next to a processor seam carry 41 % of it. Not decided: solver noise
+   from a preconditioner decoupled at the seams, or a seam defect. Discriminator (pre-registered):
+   `config/pdeLevelSet/s0SeamTol2Dvortex{,serial}.yaml`, psi tolerance 1e-10 against 1e-14 (new token
+   `PSI_TOLERANCE`, default 1e-10, inert).
+4. **A0.1a, the flux refactor: PASS**, 4 of 4 CSVs identical at tolerance 0 between the old and the
+   new binaries (projectionBlend and closestPoint, N 64, np 4).
+5. **A0.1b, the far-field flux confound: (1) PASS** (an inert projectionBlend in the correction form
+   equals none bit for bit, N 64 and 128); **(3) PASS** (the token does not touch none); **(2) the size
+   of the confound** (interpolate form against none, 2D vortex, T = 0.5): shape at T -0.17 % (N 64) and
+   -0.12 % (N 128), volume at T +4.0 % and +1.0 %, band gradient L1 -0.16 % and -0.09 %. The confound
+   is real and small on this flow: it does not explain the 4.5 to 5 times losses of projectionBlend
+   (11.28 item 9).
+6. **Step A, first ladder (aStatic2D: the circle in shear2D at t = 0, signed-distance input, the
+   correction flux form, N 32 to 256, serial).** Error against u(Pi(x)) in the band |d| <= 4h, L1, at
+   N 256 and the order over 64-128-256 (raw velocity, i.e. no extension: 3.3e-2, order 1.0):
+   closestPoint 9.2e-5, order 1.9 to 2.0 (predicted 2: CONFIRMED); meshWave 3.2e-3, 1.0 (CONFIRMED);
+   pseudoTime 1.3e-2, 1.0; anisotropicDiffusion 1.8e-2, 1.0; projectionBlend 1.7e-2, 1.0 in 4h but
+   3.5e-4, order 2.0 then 1.3, in 2h (predicted <= 1 everywhere: FALSIFIED inside 1.5 h, where its
+   blend weight is zero); haloLimited 2.6e-2, 1.0 (as designed: exact only for |d| <= h); steadyUpwind
+   5.1e-3, order 0.6 (L2 0.2: it does not converge); steadyUpwindLinear 8.8e-2 at N 256, larger than
+   no extension at every rung, orders erratic (worse than nothing). THE FACE FLUX: closestPoint's flux
+   error converges at order 0.6 to 1.2 only (1.6e-3 at N 256), seventeen times its cell error: the
+   interpolation of the cell field to the faces loses the second order (plan, section 9 idea 2).
+   LIMITATIONS: the circle centre lies on a mesh vertex; W = 4 h shrinks with h, so the W band equals
+   the 4h shell; the q != 1 inputs and the off-lattice ellipse follow.
+

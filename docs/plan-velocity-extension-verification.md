@@ -76,7 +76,7 @@ summary:
    with a source step and the `projectedFlux` trace; the "legacy models are dominated" verdict
    compares their accuracy with the semi-Lagrangian transport. None of these is a verdict on an
    extension in the Eulerian FVM.
-4. **The Eulerian baseline itself is not verified.** Its band gradient error does not converge
+4. **CORRECTED 2026-11-12 (STATUS 11.30): this item was wrong; step 0.1 passes.** **The Eulerian baseline itself is not verified.** Its band gradient error does not converge
    (orders -0.3 to 0.0, STATUS 11.28 item 9), and serial and np 4 of the 2D vortex baseline differ
    by 1.6e-6 relative at step 1 (STATUS 11.28 item 5, open). A transport that is not verified cannot
    judge an extension.

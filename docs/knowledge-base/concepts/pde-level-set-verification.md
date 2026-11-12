@@ -74,3 +74,6 @@ the velocity-extension paper holds with the blend; which range of $q$ is enough 
 Created with the plan, the deck and the audit (STATUS 11.29).
 The supervisor's second round: the reading of D. Bothe's notes is right; the q range waits for the static gate of plan step 0.5 (the function-reading operators are invariant under a uniform scaling of psi, the distance-reading ones are not); step 0 starts on Lichtenberg.
 The supervisor's third round: forget interFoam; an accurate, resolved, adaptive solver first. Plan rows 1 and 10, step E and the deck are updated.
+
+### 2026-11-12 (results)
+Step 0.1 PASS (the transport keeps a distance to second order and better); the flux confound is real and small (volume 1 to 4 %); closestPoint is the only second-order extension against u(Pi(x)), but its face flux is first order; the seam difference of the baseline goes to a tolerance test (STATUS 11.30).
