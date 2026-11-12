@@ -230,20 +230,21 @@ def main():
           "Derived: the case predates the direct columns; 1 - n.n_e from the stored L2 and Linf of |n - n_e| "
           "(exact), L1(theta) between the two printed bounds. Wall = ClockTime at the end (shared nodes).\n",
           "### The cases\n",
-          "| family | row | arm | Co | np | N | L1(theta) | Linf(theta) | L1(1-n.ne) | Linf(1-n.ne) = SR | L1|n-ne| | L2|n-ne| | L1(d) | flux L1 max (med) | E_shape | L1(alphaf) | mass dev % | min alpha | max alpha - 1 | steps | wall s | status | source |",
+          "| family | row | setting / corrector | Co | np | N | L1(theta) | Linf(theta) | L1(1-n.ne) | Linf(1-n.ne) = SR | L1|n-ne| | L2|n-ne| | L1(d) | flux L1 max (med) | E_shape | L1(alphaf) | mass dev % | min alpha | max alpha - 1 | steps | wall s | status | source |",
           "|" + "---|" * 23]
     for r in cases:
         a1 = g(r["angle1"]) if r["angle1_hi"] is None else "%s..%s" % (g(r["angle1"]), g(r["angle1_hi"]))
         fl = "-" if r["flux1Max"] is None else "%s (%s)" % (g(r["flux1Max"]), g(r["flux1Med"]))
         md.append("| %s | %s | %s | %s | %s | %d | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %d | %s | %s | %s |" % (
-            r["family"], r["row"], r["arm"], r["Co"], r["np"], r["N"], a1, g(r["angleInf"]), g(r["omd1"]), g(r["omdInf"]),
+            r["family"], r["row"], "%s / %s" % (r["enright"], r["corrector"]), r["Co"], r["np"], r["N"], a1, g(r["angleInf"]), g(r["omd1"]), g(r["omdInf"]),
             g(r["nd1"]), g(r["nd2"]), g(r["pos1"]), fl, g(r["Eshape"]), g(r["L1af"]), g(r["massDev"]), g(r["minAlpha"]),
             g(r["maxAlphaExcess"]), r["steps"], g(r["clock"]), r["status"], r["angleSource"]))
     md.append("\n### The orders over N (least squares; pairwise in parentheses)\n")
-    md.append("| family | row | Co | np | N | " + " | ".join(lbl for _, lbl in QUANT) + " |")
-    md.append("|" + "---|" * (5 + len(QUANT)))
+    md.append("| family | row | setting | corrector | Co | np | N | " + " | ".join(lbl for _, lbl in QUANT) + " |")
+    md.append("|" + "---|" * (7 + len(QUANT)))
     for o in orders:
-        md.append("| %s | %s | %s | %s | %s | " % (o["family"], o["row"], o["Co"], o["np"], o["Ns"]) +
+        md.append("| %s | %s | %s | %s | %s | %s | %s | " % (o["family"], o["row"], o["enright"], o["corrector"],
+                                                       o["Co"], o["np"], o["Ns"]) +
                   " | ".join("%s (%s)" % (go(o["ls_" + q]), o["pw_" + q]) for q, _ in QUANT) + " |")
     md.append("\n### The four orders and the verdicts (p = the L1 order of the angle)\n")
     md.append("| family | row | Co | np | p | position (N-1) | flux (N-2) | E_shape (N-3) | 1-n.ne (N-4) |")
