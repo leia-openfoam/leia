@@ -7643,4 +7643,16 @@ base: `concepts/pde-level-set-verification`.
    distance; N 32 to 256, CFL 0.5 and 0.25, nDefCorr 3 and 6; 16 cases each) and `s0Seam2Dvortex`
    with its serial twin (where do serial and np 4 differ; `workflow/scripts/compare_psi_fields.py`).
    Theme `pde-level-set` registered in `workflow/scripts/paths.py`. Results follow in 11.30.
+6. **Step A0, repair 1: the extension flux** (commit after fb6a0ada). `velocityExtension` gets the
+   dictionary entry `fluxForm` (token `VE_FLUX_FORM`, default `interpolate`, rendered by the 17
+   case templates with a velocity-extension block): `interpolate` = `interpolate(Uext) & Sf` on every
+   internal and coupled face (the form of every earlier study), `correction` = `phi +
+   interpolate(Uext - U) & Sf`, which keeps the exact base flux wherever `Uext = U`. The models of
+   the `interfaceExtension` base and `projectionBlend` build their flux through one helper,
+   `assembleExtensionFlux()`. Laptop: compile check only (Allwmake rc 0), nothing ran. Gates,
+   pre-registered in `config/pdeLevelSet/a0Identity2Dvortex.yaml` (old against new binaries,
+   tolerance 0) and `a0FluxForm2Dvortex.yaml` (an inert projectionBlend equals none in the
+   correction form; its difference in the interpolate form is the size of the confound); read-out
+   `workflow/scripts/pde_a0_analysis.py`. Lichtenberg: clone `leia-pde` (fb6a0ada, before the
+   change) and clone `leia-pde-a0` (after it).
 

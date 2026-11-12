@@ -277,6 +277,11 @@ RESCALE_MAG_GRAD       centred; // centred (|fvc::grad psi|) | godunov (Rouy-Tou
 PB_DISTANCE            second;
 PB_W1                  1.5;
 PB_W2                  4;
+// The advection flux of every velocity extension (2026-11-12, docs/plan-velocity-extension-verification.md,
+// step A0): interpolate = interpolate(Uext) & Sf on every internal and coupled face (the form of every study
+// before 2026-11-12, so the inert default); correction = phi + interpolate(Uext - U) & Sf, which keeps the
+// exact base flux wherever Uext = U. Read by the interfaceExtension models and projectionBlend.
+VE_FLUX_FORM           interpolate;
 RESCALE_GRAD_SCHEME    SdplsLSQ;
 RESCALE_HESSIAN_SCHEME SdplsLSQ;
 GRAD_PSI       fvc;

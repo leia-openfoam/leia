@@ -1,0 +1,40 @@
+# PDE LEVEL SET, STEP A0.1b: how large is the far-field flux confound, and does the correction
+# form remove it?
+# The audit of 2026-11-12 found that every extension model except none and haloLimited
+# transports psi with interpolate(Uext) & Sf on EVERY face, so even where Uext = U the exact
+# prescribed flux is replaced by an interpolated one. Here projectionBlend is made INERT
+# (PB_W1 0, PB_W2 1e-9: delta = 1 in every cell with dist != 0, so Uext = U) and compared with
+# none, in both flux forms.
+# PRE-REGISTERED (2026-11-12):
+#   (1) correction form, inert extension: identical to none at tolerance 0 in every CSV.
+#       FAIL = the correction form does not keep the base flux; the repair is wrong.
+#   (2) interpolate form, inert extension: DIFFERS from none; the size of the difference in the
+#       shape, volume and band gradient columns at T/2 and T is the confound, reported, not judged.
+#       If it is zero, the confound is negligible for this flow and the audit's point is moot here.
+#   (3) none with both token values: identical (the token is read by extension models only).
+study_name: a0FluxForm2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaLevelSetFoam
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 60
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [64, 128]
+  CFL: [0.5]
+  END_TIME: [0.5]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none, projectionBlend]
+  VE_FLUX_FORM: [interpolate, correction]
+  PB_W1: [0]
+  PB_W2: [1e-9]
+  SDPLS_SOURCE: [noSource]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+  REPORT_WRITE_ONLY: ["false"]

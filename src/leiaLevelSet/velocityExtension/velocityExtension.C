@@ -26,6 +26,8 @@ License
 
 #include "velocityExtension.H"
 #include "addToRunTimeSelectionTable.H"
+#include "surfaceInterpolate.H"
+#include "surfaceFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -80,8 +82,48 @@ Foam::velocityExtension::velocityExtension(const fvMesh& mesh)
             false   // do not register
         ),
         phi_
-    )
-{}
+    ),
+    fluxForm_(velExtDict_.getOrDefault<word>("fluxForm", "interpolate"))
+{
+    if (fluxForm_ != "interpolate" && fluxForm_ != "correction")
+    {
+        FatalIOErrorInFunction(velExtDict_)
+            << "fluxForm " << fluxForm_
+            << " is not one of (interpolate correction)" << exit(FatalIOError);
+    }
+}
+
+
+void Foam::velocityExtension::assembleExtensionFlux()
+{
+    tmp<surfaceScalarField> tphiU;
+    if (fluxForm_ == "correction")
+    {
+        tphiU = phi_ + (fvc::interpolate(Uext_ - U_) & mesh_.Sf());
+    }
+    else
+    {
+        tphiU = fvc::interpolate(Uext_) & mesh_.Sf();
+    }
+    const surfaceScalarField& phiU = tphiU();
+
+    phiExt_.primitiveFieldRef() = phiU.primitiveField();
+
+    // A coupled patch is an internal face split across ranks: it carries the
+    // extended flux exactly as the serial run does for the same face. A
+    // physical boundary keeps the base flux (808d384b, 2026-08-26).
+    forAll(phiExt_.boundaryField(), patchI)
+    {
+        if (mesh_.boundary()[patchI].coupled())
+        {
+            phiExt_.boundaryFieldRef()[patchI] = phiU.boundaryField()[patchI];
+        }
+        else
+        {
+            phiExt_.boundaryFieldRef()[patchI] = phi_.boundaryField()[patchI];
+        }
+    }
+}
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
 

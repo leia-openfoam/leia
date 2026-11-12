@@ -336,6 +336,8 @@ levelSet
     velocityExtension
     {
         type        @!VELOCITY_EXTENSION!@;
+        // interpolate (default, every study before 2026-11-12) | correction: phiExt = phi + interpolate(Uext - U) & Sf
+        fluxForm    @!VE_FLUX_FORM!@;
         // TOKENISED: the closestPoint diagnosis sweeps this against
         // SLAB_HALF_WIDTH. The controlling parameter is W/(nLayers*h) and the
         // medial-axis velocity jump enters the extension band exactly when it

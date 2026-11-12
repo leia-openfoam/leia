@@ -1,0 +1,34 @@
+# PDE LEVEL SET, STEP A0.1a: the flux refactor is bit-identical in its default form.
+# The change (2026-11-12): interfaceExtension and projectionBlend build phiExt through one helper,
+# velocityExtension::assembleExtensionFlux(), with fluxForm interpolate as the default. The same
+# config runs with the binaries of the commit BEFORE the change (clone leia-pde, fb6a0ada) and AFTER
+# it (clone leia-pde-a0). The old templates do not render VE_FLUX_FORM (ignored); the old code has
+# the interpolate form only.
+# PRE-REGISTERED: PASS = every CSV of every case (leiaLevelSetFoam.csv, gradPsiError.csv) is
+# identical at tolerance 0 between the two clones (compare_metrics_csv.py, timing columns
+# skipped). FAIL = any difference: the refactor is not inert, and no extension result after it is
+# compared with one before it until the cause is known.
+study_name: a0Identity2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaLevelSetFoam
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 60
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [64]
+  CFL: [0.5]
+  END_TIME: [0.5]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [projectionBlend, closestPoint]
+  VE_FLUX_FORM: [interpolate]
+  SDPLS_SOURCE: [noSource]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+  REPORT_WRITE_ONLY: ["false"]

@@ -432,9 +432,6 @@ void Foam::interfaceExtension::updateFlux()
         }
     }
     Uext_.correctBoundaryConditions();
-    const surfaceScalarField phiU(fvc::interpolate(Uext_) & mesh_.Sf());
-    phiExt_.primitiveFieldRef() = phiU.primitiveField();
-
     // Keep the base flux on REAL domain boundaries only -- the domain boundary
     // keeps its base (e.g. impermeable) behaviour, and the extension only
     // matters near Sigma.
@@ -453,19 +450,9 @@ void Foam::interfaceExtension::updateFlux()
     // cells 32-37 with the np=4 rank boundary at cell 32, and NINE CELLS from
     // the interface at cell 42 -- far outside the band, decaying away from the
     // processor boundary. Not a band effect, not a descent effect: this line.
-    forAll(phiExt_.boundaryField(), patchI)
-    {
-        if (mesh_.boundary()[patchI].coupled())
-        {
             // Interior-equivalent face: carry the extended flux, exactly as the
             // serial run does for the same face.
-            phiExt_.boundaryFieldRef()[patchI] = phiU.boundaryField()[patchI];
-        }
-        else
-        {
-            phiExt_.boundaryFieldRef()[patchI] = phi_.boundaryField()[patchI];
-        }
-    }
+    assembleExtensionFlux();
 
     if (projectFlux_)
     {

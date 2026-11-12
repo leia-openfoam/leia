@@ -104,7 +104,6 @@ Foam::projectionBlend::projectionBlend(const fvMesh& mesh)
 
 void Foam::projectionBlend::correct()
 {
-    const fvMesh& mesh = mesh_;
 
     volVectorField gradPsi(fvc::grad(psi_, gradScheme_));
     gradPsi.correctBoundaryConditions();
@@ -169,15 +168,7 @@ void Foam::projectionBlend::correct()
 
     // Flux: interpolated on internal and coupled faces, the prescribed flux
     // on physical boundary faces.
-    phiExt_ = fvc::interpolate(Uext_) & mesh.Sf();
-    surfaceScalarField::Boundary& pb = phiExt_.boundaryFieldRef();
-    forAll(pb, patchi)
-    {
-        if (!pb[patchi].coupled())
-        {
-            pb[patchi] = phi_.boundaryField()[patchi];
-        }
-    }
+    assembleExtensionFlux();
 
     if (debug)
     {

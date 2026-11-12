@@ -83,6 +83,23 @@ protected:
     volVectorField Uext_;
     surfaceScalarField phiExt_;
 
+    //- How a model turns Uext into the advection flux (dictionary entry
+    //  fluxForm, token VE_FLUX_FORM):
+    //    interpolate  phiExt = interpolate(Uext) & Sf on internal and coupled
+    //                 faces (the form every model used until 2026-11-12; the
+    //                 default, so every existing study is unchanged);
+    //    correction   phiExt = phi + interpolate(Uext - U) & Sf, so the exact
+    //                 base flux is kept wherever Uext = U.
+    //  Physical boundary faces keep the base flux in both forms. WHY: the
+    //  audit of 2026-11-12 (docs/plan-velocity-extension-verification.md,
+    //  section 12) found that the interpolate form replaces the prescribed
+    //  flux far from the interface too, so every comparison of an extension
+    //  against "none" also compared two far-field fluxes.
+    word fluxForm_;
+
+    //- Build phiExt_ from Uext_ in the form fluxForm_ (for derived models).
+    void assembleExtensionFlux();
+
 public:
 
     //- Runtime type information
