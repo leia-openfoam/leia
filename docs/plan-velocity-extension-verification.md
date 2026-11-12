@@ -15,6 +15,10 @@ taken; nothing of sections 4 to 10 is implemented yet. Record: STATUS.md 11.29.
 | 3 | the order | split the model into sub-problems that each have an exact reference; the velocity extension first (its verification test, then the existing models, then the best one), the source terms after it, then the assembly |
 | 4 | the attitude to old verdicts | every earlier verdict is re-read critically: the work moved fast, and a bug, a setting or a bottleneck may have decided a verdict that the method did not deserve |
 | 5 | the record for the supervisor | a reveal.js deck in the style of a PhD student's progress report, updated with each sub-problem (section 11); the numbers live in STATUS.md and the curated CSVs |
+| 6 | the reading of D. Bothe's notes (deck, stack 2) | right (supervisor, 2026-11-12, second round) |
+| 7 | the advected velocity-extension verdicts | re-opened and analysed (section 12) |
+| 8 | the target range of q | not yet decided; the supervisor asked for more material: section 4b and the deck's q stack |
+| 9 | start | step 0 and step A0 start on Lichtenberg |
 
 ---
 
@@ -161,6 +165,25 @@ S0.1, the Eulerian baseline has a defect, and that defect explains the non-conve
 STATUS 11.28 item 9.
 
 ---
+
+## 4b. Step 0.5 (proposed): what range of q is enough? A static gate
+
+**Why.** The supervisor decides the target of the extension and the source. DERIVED: the zero
+set, the normal and the curvature are invariant under $\phi \to f(\phi)$, $f$ increasing; the
+operators that read $\phi$ as a function (the Detrixhe-Aslam phase indicator, the normal, the cell
+curvature) are discretely invariant under a uniform $\phi \to c\phi$ (a linear gradient, a linear
+fit), and they suffer only from a profile that bends across a cell, $\varepsilon = h\lvert\partial_n q\rvert/q$
+(the zero of the linear fit moves by about $\tfrac{h^2}{8}\lvert\partial_n q\rvert/q$). The operators
+that read $\phi$ as a distance (`cellCentreInverse`, a `distance` narrow band, the mollifier, the
+$\phi$ width of a smeared indicator, the Newton point) need $q$ near 1. So the decision may need
+two numbers: a robustness bound $q_{\min} \le q \le q_{\max}$ and an accuracy bound on $\varepsilon$.
+
+**The gate.** No flow; a circle and an ellipse, three resolutions; $\phi = c\,d$ with
+$c \in \{0.25, 0.5, 1, 2, 4\}$; $\phi = d(1 + s\,d/h)$ with $s \in \{0, 0.01, 0.03, 0.1, 0.3\}$; $\phi = d\,g(\theta)$.
+Read-out with the production operators: the volume and shape error of $\alpha$, the normal error,
+the curvature error with and without `cellCentreInverse`; interFoam's curvature error on the same
+mesh as the bar. Prediction: $c$ changes nothing except through `cellCentreInverse`; the errors
+grow with $\varepsilon$. Waits for the supervisor's go.
 
 ## 4a. Step A0: repair what the audit found, before any measurement
 

@@ -405,6 +405,73 @@
 </section>
 
 <!-- =================================================================== -->
+<!-- 7b. THE q RANGE: MATERIAL FOR THE DECISION                            -->
+<!-- =================================================================== -->
+<section>
+<section>
+  <h2>Your decisions of 2026-11-12 (second round)</h2>
+  <ol class="tight">
+    <li>My reading of the discussion with Dieter is right.</li>
+    <li>The advected extension verdicts are re-opened and analysed.</li>
+    <li>You want more material before you decide on the \(q\) range (this stack).</li>
+    <li>Step 0 and step A0 start on Lichtenberg (next stack).</li>
+  </ol>
+</section>
+
+<section>
+  <h2>The \(q\) range (1/3): what the geometry actually reads</h2>
+  <p>The zero set, the normal and the curvature do not change when \(\phi\) is replaced by \(f(\phi)\) with \(f\) increasing.
+     So in the continuum, \(q = |\nabla\phi|\) is irrelevant for the geometry. <span class="tag d">DERIVED</span></p>
+  <p>Discretely, I sort the operators of the two-phase pipeline into two groups:</p>
+  <table style="font-size:0.78em">
+    <tr><th>operator</th><th>reads \(\phi\) as</th><th>what it needs</th></tr>
+    <tr><td>phase indicator (Detrixhe-Aslam: zero of a linear fit)</td><td>a function</td><td rowspan="3">\(\phi\) close to <b>linear</b> across a cell: the profile curvature \(\varepsilon = h\,|\partial_n q|/q\) small; the level \(q\) does not matter</td></tr>
+    <tr><td>normal \(\nabla\phi/|\nabla\phi|\)</td><td>a function</td></tr>
+    <tr><td>curvature \(\nabla\cdot\mathbf n\) at the cell centre</td><td>a function</td></tr>
+    <tr><td>curvature extension <code>cellCentreInverse</code> (cell centre to interface)</td><td><b>a distance</b></td><td rowspan="3">\(q\) near 1: an error \(|q - 1|\) enters directly</td></tr>
+    <tr><td>narrow band of type <code>distance</code>, source mollifier, \(\phi\)-width of a smeared indicator</td><td><b>a distance</b></td></tr>
+    <tr><td>Newton point \(x - \phi\nabla\phi/q^2\) of the extension</td><td>a function, but exact only if \(\phi\) is linear along the normal</td></tr>
+  </table>
+  <p><b>A uniform \(\phi \to c\,\phi\) leaves the first group unchanged to round-off</b> (the gradient is linear, the fit is linear).
+     <span class="tag d">DERIVED</span>, to be measured.</p>
+</section>
+
+<section>
+  <h2>The \(q\) range (2/3): so "a range of \(q\)" may be the wrong question</h2>
+  <ul class="tight">
+    <li>A large but uniform \(q\) is harmless for the function-reading operators. A \(q\) that varies <b>across</b> a cell is not:
+        it bends \(\phi\), shifts the zero of the linear fit by about \(\tfrac{h^2}{8}|\partial_n q|/q\), and corrupts the normal and the curvature.
+        <span class="tag d">DERIVED</span></li>
+    <li>Pure transport makes exactly this: \(D_t q = -a\,q\), and \(a\) varies across the band, so \(\varepsilon\) grows with time.
+        The extension sets \(a = 0\) on the normals; it attacks \(\varepsilon\), not only \(q\).</li>
+    <li>The distance-reading operators can be made scale-free: use \(\phi/|\nabla\phi|\) or Dieter's \(\hat d\) where a distance is needed,
+        <b>read-only</b>, without feeding it back into \(\phi\).</li>
+  </ul>
+  <p><b>What we see today</b> (old data, for orientation): the Eulerian baseline reaches a band mean \(q\) of 2.4 (2D vortex) and 3.2 (3D shear) at \(T/2\);
+     the semi-Lagrangian production runs live with \(q\) between 0.84 and 1.37 in the band. <span class="tag m">MEASURED</span></p>
+  <div class="ask"><b>So I propose</b> to decide on two numbers, not one: a robustness bound \(q_{\min} \le q \le q_{\max}\) in the band
+     (with \(q_{\min}\) well above 0, where the normal is lost) and an accuracy bound on \(\varepsilon = h|\partial_n q|/q\).
+     The next slide is the measurement that gives both.</div>
+</section>
+
+<section>
+  <h2>The \(q\) range (3/3): a cheap measurement that decides it</h2>
+  <p><b>A static gate</b> (no flow, seconds per case, on Lichtenberg): a circle and an ellipse, \(\phi = f(d)\) with controlled profiles:</p>
+  <ul class="tight">
+    <li>\(\phi = c\,d\), \(c \in \{0.25, 0.5, 1, 2, 4\}\): the level of \(q\) alone;</li>
+    <li>\(\phi = d\,(1 + s\,d/h)\), \(s \in \{0, 0.01, 0.03, 0.1, 0.3\}\): the profile curvature \(\varepsilon = 2s\) alone;</li>
+    <li>\(\phi = d\,g(\theta)\): a tangential variation of \(q\).</li>
+  </ul>
+  <p><b>Measured with the production operators:</b> the volume and shape error of \(\alpha\), the normal error, the curvature error
+     (with and without <code>cellCentreInverse</code>), at three resolutions; and interFoam's curvature error on the same mesh as the bar.</p>
+  <p><b>Prediction</b> <span class="tag d">DERIVED</span>: \(c\) changes nothing except through <code>cellCentreInverse</code>;
+     the errors grow with \(\varepsilon\); the admissible region is a band in \(\varepsilon\), wide in \(q\).</p>
+  <div class="ask"><b>Decision for you:</b> may this static gate run as step 0.5, before step A? It costs minutes of cluster time,
+     and its result becomes the target that steps B to E must meet.</div>
+</section>
+</section>
+
+<!-- =================================================================== -->
 <!-- 8. QUESTIONS                                                          -->
 <!-- =================================================================== -->
 <section>

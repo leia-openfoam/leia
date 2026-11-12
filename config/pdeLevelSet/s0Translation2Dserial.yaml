@@ -1,0 +1,58 @@
+# SEAM TWIN of s0Translation2D.yaml (identical axes, serial). Read-out: that file.
+# PDE LEVEL SET, STEP 0.1 (docs/plan-velocity-extension-verification.md, section 4):
+# the Eulerian transport ALONE, on the one flow where the exact solution stays a signed distance.
+#
+# WHY. Every later step judges a velocity extension or a source against this transport. The
+# Eulerian baseline's band gradient error does not converge on the reversed vortex (orders -0.3
+# to 0.0, STATUS 11.28 item 9), and serial and np 4 differ at step 1 (STATUS 11.28 item 5). Under
+# a uniform translation psi(x, t) = d(x - U t) EXACTLY, |grad psi| = 1 for all time, and nothing
+# reverses. So every error here belongs to the transport discretisation
+# (ddt CrankNicolson 1, div(phi,psi) Gauss linearUpwind grad(psi), nDefCorr deferred corrections,
+# the material term -Sp(div phi, psi) with an exactly solenoidal prescribed flux).
+#
+# REFERENCES, all exact: alphaEnd/psiEnd = the translated initial fields (END_REFERENCE translate),
+# so E_GEOM_ALPHA_REL and E_VOL_ALPHA_REL at T are errors against the exact state; the band
+# gradient error (gradPsiError.csv, E_NARROW_L1/L2_GRAD_PSI) has the exact target 0.
+# Arms: N 32/64/128/256 (one-way, R/h = 4.8 at N = 32: the first rung is below R/h 10 and is
+# reported, not used for the order), CFL 0.5 and 0.25 (a time-step control), N_DEF_CORR 3 and 6
+# (does the deferred correction converge?). np 4 here; s0Translation2Dserial.yaml is the seam twin.
+#
+# PRE-REGISTERED READ-OUT (2026-11-12, before any run):
+#   PASS    the band gradient error L1 and L2 at T converge with order >= 0.8 over the rungs
+#           64-128-256, the shape error E_GEOM_ALPHA_REL at T with order >= 1.0, and the
+#           np 4 run equals the serial twin to <= 1e-12 relative in every metric column
+#           (compare_metrics_csv.py, timing columns skipped).
+#   FALSIFIED (a defect of the Eulerian transport) if the band gradient error has order <= 0.3,
+#           as on the reversed vortex: then the non-convergence of STATUS 11.28 item 9 is the
+#           transport's, not the flow's, and its repair is the first result of this direction.
+#   CONTROLS: CFL 0.25 against 0.5 separates the time error; N_DEF_CORR 6 against 3 tells
+#           whether the deferred correction is converged (identical to 1e-10 relative = yes).
+#   HOW IT COULD PASS FOR THE WRONG REASON: the psi solve doing no iteration (count them:
+#           static_source_metrics.py iterations); the exact reference not written (check
+#           psiEnd exists in every processor directory); a fixed psi on a patch (zeroGradient
+#           on inlet and outlet, CLAUDE.md corollary 2026-09-29).
+study_name: s0Translation2Dserial
+case: 2Dtranslation
+mesh: hex
+mode: serial
+np: 1
+solver: leiaLevelSetFoam
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 120
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [32, 64, 128, 256]
+  CFL: [0.5, 0.25]
+  N_DEF_CORR: [3, 6]
+  END_TIME: [0.5]
+  END_REFERENCE: [translate]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+  SDPLS_SOURCE: [noSource]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+  REPORT_WRITE_ONLY: ["false"]

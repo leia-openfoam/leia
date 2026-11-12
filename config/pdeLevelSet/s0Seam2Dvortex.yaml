@@ -1,0 +1,36 @@
+# PDE LEVEL SET, STEP 0.2: locate the serial / np 4 difference of the Eulerian baseline.
+# MEASURED 2026-10-29 (STATUS 11.28 item 5): the Eulerian 2D vortex baseline (no extension, no
+# source) differs between serial and np 4 by 1.6e-6 relative in E_GEOM_ALPHA_REL at step 1 and
+# 2.2e-5 at tau = 0.5. A decomposition-dependent answer is a defect even when both runs complete.
+# This study and its serial twin run a few steps at N = 64 and write psi at every step; the
+# comparison (workflow/scripts/compare_psi_fields.py, cell by cell after reconstructPar) shows
+# WHERE the two differ: at the processor patches (a seam defect in an operator), everywhere at
+# round-off (solver tolerance), or in the band only (a band or indicator operator).
+# PRE-REGISTERED: if the difference at step 1 sits in the cells next to processor patches and is
+# larger than 1e-12 relative there, it is a seam defect, and its operator is found by switching
+# off parts (the CSV writers first: they are diagnostics, not transport). If it is spread
+# uniformly at the size of the psi solver tolerance, it is not a defect; the gate then compares
+# at a tighter tolerance.
+study_name: s0Seam2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaLevelSetFoam
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 30
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [64]
+  CFL: [0.5]
+  END_TIME: [0.02]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+  SDPLS_SOURCE: [noSource]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+  REPORT_WRITE_ONLY: ["false"]

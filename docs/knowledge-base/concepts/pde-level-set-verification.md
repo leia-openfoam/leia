@@ -71,3 +71,4 @@ the velocity-extension paper holds with the blend; which range of $q$ is enough 
 
 ### 2026-11-12
 Created with the plan, the deck and the audit (STATUS 11.29).
+The supervisor's second round: the reading of D. Bothe's notes is right; the q range waits for the static gate of plan step 0.5 (the function-reading operators are invariant under a uniform scaling of psi, the distance-reading ones are not); step 0 starts on Lichtenberg.

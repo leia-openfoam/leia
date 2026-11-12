@@ -7632,3 +7632,15 @@ base: `concepts/pde-level-set-verification`.
    difference of 11.28 item 5 located; step A0, the repairs (the correction-form flux, the band
    edge, the failure switch, the settings), each gated by bit identity; step A, every extension
    against u(Pi(x)) at one instant. Nothing of this has run yet.
+4. **The supervisor's decisions, second round (2026-11-12).** The reading of D. Bothe's notes is
+   right; the advected extension verdicts are re-opened and analysed; the q range needs more
+   material first (plan section 4b and the deck: the geometry operators that read psi as a function
+   are invariant under a uniform psi -> c psi and suffer only from the profile curvature
+   eps = h |dn q|/q; those that read psi as a distance need q near 1; a static gate to measure the
+   admissible region is proposed as step 0.5); step 0 and step A0 start on Lichtenberg.
+5. **Step 0 configs** (`config/pdeLevelSet/`, read-outs pre-registered in the headers):
+   `s0Translation2D` and its serial twin (one-way translation, the exact solution stays a signed
+   distance; N 32 to 256, CFL 0.5 and 0.25, nDefCorr 3 and 6; 16 cases each) and `s0Seam2Dvortex`
+   with its serial twin (where do serial and np 4 differ; `workflow/scripts/compare_psi_fields.py`).
+   Theme `pde-level-set` registered in `workflow/scripts/paths.py`. Results follow in 11.30.
+
