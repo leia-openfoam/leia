@@ -169,21 +169,31 @@ STATUS 11.28 item 9.
 ## 4b. Step 0.5 (proposed): what range of q is enough? A static gate
 
 **Why.** The supervisor decides the target of the extension and the source. DERIVED: the zero
-set, the normal and the curvature are invariant under $\phi \to f(\phi)$, $f$ increasing; the
-operators that read $\phi$ as a function (the Detrixhe-Aslam phase indicator, the normal, the cell
-curvature) are discretely invariant under a uniform $\phi \to c\phi$ (a linear gradient, a linear
-fit), and they suffer only from a profile that bends across a cell, $\varepsilon = h\lvert\partial_n q\rvert/q$
-(the zero of the linear fit moves by about $\tfrac{h^2}{8}\lvert\partial_n q\rvert/q$). The operators
-that read $\phi$ as a distance (`cellCentreInverse`, a `distance` narrow band, the mollifier, the
-$\phi$ width of a smeared indicator, the Newton point) need $q$ near 1. So the decision may need
-two numbers: a robustness bound $q_{\min} \le q \le q_{\max}$ and an accuracy bound on $\varepsilon$.
+set, the normal and the curvature are invariant under $\phi \to f(\phi)$, $f$ increasing. The
+production geometry reads $\phi$ through the cell's quadratic fit: the phase indicator, the normal,
+the fitted curvature and its parallel-surface inverse (`cellCentreInverse`, and the Eulerian
+solver's foot-point re-referencing). The inverse's offset is $\hat d = 2\phi/(\lvert g\rvert +
+\sqrt{\lvert g\rvert^2 - 2\phi h_{nn}})$ from the fit, so neither the level of $q$ nor a profile that bends
+along the normal matters to it; it needs the level sets near $\Gamma$ to be parallel to $\Gamma$, so it
+is sensitive to $q$ varying ALONG the interface ($\nabla_\Gamma \ln q$; the foot point drifts by
+$-d^2\nabla_\Gamma \ln q$, `docs/IMPROVEMENTS.md`). The operators that read $\phi$ as a distance
+(a `distance` narrow band, the source mollifier, the $\phi$ width of a smeared indicator) need $q$
+near 1 and can be made scale-free with $\hat d$, read-only. So the decision may need two numbers: a
+robustness bound $q_{\min} \le q \le q_{\max}$ and an accuracy bound on $h\lvert\nabla_\Gamma q\rvert/q$.
+
+CORRECTED 2026-11-12 (the supervisor): the first version of this section counted
+`cellCentreInverse` among the operators that read $\phi$ as a distance, and used interFoam's
+curvature as the bar. Both were wrong: the inverse's offset is $\hat d$ from the fit, and
+interFoam's $\nabla\cdot(\nabla\alpha/\lvert\nabla\alpha\rvert)$ is the worst curvature approximation, so it decides
+nothing.
 
 **The gate.** No flow; a circle and an ellipse, three resolutions; $\phi = c\,d$ with
-$c \in \{0.25, 0.5, 1, 2, 4\}$; $\phi = d(1 + s\,d/h)$ with $s \in \{0, 0.01, 0.03, 0.1, 0.3\}$; $\phi = d\,g(\theta)$.
-Read-out with the production operators: the volume and shape error of $\alpha$, the normal error,
-the curvature error with and without `cellCentreInverse`; interFoam's curvature error on the same
-mesh as the bar. Prediction: $c$ changes nothing except through `cellCentreInverse`; the errors
-grow with $\varepsilon$. Waits for the supervisor's go.
+$c \in \{0.25, 0.5, 1, 2, 4\}$; $\phi = d(1 + s\,d/h)$ with $s \in \{0, 0.01, 0.03, 0.1, 0.3\}$;
+$\phi = d\,g(\theta)$ with a tangential variation of $q$. Read-out with the production operators: the
+volume and shape error of $\alpha$, the normal error, the curvature error with and without the
+inverse. The bar is the same operator on $\phi = d$: the admissible region is where an operator
+loses at most a set factor against the signed distance. Prediction: $c$ changes nothing (round-off),
+$s$ little, $g(\theta)$ is what costs. Waits for the supervisor's go.
 
 ## 4a. Step A0: repair what the audit found, before any measurement
 

@@ -7667,4 +7667,12 @@ base: `concepts/pde-level-set-verification`.
    (identity, new), 56253540 (flux form) and analysis 56253541; step A driver 56253589 and
    analysis 56253590. Note: the "new" identity arm runs at f3b8cd90, which adds only the test
    application's exact reference to 00706283; the solver path is the same.
+9. **Corrected (the supervisor, 2026-11-12).** Item 4 said that `cellCentreInverse` reads psi as a
+   distance. I was wrong: its offset is the stable quadratic root d = 2 psi/(|g| + sqrt(|g|^2 -
+   2 psi h_nn)) of the cell's own fit (`signedOffset`, D. Bothe's d-hat), so it is invariant under
+   psi -> f(psi); it needs only the level sets near the interface to be parallel to it, i.e. it is
+   sensitive to q varying along the interface. The Eulerian two-phase solver uses the same fit with a
+   foot-point re-referencing. The static gate of plan 4b also used interFoam's curvature as the bar;
+   that bar is withdrawn (div(grad alpha/|grad alpha|) is the worst curvature approximation); the
+   bar is the same operator on psi = d. Plan 4b and the deck are corrected.
 

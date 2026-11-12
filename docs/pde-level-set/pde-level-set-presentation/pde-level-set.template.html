@@ -419,38 +419,38 @@
 </section>
 
 <section>
-  <h2>The \(q\) range (1/3): what the geometry actually reads</h2>
+  <h2>The \(q\) range (1/3): what the geometry actually reads <span class="warn" style="font-size:0.6em">(corrected)</span></h2>
   <p>The zero set, the normal and the curvature do not change when \(\phi\) is replaced by \(f(\phi)\) with \(f\) increasing.
      So in the continuum, \(q = |\nabla\phi|\) is irrelevant for the geometry. <span class="tag d">DERIVED</span></p>
-  <p>Discretely, I sort the operators of the two-phase pipeline into two groups:</p>
-  <table style="font-size:0.78em">
+  <table style="font-size:0.76em">
     <tr><th>operator</th><th>reads \(\phi\) as</th><th>what it needs</th></tr>
-    <tr><td>phase indicator (Detrixhe-Aslam: zero of a linear fit)</td><td>a function</td><td rowspan="3">\(\phi\) close to <b>linear</b> across a cell: the profile curvature \(\varepsilon = h\,|\partial_n q|/q\) small; the level \(q\) does not matter</td></tr>
-    <tr><td>normal \(\nabla\phi/|\nabla\phi|\)</td><td>a function</td></tr>
-    <tr><td>curvature \(\nabla\cdot\mathbf n\) at the cell centre</td><td>a function</td></tr>
-    <tr><td>curvature extension <code>cellCentreInverse</code> (cell centre to interface)</td><td><b>a distance</b></td><td rowspan="3">\(q\) near 1: an error \(|q - 1|\) enters directly</td></tr>
-    <tr><td>narrow band of type <code>distance</code>, source mollifier, \(\phi\)-width of a smeared indicator</td><td><b>a distance</b></td></tr>
-    <tr><td>Newton point \(x - \phi\nabla\phi/q^2\) of the extension</td><td>a function, but exact only if \(\phi\) is linear along the normal</td></tr>
+    <tr><td>phase indicator, normal; the curvature of the cell's quadratic fit and its parallel-surface inverse
+        (<code>cellCentreInverse</code>; the Eulerian solver's foot-point re-referencing)</td><td>a function</td>
+        <td>the offset is \(\hat d = 2\phi/(|g| + \sqrt{|g|^2 - 2\phi h_{nn}})\) from the fit, so <b>neither the level of \(q\) nor a profile
+        that bends along the normal matters</b>; the inverse needs the level sets near \(\Gamma\) to be <b>parallel</b> to \(\Gamma\):
+        it is sensitive to \(q\) varying <b>along</b> the interface, \(\nabla_\Gamma \ln q\)</td></tr>
+    <tr><td>narrow band of type <code>distance</code>, the source mollifier, the \(\phi\) width of a smeared indicator</td><td><b>a distance</b></td><td>\(q\) near 1</td></tr>
+    <tr><td>Newton point \(x - \phi\nabla\phi/q^2\) of the extension</td><td>a function</td><td>exact only if \(\phi\) is linear along the normal</td></tr>
   </table>
-  <p><b>A uniform \(\phi \to c\,\phi\) leaves the first group unchanged to round-off</b> (the gradient is linear, the fit is linear).
-     <span class="tag d">DERIVED</span>, to be measured.</p>
+  <p class="warn" style="font-size:0.8em"><b>Correction (your remark, 2026-11-12):</b> the first version of this slide put <code>cellCentreInverse</code>
+     among the operators that read \(\phi\) as a distance. That was wrong: its offset is Dieter's \(\hat d\) from the fit, not \(\phi\).</p>
 </section>
 
 <section>
-  <h2>The \(q\) range (2/3): so "a range of \(q\)" may be the wrong question</h2>
+  <h2>The \(q\) range (2/3): so "a range of \(q\)" is the wrong question</h2>
   <ul class="tight">
-    <li>A large but uniform \(q\) is harmless for the function-reading operators. A \(q\) that varies <b>across</b> a cell is not:
-        it bends \(\phi\), shifts the zero of the linear fit by about \(\tfrac{h^2}{8}|\partial_n q|/q\), and corrupts the normal and the curvature.
-        <span class="tag d">DERIVED</span></li>
-    <li>Pure transport makes exactly this: \(D_t q = -a\,q\), and \(a\) varies across the band, so \(\varepsilon\) grows with time.
-        The extension sets \(a = 0\) on the normals; it attacks \(\varepsilon\), not only \(q\).</li>
-    <li>The distance-reading operators can be made scale-free: use \(\phi/|\nabla\phi|\) or Dieter's \(\hat d\) where a distance is needed,
-        <b>read-only</b>, without feeding it back into \(\phi\).</li>
+    <li>A uniform \(q\), and even a \(q\) that varies along the normal, is harmless for the production geometry:
+        the quadratic fit and \(\hat d\) absorb both. <span class="tag d">DERIVED</span></li>
+    <li>What the parallel-surface inverse cannot absorb is a \(q\) that varies <b>along</b> the interface: the level sets are then not
+        parallel to \(\Gamma\), and the foot point drifts by \(-d^2\,\nabla_\Gamma \ln q\) (the calculus note). <span class="tag d">DERIVED</span></li>
+    <li>Pure transport makes exactly this: \(D_t q = -a\,q\) with a strain \(a\) that varies along the interface.
+        The extension sets \(a = 0\) on the normals; it attacks the tangential variation of \(q\), not only its level.</li>
+    <li>The remaining distance-reading operators can be made scale-free with \(\hat d\), read-only.</li>
   </ul>
   <p><b>What we see today</b> (old data, for orientation): the Eulerian baseline reaches a band mean \(q\) of 2.4 (2D vortex) and 3.2 (3D shear) at \(T/2\);
      the semi-Lagrangian production runs live with \(q\) between 0.84 and 1.37 in the band. <span class="tag m">MEASURED</span></p>
   <div class="ask"><b>So I propose</b> to decide on two numbers, not one: a robustness bound \(q_{\min} \le q \le q_{\max}\) in the band
-     (with \(q_{\min}\) well above 0, where the normal is lost) and an accuracy bound on \(\varepsilon = h|\partial_n q|/q\).
+     (\(q_{\min}\) well above 0, where the normal is lost) and an accuracy bound on the tangential variation \(h\,|\nabla_\Gamma q|/q\).
      The next slide is the measurement that gives both.</div>
 </section>
 
@@ -463,9 +463,12 @@
     <li>\(\phi = d\,g(\theta)\): a tangential variation of \(q\).</li>
   </ul>
   <p><b>Measured with the production operators:</b> the volume and shape error of \(\alpha\), the normal error, the curvature error
-     (with and without <code>cellCentreInverse</code>), at three resolutions; and interFoam's curvature error on the same mesh as the bar.</p>
-  <p><b>Prediction</b> <span class="tag d">DERIVED</span>: \(c\) changes nothing except through <code>cellCentreInverse</code>;
-     the errors grow with \(\varepsilon\); the admissible region is a band in \(\varepsilon\), wide in \(q\).</p>
+     (with and without <code>cellCentreInverse</code>), at three resolutions. <b>The bar is the same operator on \(\phi = d\)</b>: the
+     admissible region is where an operator loses at most a set factor against the signed distance.</p>
+  <p class="warn" style="font-size:0.8em"><b>Correction:</b> the first version used interFoam's curvature as the bar. You are right that
+     \(\nabla\cdot(\nabla\alpha/|\nabla\alpha|)\) is the worst curvature approximation; a bar that low decides nothing.</p>
+  <p><b>Prediction</b> <span class="tag d">DERIVED</span>: \(c\) changes nothing (round-off); \(s\) changes little (beyond the quadratic fit's order);
+     \(g(\theta)\) is what costs, through the parallel-surface inverse. The admissible region is wide in \(q\) and narrow in its tangential variation.</p>
   <div class="ask"><b>Decision for you:</b> may this static gate run as step 0.5, before step A? It costs minutes of cluster time,
      and its result becomes the target that steps B to E must meet.</div>
 </section>
