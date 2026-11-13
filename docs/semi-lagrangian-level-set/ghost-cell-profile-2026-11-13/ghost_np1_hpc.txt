@@ -1,0 +1,173 @@
+database: /work/scratch/tm83tomy/leia-ghost/studies/ghostCellProfileRuns/ghost_np1_hpc/hpctoolkit-database
+metric: REALTIME (sec)   metrics in the database: REALTIME (sec)
+
+== 1. Profiles (one per thread) ==
+  NODE=0 RANK=0 THREAD=0                   total    1643.54 s  
+  main threads: 1   sum of their time: 1643.54 s   mean: 1643.54 s
+
+== 2a. Functions by EXCLUSIVE time (sum over the main threads) ==
+   time [s]      %  function  {module}
+     565.41  34.40  (anonymous namespace)::solveFit(double const*, double const*, double const*, int, int, int, doubl...  {libleiaSemiLagrangian.so}
+     184.32  11.22  Foam::ghostCellQuadraticWeightedLeastSquaresReconstruction::fitCell(int)  {libleiaSemiLagrangian.so}
+     107.67   6.55  Foam::ghostCellQuadraticWeightedLeastSquaresReconstruction::basis(Foam::Vector<double> const&, do...  {libleiaSemiLagrangian.so}
+      94.84   5.77  Foam::extendedCellToFaceStencil::collectData<Foam::Tensor<double> >(Foam::mapDistribute const&, F...  {libfiniteVolume.so}
+      42.93   2.61  powf32x  {libm.so.6}
+      31.55   1.92  _int_free  {libc.so.6}
+      29.46   1.79  Foam::extendedCellToFaceStencil::collectData<double>(Foam::mapDistribute const&, Foam::List<Foam:...  {libfiniteVolume.so}
+      26.04   1.58  _int_malloc  {libc.so.6}
+      23.95   1.46  Foam::slReconstruction::stencilRange(int, double&, double&) const  {libleiaSemiLagrangian.so}
+      22.74   1.38  Foam::isoSurfaceBase::getCellCutType(int) const  {libsampling.so}
+      22.68   1.38  Foam::fv::leastSquaresGrad<double>::calcGrad(Foam::GeometricField<double, Foam::fvPatchField, Foa...  {libfiniteVolume.so}
+      22.25   1.35  Foam::outer<Foam::Vector<double>, Foam::Vector<double> >(Foam::Field<Foam::outerProduct<Foam::Vec...  {leiaSemiLagrangeLevelSetFoam}
+      21.51   1.31  __GI___libc_malloc  {libc.so.6}
+      16.97   1.03  Foam::volPointInterpolation::makeInternalWeights(Foam::Field<double>&)  {libfiniteVolume.so}
+      16.47   1.00  Foam::fvc::surfaceSum<Foam::Tensor<double> >(Foam::GeometricField<Foam::Tensor<double>, Foam::fvs...  {leiaSemiLagrangeLevelSetFoam}
+      15.90   0.97  __GI___printf_fp_l  {libc.so.6}
+      15.55   0.95  Foam::fv::cellLimitedGrad<double, Foam::fv::gradientLimiters::minmod>::calcGrad(Foam::GeometricFi...  {libfiniteVolume.so}
+      13.61   0.83  malloc_consolidate  {libc.so.6}
+      13.22   0.80  Foam::GeometricField<Foam::Tensor<double>, Foam::fvPatchField, Foam::volMesh>::GeometricField(Foa...  {leiaSemiLagrangeLevelSetFoam}
+      12.99   0.79  __mempcpy_chk_evex_unaligned  {libc.so.6}
+      12.10   0.74  Foam::fv::gaussGrad<Foam::Vector<double> >::gradf(Foam::GeometricField<Foam::Vector<double>, Foam...  {libfiniteVolume.so}
+      12.06   0.73  cfree@GLIBC_2.2.5  {libc.so.6}
+      11.01   0.67  hack_digit  {libc.so.6}
+       9.29   0.56  Foam::surfaceInterpolationScheme<Foam::Vector<double> >::dotInterpolate<Foam::geometricOneField>(...  {libfiniteVolume.so}
+       9.09   0.55  Foam::multiply<Foam::Vector<double>, Foam::fvsPatchField, Foam::surfaceMesh>(Foam::GeometricField...  {leiaSemiLagrangeLevelSetFoam}
+       8.85   0.54  Foam::divide<Foam::Vector<double>, Foam::fvsPatchField, Foam::surfaceMesh>(Foam::GeometricField<F...  {leiaSemiLagrangeLevelSetFoam}
+       8.64   0.53  Foam::mapDistributeBase::accessAndFlip<Foam::Tensor<double>, Foam::flipOp>(Foam::UList<Foam::Tens...  {leiaSemiLagrangeLevelSetFoam}
+       7.99   0.49  Foam::ghostCellQuadraticWeightedLeastSquaresReconstruction::poly(Foam::Tensor<double> const&, dou...  {libleiaSemiLagrangian.so}
+       7.48   0.46  _int_memalign  {libc.so.6}
+       6.78   0.41  __mempcpy_chk_evex_unaligned_erms  {libc.so.6}
+
+== 2b. Functions by INCLUSIVE time (sum over the main threads) ==
+   time [s]      %  function  {module}
+    1643.54 100.00  main  {leiaSemiLagrangeLevelSetFoam}
+    1217.01  74.05  Foam::pointValueScheme::advance(Foam::GeometricField<double, Foam::fvPatchField, Foam::volMesh>&,...  {libleiaSemiLagrangian.so}
+    1217.01  74.05  Foam::slAdvection::advect(Foam::GeometricField<double, Foam::fvPatchField, Foam::volMesh>&, Foam:...  {libleiaSemiLagrangian.so}
+    1178.21  71.69  Foam::directCorrector::correct(Foam::GeometricField<double, Foam::fvPatchField, Foam::volMesh>&, ...  {libleiaSemiLagrangian.so}
+    1132.33  68.90  Foam::ghostCellQuadraticWeightedLeastSquaresReconstruction::update(Foam::GeometricField<double, F...  {libleiaSemiLagrangian.so}
+     985.34  59.95  Foam::ghostCellQuadraticWeightedLeastSquaresReconstruction::fitCell(int)  {libleiaSemiLagrangian.so}
+     566.71  34.48  (anonymous namespace)::solveFit(double const*, double const*, double const*, int, int, int, doubl...  {libleiaSemiLagrangian.so}
+     222.89  13.56  Foam::Time::run() const  {libOpenFOAM.so}
+     220.25  13.40  Foam::functionObjectList::execute(bool)  {libOpenFOAM.so}
+     109.38   6.66  Foam::extendedCellToFaceStencil::collectData<Foam::Tensor<double> >(Foam::mapDistribute const&, F...  {libfiniteVolume.so}
+     107.67   6.55  Foam::ghostCellQuadraticWeightedLeastSquaresReconstruction::basis(Foam::Vector<double> const&, do...  {libleiaSemiLagrangian.so}
+     105.15   6.40  Foam::writeIsoSurfaceTopo(Foam::fvMesh const&, bool)  {libleiaFunctionObjects.so}
+     103.63   6.31  Foam::writeIsoSurfaceTopoFunctionObject::execute()  {libleiaFunctionObjects.so}
+      83.03   5.05  Foam::fvc::reconstruct<double>(Foam::GeometricField<double, Foam::fvsPatchField, Foam::surfaceMes...  {leiaSemiLagrangeLevelSetFoam}
+      77.60   4.72  Foam::functionObjects::timeControl::write()  {libOpenFOAM.so}
+      60.84   3.70  Foam::fileOperation::writeObject(Foam::regIOobject const&, Foam::IOstreamOption, bool) const  {libOpenFOAM.so}
+      60.84   3.70  Foam::regIOobject::writeObject(Foam::IOstreamOption, bool) const  {libOpenFOAM.so}
+      55.46   3.37  Foam::operator<<(Foam::Ostream&, double)  {libOpenFOAM.so}
+      55.15   3.36  operator new(unsigned long)  {libstdc++.so.6.0.29}
+      55.03   3.35  Foam::OSstream::write(double)  {libOpenFOAM.so}
+      54.84   3.34  std::basic_ostream<char, std::char_traits<char> >::_M_insert<double>(double)  {libstdc++.so.6.0.29}
+      52.80   3.21  std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_float<dou...  {libstdc++.so.6.0.29}
+      51.67   3.14  Foam::functionObjects::gradPsiErrorCSV::write()  {libleiaFunctionObjects.so}
+      50.90   3.10  malloc  {libOpenFOAM.so}
+      47.90   2.91  Foam::isoSurfaceTopo::isoSurfaceTopo(Foam::polyMesh const&, Foam::Field<double> const&, Foam::Fie...  {libsampling.so}
+      47.89   2.91  cfree@GLIBC_2.2.5  {libc.so.6}
+      47.06   2.86  __GI___libc_malloc  {libc.so.6}
+      46.11   2.81  Foam::fv::gradScheme<double>::grad(Foam::GeometricField<double, Foam::fvPatchField, Foam::volMesh...  {libfiniteVolume.so}
+      45.19   2.75  Foam::pow(Foam::Field<double>&, Foam::UList<double> const&, double const&)  {libOpenFOAM.so}
+      43.58   2.65  powf32x  {libm.so.6}
+
+== 2c. EXCLUSIVE time by load module ==
+     917.94  55.85  libleiaSemiLagrangian.so
+     247.39  15.05  libfiniteVolume.so
+     190.50  11.59  libc.so.6
+     144.28   8.78  leiaSemiLagrangeLevelSetFoam
+      43.58   2.65  libm.so.6
+      36.99   2.25  libOpenFOAM.so
+      28.85   1.76  libstdc++.so.6.0.29
+      26.91   1.64  libsampling.so
+       5.14   0.31  libleiaCore.so
+       1.85   0.11  libleiaFunctionObjects.so
+       0.07   0.00  ld-linux-x86-64.so.2
+       0.03   0.00  libmeshTools.so
+       0.01   0.00  libfvOptions.so
+       0.01   0.00  libleiaVelocityExtension.so
+       0.01   0.00  libPstream.so
+
+== 3. Calling-context tree, functions only, cut at 1.00 % of the total ==
+  incl [s]      % excl [s]  function  {module}
+   1643.54 100.00     0.00  <main thread>  {}
+   1643.54 100.00     0.21  | main  {leiaSemiLagrangeLevelSetFoam}
+   1217.01  74.05     0.00  | | Foam::slAdvection::advect(Foam::GeometricField<double, Foam::fvPatchField, Foam::volMesh>&, Foam:...  {libleiaSemiLagrangian.so}
+   1217.01  74.05     4.61  | | | Foam::pointValueScheme::advance(Foam::GeometricField<double, Foam::fvPatchField, Foam::volMesh>&,...  {libleiaSemiLagrangian.so}
+   1178.21  71.69     1.59  | | | | Foam::directCorrector::correct(Foam::GeometricField<double, Foam::fvPatchField, Foam::volMesh>&, ...  {libleiaSemiLagrangian.so}
+   1132.33  68.90     2.76  | | | | | Foam::ghostCellQuadraticWeightedLeastSquaresReconstruction::update(Foam::GeometricField<double, F...  {libleiaSemiLagrangian.so}
+    985.34  59.95   184.32  | | | | | | Foam::ghostCellQuadraticWeightedLeastSquaresReconstruction::fitCell(int)  {libleiaSemiLagrangian.so}
+    566.71  34.48   565.41  | | | | | | | (anonymous namespace)::solveFit(double const*, double const*, double const*, int, int, int, doubl...  {libleiaSemiLagrangian.so}
+    103.27   6.28   103.27  | | | | | | | Foam::ghostCellQuadraticWeightedLeastSquaresReconstruction::basis(Foam::Vector<double> const&, do...  {libleiaSemiLagrangian.so}
+     40.60   2.47     2.85  | | | | | | | Foam::List<double>::List(int)  {leiaSemiLagrangeLevelSetFoam}
+     28.64   1.74     1.00  | | | | | | | | operator new(unsigned long, std::align_val_t)  {libstdc++.so.6.0.29}
+     27.07   1.65     1.93  | | | | | | | | | _mid_memalign.constprop.0  {libc.so.6}
+     25.15   1.53     7.47  | | | | | | | | | | _int_memalign  {libc.so.6}
+     28.07   1.71     7.04  | | | | | | | cfree@GLIBC_2.2.5  {libc.so.6}
+     21.03   1.28    20.08  | | | | | | | | _int_free  {libc.so.6}
+     25.62   1.56     2.21  | | | | | | | Foam::List<Foam::Vector<double> >::resize_nocopy(int)  {leiaSemiLagrangeLevelSetFoam}
+     22.59   1.37     0.77  | | | | | | | | operator new(unsigned long)  {libstdc++.so.6.0.29}
+     21.53   1.31     1.00  | | | | | | | | | malloc  {libOpenFOAM.so}
+     20.23   1.23     4.73  | | | | | | | | | | __GI___libc_malloc  {libc.so.6}
+    109.38   6.66    94.84  | | | | | | Foam::extendedCellToFaceStencil::collectData<Foam::Tensor<double> >(Foam::mapDistribute const&, F...  {libfiniteVolume.so}
+     40.96   2.49     3.44  | | | | | Foam::slCorrector::robustEvaluate(Foam::slReconstruction const&, int, Foam::Vector<double> const&...  {libleiaSemiLagrangian.so}
+     23.95   1.46    23.95  | | | | | | Foam::slReconstruction::stencilRange(int, double&, double&) const  {libleiaSemiLagrangian.so}
+     32.39   1.97     0.00  | | | | Foam::fvc::grad<Foam::Vector<double> >(Foam::GeometricField<Foam::Vector<double>, Foam::fvPatchFi...  {libleiaVelocityExtension.so}
+     32.38   1.97     0.00  | | | | | Foam::fv::gradScheme<Foam::Vector<double> >::grad(Foam::GeometricField<Foam::Vector<double>, Foam...  {libfiniteVolume.so}
+     32.38   1.97     0.00  | | | | | | Foam::fv::gaussGrad<Foam::Vector<double> >::calcGrad(Foam::GeometricField<Foam::Vector<double>, F...  {libfiniteVolume.so}
+     22.17   1.35    12.10  | | | | | | | Foam::fv::gaussGrad<Foam::Vector<double> >::gradf(Foam::GeometricField<Foam::Vector<double>, Foam...  {libfiniteVolume.so}
+    222.89  13.56     0.00  | | Foam::Time::run() const  {libOpenFOAM.so}
+    220.25  13.40     0.00  | | | Foam::functionObjectList::execute(bool)  {libOpenFOAM.so}
+    103.63   6.31     0.00  | | | | Foam::writeIsoSurfaceTopoFunctionObject::execute()  {libleiaFunctionObjects.so}
+    103.63   6.31     0.00  | | | | | Foam::writeIsoSurfaceTopo(Foam::fvMesh const&, bool)  {libleiaFunctionObjects.so}
+     46.96   2.86     1.31  | | | | | | Foam::isoSurfaceTopo::isoSurfaceTopo(Foam::polyMesh const&, Foam::Field<double> const&, Foam::Fie...  {libsampling.so}
+     27.39   1.67     0.58  | | | | | | | Foam::isoSurfaceBase::calcCellCuts(Foam::List<Foam::isoSurfaceBase::cutType>&) const  {libsampling.so}
+     26.78   1.63    22.60  | | | | | | | | Foam::isoSurfaceBase::getCellCutType(int) const  {libsampling.so}
+     36.40   2.21     0.00  | | | | | | Foam::volPointInterpolation::volPointInterpolation(Foam::fvMesh const&)  {libfiniteVolume.so}
+     36.39   2.21     3.70  | | | | | | | Foam::volPointInterpolation::makeWeights()  {libfiniteVolume.so}
+     25.84   1.57    16.87  | | | | | | | | Foam::volPointInterpolation::makeInternalWeights(Foam::Field<double>&)  {libfiniteVolume.so}
+     77.60   4.72     0.00  | | | | Foam::functionObjects::timeControl::write()  {libOpenFOAM.so}
+     51.49   3.13     0.75  | | | | | Foam::functionObjects::gradPsiErrorCSV::write()  {libleiaFunctionObjects.so}
+     22.71   1.38     0.00  | | | | | | Foam::pow<Foam::fvsPatchField, Foam::surfaceMesh>(Foam::GeometricField<double, Foam::fvsPatchFiel...  {libleiaCore.so}
+     22.70   1.38     0.00  | | | | | | | Foam::pow<Foam::fvsPatchField, Foam::surfaceMesh>(Foam::GeometricField<double, Foam::fvsPatchFiel...  {libleiaCore.so}
+     22.69   1.38     0.00  | | | | | | | | Foam::pow<Foam::fvsPatchField, Foam::surfaceMesh>(Foam::GeometricField<double, Foam::fvsPatchFiel...  {libleiaCore.so}
+     22.69   1.38     0.40  | | | | | | | | | Foam::pow(Foam::Field<double>&, Foam::UList<double> const&, double const&)  {libOpenFOAM.so}
+     21.90   1.33    21.53  | | | | | | | | | | powf32x  {libm.so.6}
+     26.11   1.59     0.00  | | | | | Foam::functionObjects::regionFunctionObject::writeObject(Foam::word const&)  {libOpenFOAM.so}
+     26.11   1.59     0.00  | | | | | | Foam::regIOobject::writeObject(Foam::IOstreamOption, bool) const  {libOpenFOAM.so}
+     26.11   1.59     0.00  | | | | | | | Foam::fileOperation::writeObject(Foam::regIOobject const&, Foam::IOstreamOption, bool) const  {libOpenFOAM.so}
+     19.52   1.19     0.00  | | | | | | | | Foam::GeometricField<Foam::Vector<double>, Foam::fvPatchField, Foam::volMesh>::writeData(Foam::Os...  {leiaSemiLagrangeLevelSetFoam}
+     18.68   1.14     0.00  | | | | | | | | | Foam::DimensionedField<Foam::Vector<double>, Foam::volMesh>::writeData(Foam::Ostream&, Foam::word...  {leiaSemiLagrangeLevelSetFoam}
+     18.68   1.14     0.00  | | | | | | | | | | Foam::Field<Foam::Vector<double> >::writeEntry(Foam::word const&, Foam::Ostream&) const  {leiaSemiLagrangeLevelSetFoam}
+     18.68   1.14     0.00  | | | | | | | | | | | Foam::UList<Foam::Vector<double> >::writeEntry(Foam::Ostream&) const  {leiaSemiLagrangeLevelSetFoam}
+     18.68   1.14     0.06  | | | | | | | | | | | | Foam::UList<Foam::Vector<double> >::writeList(Foam::Ostream&, int) const  {leiaSemiLagrangeLevelSetFoam}
+     16.63   1.01     0.03  | | | | | | | | | | | | | Foam::operator<<(Foam::Ostream&, double)  {libOpenFOAM.so}
+     16.51   1.00     0.08  | | | | | | | | | | | | | | Foam::OSstream::write(double)  {libOpenFOAM.so}
+     39.00   2.37     0.00  | | | | Foam::functionObjects::timeControl::execute() [clone .localalias]  {libOpenFOAM.so}
+     39.00   2.37     0.00  | | | | | Foam::functionObjects::fieldExpression::execute()  {libfieldFunctionObjects.so}
+     27.57   1.68     0.00  | | | | | | Foam::functionObjects::grad::calc()  {libfieldFunctionObjects.so}
+     27.57   1.68     0.00  | | | | | | | Foam::functionObjects::grad::calcGrad<double>()  {libfieldFunctionObjects.so}
+     27.41   1.67     0.00  | | | | | | | | Foam::fvc::grad<double>(Foam::GeometricField<double, Foam::fvPatchField, Foam::volMesh> const&)  {libfiniteVolume.so}
+     27.41   1.67     0.00  | | | | | | | | | Foam::fv::gradScheme<double>::grad(Foam::GeometricField<double, Foam::fvPatchField, Foam::volMesh...  {libfiniteVolume.so}
+     27.41   1.67     0.00  | | | | | | | | | | Foam::fv::cellLimitedGrad<double, Foam::fv::gradientLimiters::minmod>::calcGrad(Foam::GeometricFi...  {libfiniteVolume.so}
+     27.41   1.67    15.55  | | | | | | | | | | | Foam::fv::cellLimitedGrad<double, Foam::fv::gradientLimiters::minmod>::calcGrad(Foam::GeometricFi...  {libfiniteVolume.so}
+     83.03   5.05     0.00  | | Foam::fvc::reconstruct<double>(Foam::GeometricField<double, Foam::fvsPatchField, Foam::surfaceMes...  {leiaSemiLagrangeLevelSetFoam}
+     23.58   1.43    16.47  | | | Foam::fvc::surfaceSum<Foam::Tensor<double> >(Foam::GeometricField<Foam::Tensor<double>, Foam::fvs...  {leiaSemiLagrangeLevelSetFoam}
+     22.26   1.35     0.00  | | | Foam::operator*<Foam::Vector<double>, Foam::Vector<double>, Foam::fvsPatchField, Foam::surfaceMes...  {leiaSemiLagrangeLevelSetFoam}
+     22.26   1.35     0.01  | | | | Foam::outer<Foam::Vector<double>, Foam::Vector<double>, Foam::fvsPatchField, Foam::surfaceMesh>(F...  {leiaSemiLagrangeLevelSetFoam}
+     22.25   1.35    22.25  | | | | | Foam::outer<Foam::Vector<double>, Foam::Vector<double> >(Foam::Field<Foam::outerProduct<Foam::Vec...  {leiaSemiLagrangeLevelSetFoam}
+     37.65   2.29     4.06  | | reportErrors<Foam::OFstream>(Foam::OFstream&, Foam::GeometricField<double, Foam::fvPatchField, Fo...  {leiaSemiLagrangeLevelSetFoam}
+     22.42   1.36     0.00  | | | Foam::pow<Foam::surfaceMesh>(Foam::DimensionedField<double, Foam::surfaceMesh> const&, Foam::dime...  {leiaSemiLagrangeLevelSetFoam}
+     22.42   1.36     0.48  | | | | Foam::pow(Foam::Field<double>&, Foam::UList<double> const&, double const&)  {libOpenFOAM.so}
+     21.61   1.31    21.33  | | | | | powf32x  {libm.so.6}
+     30.57   1.86     0.00  | | Foam::Time::writeObject(Foam::IOstreamOption, bool) const  {libOpenFOAM.so}
+     30.55   1.86     0.00  | | | Foam::objectRegistry::writeObject(Foam::IOstreamOption, bool) const  {libOpenFOAM.so}
+     30.55   1.86     0.00  | | | | Foam::objectRegistry::writeObject(Foam::IOstreamOption, bool) const  {libOpenFOAM.so}
+     30.55   1.86     0.00  | | | | | Foam::regIOobject::writeObject(Foam::IOstreamOption, bool) const  {libOpenFOAM.so}
+     30.55   1.86     0.00  | | | | | | Foam::fileOperation::writeObject(Foam::regIOobject const&, Foam::IOstreamOption, bool) const  {libOpenFOAM.so}
+
+== 4. Time below the MPI library (outermost MPI function on each call path) ==
+  total: 0.00 s = 0.00 % of the time of the main threads
+  -- by MPI function
+  -- by the first leia function above the MPI call
+  -- by MPI function and its three nearest callers

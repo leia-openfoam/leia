@@ -10,8 +10,8 @@ prints, for the time metric:
   3. the calling-context tree, reduced to functions, cut at a share of the total,
   4. the time below the MPI library, by MPI function and by its callers.
 
-Exclusive time of a function: the samples whose innermost function context is that
-function. Inclusive time: the HPCToolkit `execution` value of the outermost context of the
+Exclusive time of a function: the time of the contexts whose innermost function context is
+that function, without the time of the functions that they call. Inclusive time: the HPCToolkit `execution` value of the outermost context of the
 function on each call path, so recursion is not counted twice. A function that the compiler
 inlined has no context of its own in a build without -g; its time belongs to its caller.
 
@@ -85,6 +85,8 @@ class Meta:
                     pf = u(b, f, "Q")
                     f += 8
                     name = cstr(b, u(b, pf, "Q"))
+                    if name.endswith("]") and " [" in name:      # hpcstruct adds " [module]"
+                        name = name[: name.rindex(" [")]
                     pm = u(b, pf + 8, "Q")
                     mod = cstr(b, u(b, pm + 8, "Q")) if pm else ""
                     if not name:
@@ -186,7 +188,7 @@ def main():
     mname = next((m for m in names if m.startswith(a.metric)), None)
     if mname is None:
         sys.exit("metric %s not in %s" % (a.metric, names))
-    m_point, m_exec = meta.metrics[(mname, "point")], meta.metrics[(mname, "execution")]
+    m_exec = meta.metrics[(mname, "execution")]
     profs = read_profiles(os.path.join(a.db, "profile.db"), meta)
 
     def label(ident):
@@ -200,7 +202,14 @@ def main():
     print("\n== 1. Profiles (one per thread) ==")
     data = []
     for ident, vals, idx in sorted(profs, key=lambda p: (rank_of(p[0]), p[0].get("THREAD", (0, 0))[0])):
-        pt, ex = per_ctx(vals, idx, m_point), per_ctx(vals, idx, m_exec)
+        ex = per_ctx(vals, idx, m_exec)
+        # Exclusive time of a context of the tree = its inclusive time minus the inclusive
+        # time of its children. The `point` values are not used: hpcprof gives them to
+        # instruction contexts that meta.db does not list.
+        below = defaultdict(float)
+        for c, par in meta.parent.items():
+            below[par] += ex.get(c, 0.0)
+        pt = {c: ex[c] - below[c] for c in meta.parent if c in ex and ex[c] - below[c] > 1e-9}
         tot = sum(pt.values())
         main_thread = ident.get("THREAD", (0, 0))[0] == 0
         print("  %-40s total %10.2f s  %s" % (label(ident), tot, "" if main_thread else "(not a main thread, excluded)"))
