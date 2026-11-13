@@ -1,0 +1,66 @@
+# ============================================================================
+# PROFILE: HPCToolkit profile of leiaSemiLagrangeLevelSetFoam with the ghost-cell
+# reconstruction, serial arm (2026-11-13)
+#
+# WHY. The ghost-cell class ghostCellQuadraticWeightedLeastSquares is 1.4 times slower than
+# uncachedQuadraticWeightedLeastSquares at N = 128 on 8 ranks (282 s against 204 s, STATUS
+# 11.31) and uses about 2 times the memory. This study prepares the cases for a profile
+# that attributes the cost. It is the N = 128 rung of ghostCellRefinedBox3D.yaml, with
+# mode serial. Both reconstructions are arms, so that the profile of the original class is
+# the reference.
+#
+# HOW IT RUNS. The workflow prepares the cases only (mesh, fields, end reference):
+#   sbatch workflow/hpctoolkit/prep.sbatch
+# The solver runs from workflow/hpctoolkit/run.sbatch in a COPY of the prepared case, with
+# and without hpcrun. The workflow cannot put hpcrun before a serial solver: the key
+# mpi_launcher applies to a parallel study only. The prepared case is never solved, so every
+# run starts from the initial state.
+#
+# NOT A GATE. No method setting changes and no pass criterion exists. The read-out is the
+# profile and the comparison of the metrics CSV between this arm and ghostCellProfileNp4.
+# ============================================================================
+study_name: ghostCellProfileNp1
+case: 3Dtranslation
+mesh: hexRefined
+mode: serial
+np: 1
+solver: leiaSemiLagrangeLevelSetFoam
+theme: semi-lagrangian-level-set
+solve_runtime: 7200
+# cases/3Dtranslation names its volume fraction `alpha`, not `alpha.water`. The refinement
+# driver derives the field name from THIS string (leia_refine.alpha_name_from), and its
+# fallback is alpha.water, so band_check looks for a field that does not exist unless the
+# name is stated here.
+setfields_args: "-alphaName alpha"
+axes_override:
+  # The domain is [0,2] x [0,1] x [0,1]; the sphere starts at (0.5 0.5 0.5) with radius 0.15
+  # and travels to x = 1.5 at U = 1, T = 1. The box spans x in [0.8, 1.2] and the full cross
+  # section, so the sphere meets a coarse -> fine transition at x = 0.8 and a fine -> coarse
+  # one at x = 1.2, and starts and ends well clear of both.
+  REFINE_SOURCE: ["box"]
+  REFINE_LEVELS: ['1']
+  REFINE_BOX_MIN: ["(0.8 -0.1 -0.1)"]
+  REFINE_BOX_MAX: ["(1.2 1.1 1.1)"]
+  N_CELLS: ['128']
+  CFL: ['0.5']
+  END_TIME: ['1.0']
+  OSCILLATION: ['off']
+  END_REFERENCE: ['translate']
+  ADVECTION: [semiLagrangian]
+  PHASE_INDICATOR: [detrixheAslam]
+  PROFILE: [signedDistance]
+  # The one variable: the reconstruction. Everything else is the production transport.
+  SL_SCHEME: [pointValue]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares, ghostCellQuadraticWeightedLeastSquares]
+  SL_VALUE_BOUND: ["none"]
+  SL_LIMITER: ["none"]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_STENCIL: ["point"]
+  SL_CLIP: ["false"]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_SOURCE: [none]
+  FLUX_PROJECTION: ["none"]
+  SDPLS_SOURCE: [noSource]
+  SOURCE_SCHEME: [explicit]
+collapse_other_axes: true
+export_slides: false
