@@ -1,0 +1,13 @@
+ARM,RECONSTRUCTION,VALUE_BOUND,RENORMALIZATION,STATE,STEPS,L_INF_E_PSI,E_GEOM_ALPHA_REL,E_VOL_ALPHA_REL,E_BOUND_ALPHA
+recon_uncachedQuadraticWeightedLeastSquares,uncachedQuadraticWeightedLeastSquares,none,none,COMPLETED steps=50 age=0 nprocs=4,50,0.000000e+00,0.000000e+00,0.000000e+00,0.000000e+00
+recon_quadraticWeightedLeastSquares,quadraticWeightedLeastSquares,none,none,COMPLETED steps=50 age=0 nprocs=4,50,0.000000e+00,0.000000e+00,0.000000e+00,0.000000e+00
+recon_quadraticTaylor,quadraticTaylor,none,none,COMPLETED steps=50 age=0 nprocs=4,50,0.000000e+00,0.000000e+00,0.000000e+00,0.000000e+00
+recon_linearWeightedLeastSquares,linearWeightedLeastSquares,none,none,COMPLETED steps=50 age=0 nprocs=4,50,0.000000e+00,0.000000e+00,0.000000e+00,0.000000e+00
+recon_linearTaylor,linearTaylor,none,none,COMPLETED steps=50 age=0 nprocs=4,50,0.000000e+00,0.000000e+00,0.000000e+00,0.000000e+00
+recon_defectCorrectedIDW,defectCorrectedIDW,none,none,COMPLETED steps=50 age=0 nprocs=4,50,0.000000e+00,0.000000e+00,0.000000e+00,0.000000e+00
+recon_signedDistanceQuadraticWeightedLeastSquares,signedDistanceQuadraticWeightedLeastSquares,none,none,COMPLETED steps=50 age=0 nprocs=4,50,1.629026e-02,1.084907e-01,5.991545e-02,0.000000e+00
+bound_none,uncachedQuadraticWeightedLeastSquares,none,none,COMPLETED steps=50 age=0 nprocs=4,50,0.000000e+00,0.000000e+00,0.000000e+00,0.000000e+00
+bound_stencilBounds,uncachedQuadraticWeightedLeastSquares,stencilBounds,none,COMPLETED steps=50 age=0 nprocs=4,50,0.000000e+00,0.000000e+00,0.000000e+00,0.000000e+00
+bound_lipschitzCone,uncachedQuadraticWeightedLeastSquares,lipschitzCone,none,COMPLETED steps=50 age=0 nprocs=4,50,0.000000e+00,0.000000e+00,0.000000e+00,0.000000e+00
+renorm_strain,uncachedQuadraticWeightedLeastSquares,none,strain,COMPLETED steps=50 age=0 nprocs=4,50,0.000000e+00,0.000000e+00,0.000000e+00,0.000000e+00
+renorm_none,uncachedQuadraticWeightedLeastSquares,none,none,COMPLETED steps=50 age=0 nprocs=4,50,0.000000e+00,0.000000e+00,0.000000e+00,0.000000e+00

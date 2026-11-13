@@ -147,6 +147,9 @@ studies/
 .snakemake/
 .venv*/
 
+# Lean: Lake downloads dependencies and writes build output here.
+formal/SlTransportProofs/.lake/
+
 # --- docs/<theme>/ thematic tree: TRACK the single data source, IGNORE built artifacts ---
 # Each theme's results (figures + CSV tables) live in <theme>-article/data/ and ARE
 # tracked so the deck + paper build WITHOUT re-running the studies -- re-include them
@@ -219,3 +222,4 @@ docs/knowledge-base/.quartz/digests/*
 
 # the DAVOF discussion document (docs/davof/davof-discussion) is never tracked: Tomislav, 2026-10-26
 docs/davof/davof-discussion/
+docs/analysis-amplification-sl/review-log.md.stamp

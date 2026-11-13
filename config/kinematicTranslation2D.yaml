@@ -63,9 +63,26 @@
 # monotonically worse with CFL, 9x from CFL 0.25 to 1.0 on psi at N=128 and 23x on
 # shape at N=32 -- and the growth is close to CFL^2 (about 3x per doubling), i.e. a
 # clean truncation error of the reconstruction with NO special behaviour at
-# lattice alignment. The premise was simply wrong: the reconstruction is a WEIGHTED
+# lattice alignment.
+#
+# CORRECTED 2026-10-13. The explanation given here was WRONG, although the
+# falsification itself stands. This file said: "the reconstruction is a WEIGHTED
 # LEAST-SQUARES fit, and a LSQ fit does not interpolate its nodal values, so
-# evaluating it at a cell centre does not return the stored psi there.
+# evaluating it at a cell centre does not return the stored psi there." It DOES.
+# The fit is ANCHORED: the right-hand side is the difference psi_i - psi_c over a
+# constant-free basis and evaluateRaw starts from psi_c
+# (uncachedQuadraticWeightedLeastSquaresReconstruction.C:688,712,749-766), so
+# R_c(x_c) = psi_c holds by construction. MEASURED by
+# config/gates/slZeroVelocityNull2D.yaml: at u = 0, over 50 steps at N = 64, every
+# anchored value fit holds psi to EXACTLY zero in L_INF_E_PSI, E_GEOM_ALPHA_REL,
+# E_VOL_ALPHA_REL and E_BOUND_ALPHA -- linearTaylor, linearWeightedLeastSquares,
+# quadraticTaylor, quadraticWeightedLeastSquares,
+# uncachedQuadraticWeightedLeastSquares and defectCorrectedIDW alike.
+# So the CFL = 1 premise failed for a different reason: landing the foot on a cell
+# centre does return psi_c exactly, but the foot only lands there for the ONE
+# displacement that is an exact cell multiple, and the error of the surrounding
+# cells is unaffected. The measured CFL^~1.8 growth is the reconstruction's
+# truncation error, as this paragraph already says.
 #
 # THE CONSEQUENCE, AND IT IS THE POINT OF THE GATE: the coupled translating droplet
 # runs at interface Courant 0.0059 -- more than 40x BELOW the cheapest arm here.

@@ -46,12 +46,29 @@ velocityModel
 {
     type translation; 
     velocity (1 0 0);
-    oscillation off;
+    oscillation @!OSCILLATION!@;
     fluxProjection @!FLUX_PROJECTION!@;   // none | helmholtz (polyhedral meshes, STATUS 11.25)
 }
 
+// The error metrics compare the fields at T with psiEnd/alphaEnd when the case has them
+// (errorCalculation.H), and with the INITIAL fields otherwise -- right only for a flow that
+// returns. `translate`: workflow/scripts/write_end_reference.py writes psiEnd/alphaEnd after
+// leiaSetFields, from the implicitSurface below shifted by velocity*endTime, with the same
+// mesh, profile and phase indicator as the run. `none`: no reference (the default).
+// This case translates ONE WAY, so without it the t = T error is measured against the
+// starting position and is meaningless (cases/2Dtranslation, STATUS 11.19).
+endReference @!END_REFERENCE!@;
+
 levelSet
 {
+    // Advection method: how psi^n becomes psi^{n+1} (unified solver).
+    reportAtWriteTimesOnly @!REPORT_WRITE_ONLY!@;
+
+    advection
+    {
+        type @!ADVECTION!@;   // eulerian | semiLagrangian
+    }
+
     narrowBand  
     {
       type  signChange;
@@ -84,6 +101,163 @@ levelSet
     {
         type @!SDPLS_SOURCE!@;
         discretization @!SOURCE_SCHEME!@;
+    }
+
+    semiLagrangian
+    {
+        // ---- reconstruction of psi^n at the foot (RTS slReconstruction) ----
+        // 2x2 taxonomy: {linear, quadratic} x {Taylor = field-diff, WLSQ = value-fit}.
+        //   linearTaylor                      : psi_c + grad_c.(x-x_c), grad_c=fvc::grad(psi).
+        //                                       O(h) baseline; |grad psi| drifts (field
+        //                                       differentiation injects a gradient).
+        //   quadraticTaylor  (was nestedLSQ)  : psi_c + grad_c.d + 1/2 d.H.d, grad_c and
+        //                                       H=fvc::grad(grad_c) from field differentiation.
+        //                                       O(h^2) but CONDITIONALLY stable: the grad-of-grad
+        //                                       Hessian amplifies 2h-mode noise -> |grad psi|
+        //                                       runaway on fine meshes unless clipToStencilBounds.
+        //   linearWeightedLeastSquares        : IDW-weighted LINEAR VALUE fit over the stencil.
+        //                                       O(h), STABLE BY CONSTRUCTION (no field diff, the
+        //                                       fit is bounded by the stencil data range), no clip
+        //                                       needed, CFL-independent. NO curvature (H==0) -> a
+        //                                       two-phase run must take curvature from the FVM path.
+        //   quadraticWeightedLeastSquares     : IDW-weighted quadratic VALUE fit. O(h^2..3),
+        //                                       STABLE. PRODUCTION. Memory-bound (caches a
+        //                                       per-cell pseudo-inverse).
+        //   uncachedQuadraticWeightedLeastSquares : the SAME fit as quad (identical accuracy
+        //                                       + stability, verified cell-for-cell) but
+        //                                       recomputes the small normal-equations Cholesky
+        //                                       per step -> CPU-bound, O(1) memory/cell, no
+        //                                       large-N memory ceiling, better strong scaling.
+        //   bandQuadraticWeightedLeastSquares : quadratic in the narrow band, linear far
+        //                                       field. O(band) memory.
+        //   defectCorrectedIDW                : IDW + iterated gradient/defect correction.
+        //                                       Cheap/CPU-bound but UNSTABLE here (gradient
+        //                                       injection amplifies |grad psi|). Research.
+        scheme              @!SL_SCHEME!@;
+        // normalProjected only (inert for pointValue/fluxForm):
+        renormalization     @!SL_RENORMALIZATION!@;   // geometric | strain | none
+        offsetEngine        @!SL_OFFSET_ENGINE!@;     // rayRoot | footPoint
+        slopeLimiter        @!SL_LIMITER!@;
+        venkK               @!SL_VENKK!@;
+        fit                 @!SL_FIT!@;
+        // Foot-point integrator: taylor (historical, needs grad(U) for its
+        // dt^2 term) | rk2 (midpoint, velocity SAMPLES only -- Basilisk-style).
+        footIntegrator      @!SL_FOOT_INTEGRATOR!@;
+
+        // Trajectory velocity: cellCentred (historical, the prescribed cell
+        // field) | projectedFlux (fvc::reconstruct(phi), the discretely
+        // DIVERGENCE-FREE face flux). The reversed vortex, whose exact answer
+        // is its own initial condition, is the sharpest test of the difference:
+        // a semi-Lagrangian map preserves the enclosed volume only when the
+        // tracing field is discretely solenoidal, and the prescribed cell
+        // velocity is only ANALYTICALLY so.
+        traceVelocity       @!SL_TRACE_VELOCITY!@;
+        // Which face flux the projectedFlux trace reconstructs (2026-09-26):
+        //   physical  : reconstruct(phi); the default, byte-identical to every earlier run.
+        //   extension : reconstruct(phiExt) of the velocityExtension model, so the
+        //               extension enters the trace. Needs traceVelocity projectedFlux.
+        traceFlux           @!SL_TRACE_FLUX!@;
+
+        reconstruction      @!SL_RECONSTRUCTION!@;
+
+        // ---- correction strategy (RTS slCorrector) ----
+        //   direct             : one reconstruction pass. Use with the stable value-fitting
+        //                        reconstructions (quadraticWeightedLeastSquares). DEFAULT.
+        //   deferredCorrection : fixed-point iteration, rebuilding the reconstruction from
+        //                        the current iterate (self-consistent gradient). Only
+        //                        stabilises a CONTRACTING operator; DIVERGES for
+        //                        defectCorrectedIDW (spectral radius > 1). Research seam.
+        correction          @!SL_CORRECTION!@;
+
+        CFLmax              @!CFL!@;   // foot-radius guard: warn if the foot leaves the
+                                       // point-neighbour stencil hull (operational CFL<=1)
+        analyticVelocity    true;      // prescribed U is the analytic cell-centre velocity
+
+        // ---- reconstruction safeguards (slReconstruction base; every reconstruction) ----
+        limitSlope          false;     // Barth-Jespersen limiter on the increment. MEASURED
+                                       // to cost convergence order -> off; the always-on
+                                       // value cap in the corrector handles overflow.
+        clipToStencilBounds @!SL_CLIP!@;  // monotone clip of the reconstructed value to the
+        clipRegion @!SL_CLIP_REGION!@;   // all | outsideBand -- WHERE the clip may act (see default.parameter)
+        clipKeepExtrema @!SL_CLIP_KEEP_EXTREMA!@;   // exempt a cell whose psi is already its stencil's extremum (see default.parameter)
+        // The bound on the reconstructed value is a runtime-selected model.
+        // fromClipSwitch (the default) follows clipToStencilBounds, so this
+        // block is inert until a study overrides SL_VALUE_BOUND. The three
+        // cone entries are read by valueBound lipschitzCone only.
+        // See cases/default.parameter and workflow/README.md.
+        valueBound          @!SL_VALUE_BOUND!@;
+        lipschitzMode       @!SL_CONE_L_MODE!@;
+        lipschitzConstant   @!SL_CONE_L!@;
+        onInadmissible      @!SL_CONE_INADMISSIBLE!@;
+                                       // stencil [min,max]; forbids the overshoot that drives
+                                       // the quadraticTaylor steepening instability (not needed
+                                       // by the value-fitting reconstructions, which are bounded).
+
+        // ---- uncachedQuadraticWeightedLeastSquares control ----
+        ridgeEps            0;         // Tikhonov ridge on the normal-equations diagonal
+                                       // (0 = off; raise if Cholesky reports near-degenerate
+                                       // stencils on distorted/polyhedral meshes)
+
+        // ---- bandQuadraticWeightedLeastSquares controls ----
+        nLayersBand         3;         // quadratic where |psi| <= (nLayersBand+bandGuard)*h
+        bandGuard           2;         // guard so band cells' stencils stay inside the band
+
+        // ---- defectCorrectedIDW controls (iterative nodal-defect correction) ----
+        idwPower            2;         // final-blend weight = |x_d - x_C|^{-idwPower}
+        dcIters             3;         // Gauss-Seidel nodal-defect sweeps
+        dcMaxIters          10;        // hard cap on sweeps
+        dcTol               1e-3;      // range-relative residual early-out
+        dcRelax             0.8;       // under-relaxation of the sweep (<= 1)
+        dcRegEps            0.1;       // nugget for the regularised blend weight
+                                       // wreg = (h^2/(|r|^2 + dcRegEps^2 h^2))^(idwPower/2)
+
+        // ---- deferredCorrection controls (correction = deferredCorrection) ----
+        nDefCorr            3;         // deferred-correction passes
+        nDefCorrMax         10;        // hard cap on passes
+        defCorrRelax        1.0;       // under-relaxation of the fixed-point update (<= 1)
+        defCorrTol          0.0;       // range-relative early-out (0 = run all passes)
+
+        // ---- scalar source after the characteristic step (RTS slSource) ----
+        // D_t psi = psi*F, applied as psi <- psi*exp(dt*F) in the band
+        // |psi|/|grad psi| <= bandCells*h; F = 0 outside the band.
+        //   none            : no source (the default; the step is not called).
+        //   gradientControl : F from the law below (Phase D3).
+        source
+        {
+            type        @!SL_SOURCE!@;
+            bandCells   @!SL_SOURCE_BAND_CELLS!@;
+            qScheme     @!GC_Q_SCHEME!@;
+            anchorInterface @!GC_ANCHOR_INTERFACE!@;
+            strainNormal @!GC_STRAIN_NORMAL!@;
+            law
+            {
+                // F = w(q)*a + G(q) in D_t psi = psi*F; q = |grad psi|, a = n.D.n.
+                // G(1) = 0 for every law. A law reads only its own entries, and every
+                // entry that a law reads is REQUIRED (no code default).
+                //   none | linearQ | linearZ | cubicQ | cubicZ | twoThirdsZReg |
+                //   saturatedLinearZ | softWall
+                type        @!GC_LAW!@;
+                mu          @!GC_MU!@;   // [1/s] rate of the q- and z-laws
+                eps         @!GC_EPS!@;   // twoThirdsZReg: G = -mu*zeta/(zeta^2 + eps^2)^(1/6)
+                c           @!GC_SAT_C!@;   // saturatedLinearZ: G = -mu*zeta/(1 + c*|zeta|)
+                // softWall: G = -cKappa*sqrt(D:D + epsD^2)*tanh[gamma*((q - 1)/deltaS)^p]
+                cKappa      @!SW_C_KAPPA!@;
+                deltaS      @!SW_DELTA_S!@;
+                p           @!SW_P!@;   // odd
+                gamma       @!SW_GAMMA!@;   // artanh(0.9)
+                epsD        @!SW_EPS_D!@;   // [1/s]
+                // The weight w(q) of the strain term a:
+                //   none (w = 0) | full (w = 1: the SDPLS R source) |
+                //   omega (w = 1 - exp[-beta*((q - 1)/deltaS)^(2m)])
+                strainWeight
+                {
+                    type    @!GC_STRAIN_WEIGHT!@;
+                    beta    @!OMEGA_BETA!@;
+                    m       @!OMEGA_M!@;
+                    deltaS  @!SW_DELTA_S!@;
+                }
+            }
+        }
     }
 }
 

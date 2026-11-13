@@ -96,8 +96,9 @@ ART_SL := docs/semi-lagrangian-level-set/sl-level-set-article
 ART_LSL := docs/linear-semi-lagrangian-level-set/lsl-level-set-article
 ART_GRL := docs/geometrically-redistanced-levelset/grl-level-set-article
 ART_GCLS := docs/gradient-controlled-level-set/gcls-level-set-article
+ANA_AMP := docs/analysis-amplification-sl
 
-.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-davof davof-proposal davof-preprint studies-sdpls studies-euler studies-one studies-one-file gate print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl article-gcls comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
+.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-davof davof-proposal davof-preprint studies-sdpls studies-euler studies-one studies-one-file gate print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl article-gcls comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study scheme-stencils-figure
 .DEFAULT_GOAL := help
 
 help:
@@ -280,7 +281,77 @@ article-grl:
 article-gcls:
 	@command -v latexmk >/dev/null && (cd $(ART_GCLS) && latexmk -pdf -interaction=nonstopmode -halt-on-error gclsLevelSet.tex) \
 	  || echo "[skip] latexmk not found; install a LaTeX toolchain to build the article PDF"
-articles: article-sl article-lsl article-grl article-gcls
+# The Fourier amplification symbol of the SL quadratic fit
+# (docs/analysis-amplification-sl/): a derivation report, not a theme article, so it is
+# named ms.tex and lives directly under docs/. Its numbers come from
+# workflow/scripts/sl_amplification_symbol.py and sympy/boundary_lambda.py -- no case,
+# no mesh, no solver.
+article-amplification:
+	@command -v latexmk >/dev/null && (cd $(ANA_AMP) && latexmk -pdf -interaction=nonstopmode -halt-on-error ms.tex) \
+	  || echo "[skip] latexmk not found; install a LaTeX toolchain to build the article PDF"
+
+articles: article-sl article-lsl article-grl article-gcls article-amplification
+
+# The data stencils of the scheme names (OWN-NEIGHBOUR/SPACE+TRANSITION), drawn with TikZ.
+# The source is docs/analysis-amplification-sl/figures/scheme_stencils.tex. The built PDF
+# and PNG are versioned. The build folder is git-ignored.
+SCHEME_FIG_DESTS = docs/semi-lagrangian-level-set/sl-level-set-article/data/figures $(ANA_AMP)/data/figures
+scheme-stencils-figure: ## build the figure of the data stencils of the named schemes
+	@mkdir -p $(ANA_AMP)/figures/build
+	@cd $(ANA_AMP)/figures && pdflatex -interaction=nonstopmode -halt-on-error -output-directory=build scheme_stencils.tex >/dev/null \
+	  && pdftocairo -png -r 200 -singlefile build/scheme_stencils.pdf build/scheme_stencils
+	@for d in $(SCHEME_FIG_DESTS); do mkdir -p $$d && cp $(ANA_AMP)/figures/build/scheme_stencils.pdf $(ANA_AMP)/figures/build/scheme_stencils.png $$d/ \
+	  && echo "[ok] $$d/scheme_stencils.pdf and .png" || exit 1; done
+
+# Read a reviewed PDF back. Annotate $(ANA_AMP)/ms.pdf in any viewer that SAVES into the
+# file (Edge, Firefox, Acrobat, Okular), save it next to the source as ms_reviewed.pdf, and
+# run this: every comment comes back with the passage it sits on and the section it is in.
+amp-reproduce: ## regenerate every number of the amplification report (sympy/numpy only, no solver)
+	python3 workflow/scripts/sl_amplification_symbol.py validate-1d
+	python3 workflow/scripts/sl_amplification_symbol.py sweep
+	@for f in boundary_lambda boundary_bracketing boundary_options hexagonal_lattice \
+	          perturbed_stencil corner_face_data degree_on_irregular_stencil \
+	          multipoint_unknowns multipoint_hexagon; do \
+	    echo "==== $$f"; python3 $(ANA_AMP)/sympy/$$f.py || exit 1; done
+	rm -f $(ANA_AMP)/data/tables/multipoint_perturbed.csv
+	python3 $(ANA_AMP)/sympy/multipoint_perturbed.py --dim 2 \
+	    --csv $(ANA_AMP)/data/tables/multipoint_perturbed.csv
+	python3 $(ANA_AMP)/sympy/scheme_matrix.py --smoke
+	@echo "the scheme matrix on every mesh runs on Lichtenberg: $(ANA_AMP)/sympy/scheme_matrix.sbatch"
+
+amp-open: article-amplification ## open the amplification review copy (never overwrites it)
+	@if [ -f $(ANA_AMP)/ms_reviewed.pdf ]; then \
+	    n=$$(python3 workflow/scripts/read_pdf_comments.py $(ANA_AMP)/ms_reviewed.pdf --count 2>/dev/null || echo 0); \
+	    echo "opening the EXISTING review copy ($$n comment(s) in it)"; \
+	    echo "to start a clean round instead:  make amp-refresh"; \
+	 else \
+	    cp $(ANA_AMP)/ms.pdf $(ANA_AMP)/ms_reviewed.pdf; \
+	    echo "created a fresh review copy"; \
+	 fi
+	@echo "annotate and SAVE (not 'print to PDF'):  $(ANA_AMP)/ms_reviewed.pdf"
+	@echo "then run:  make review-amplification"
+	@if command -v explorer.exe >/dev/null 2>&1; then \
+	    explorer.exe "$$(wslpath -w $(ANA_AMP)/ms_reviewed.pdf)" 2>/dev/null || true; \
+	 elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$(ANA_AMP)/ms_reviewed.pdf" >/dev/null 2>&1 & \
+	 else echo "open it by hand"; fi
+
+amp-refresh: article-amplification ## start a new review round from the current build
+	@n=$$(python3 workflow/scripts/read_pdf_comments.py $(ANA_AMP)/ms_reviewed.pdf --count 2>/dev/null || echo 0); \
+	 cur=$$(sha256sum $(ANA_AMP)/ms_reviewed.pdf 2>/dev/null | cut -d' ' -f1); \
+	 arch=$$(cat $(ANA_AMP)/review-log.md.stamp 2>/dev/null | tr -d '\n'); \
+	 if [ "$$n" != "0" ] && [ "$$cur" != "$$arch" ]; then \
+	    echo "REFUSED: $(ANA_AMP)/ms_reviewed.pdf holds $$n comment(s) that are NOT archived."; \
+	    echo "Run 'make review-amplification' first; it appends them to"; \
+	    echo "$(ANA_AMP)/review-log.md. Then this will proceed."; \
+	    exit 1; \
+	 fi; \
+	 if [ "$$n" != "0" ]; then echo "$$n comment(s) already archived; replacing the copy"; fi; \
+	 cp $(ANA_AMP)/ms.pdf $(ANA_AMP)/ms_reviewed.pdf; \
+	 echo "fresh review copy: $(ANA_AMP)/ms_reviewed.pdf"
+
+review-amplification: ## read the comments out of ms_reviewed.pdf AND archive them
+	@python3 workflow/scripts/read_pdf_comments.py $(ANA_AMP)/ms_reviewed.pdf \
+	    --append-log $(ANA_AMP)/review-log.md
 
 report-gcls: ## technical report on the gradient-control campaign (docs/gradient-controlled-level-set/gcls-technical-report)
 	cd docs/gradient-controlled-level-set/gcls-technical-report && latexmk -pdf -interaction=nonstopmode gclsTechnicalReport.tex
@@ -305,6 +376,9 @@ clean:
 	find docs -path '*-presentation/*.html' ! -name '*.template.html' -delete
 	rm -f docs/*/*-article/*.pdf docs/*/*-article/*.aux docs/*/*-article/*.log \
 	      docs/*/*-article/*.bbl docs/*/*-article/*.blg docs/*/*-article/*.out
+	rm -f docs/analysis-amplification-sl/*.pdf docs/analysis-amplification-sl/*.aux \
+	      docs/analysis-amplification-sl/*.log docs/analysis-amplification-sl/*.out \
+	      docs/analysis-amplification-sl/*.fdb_latexmk docs/analysis-amplification-sl/*.fls
 
 # --- cluster sync (git-ignored raw output only; see CLUSTER.md) --------------
 # Pull ALL study output from the cluster to inspect/visualise locally.

@@ -82,11 +82,15 @@ jobs:
             texlive-latex-recommended texlive-latex-extra texlive-publishers texlive-science \
             texlive-pictures texlive-fonts-recommended texlive-bibtex-extra biber cm-super
           mkdir -p quartz/public/preprints
-          for tex in docs/*/*-article/*.tex docs/*/*-report/*.tex; do
+          # docs/analysis-*/ms.tex is a derivation report that lives directly under docs/,
+          # so it matches neither *-article nor *-report. A file named ms.tex is published
+          # under its FOLDER name, because "ms.pdf" would collide with every other one.
+          for tex in docs/*/*-article/*.tex docs/*/*-report/*.tex docs/analysis-*/ms.tex; do
             [ -f "$tex" ] || continue
             dir=$(dirname "$tex"); name=$(basename "$tex" .tex)
+            out="$name"; [ "$name" = "ms" ] && out=$(basename "$dir")
             if (cd "$dir" && latexmk -pdf -interaction=nonstopmode -halt-on-error "$name.tex" > "latexmk-$name.log" 2>&1); then
-              cp "$dir/$name.pdf" quartz/public/preprints/
+              cp "$dir/$name.pdf" "quartz/public/preprints/$out.pdf"
             else
               echo "[skip] $tex did not compile; see $dir/latexmk-$name.log"
             fi

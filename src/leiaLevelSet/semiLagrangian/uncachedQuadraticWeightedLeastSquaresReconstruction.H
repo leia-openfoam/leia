@@ -80,6 +80,12 @@ class uncachedQuadraticWeightedLeastSquaresReconstruction
 :
     public slReconstruction
 {
+// PROTECTED, not private, so a variant that changes ONLY the weight anchor can derive
+// from this class and override evaluateRaw instead of duplicating the fit
+// (footAnchoredQuadraticWeightedLeastSquaresReconstruction). Adding the access
+// specifier changes nothing for this class or for any existing caller.
+protected:
+
     //- Active (non-empty) mesh directions (2 in 2D, 3 in 3D).
     labelList activeDirs_;
 

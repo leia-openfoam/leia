@@ -90,6 +90,15 @@ SEED_BALL = """    {{
     }}
 """
 
+SEED_BOX = """    {{
+        name    refineCells;
+        type    cellSet;
+        action  new;
+        source  boxToCell;
+        box     ({x0:.10g} {y0:.10g} {z0:.10g}) ({x1:.10g} {y1:.10g} {z1:.10g});
+    }}
+"""
+
 DILATION = """    {
         name    refineFaces;
         type    faceSet;
@@ -115,12 +124,17 @@ def write_topo_set_dict(case, pass_, source, alpha_name, k, ball=None):
                      f"then {k} face dilations")
         body = SEED_INTERFACE.format(alpha=alpha_name, lo=lr.ALPHA_LO, hi=lr.ALPHA_HI)
         body += DILATION * k
+    elif source == "box":
+        x0, y0, z0, x1, y1, z1 = ball          # reused tuple slot: the box corners
+        criterion = (f"FIXED BOX ({x0:.6g} {y0:.6g} {z0:.6g}) to "
+                     f"({x1:.6g} {y1:.6g} {z1:.6g}), independent of the interface")
+        body = SEED_BOX.format(x0=x0, y0=y0, z0=z0, x1=x1, y1=y1, z1=z1)
     elif source == "ball":
         cx, cy, cz, radius = ball
         criterion = f"CONTROL: ball of radius {radius:.6g} about ({cx:.6g} {cy:.6g} {cz:.6g})"
         body = SEED_BALL.format(cx=cx, cy=cy, cz=cz, radius=radius)
     else:
-        raise ValueError(f"source must be interface or ball, got {source!r}")
+        raise ValueError(f"source must be interface, ball or box, got {source!r}")
     text = TOPO_HEADER.format(pass_=pass_, criterion=criterion) + "actions\n(\n" + body + ");\n"
     path = os.path.join(case, "system", "topoSetDict.refine")
     with open(path, "w") as fh:
@@ -136,8 +150,9 @@ def main(argv=None):
     ap.add_argument("--levels", type=int, help="refinement passes N (token REFINE_LEVELS)")
     ap.add_argument("--band-cells", type=int,
                     help="target fine layers each side of the interface (REFINE_BAND_CELLS)")
-    ap.add_argument("--source", choices=("interface", "ball"),
-                    help="criterion: interface band (default) or the ball control (REFINE_SOURCE)")
+    ap.add_argument("--source", choices=("interface", "ball", "box"),
+                    help="criterion: interface band (default), the ball control, or a "
+                         "FIXED BOX that the interface moves through (REFINE_SOURCE)")
     ap.add_argument("--setfields", default=None,
                     help='field initialiser command, e.g. "leiaSetFields -alphaName alpha.water"')
     ap.add_argument("--alpha-name", default=None, help="volume fraction field (from --setfields)")
@@ -175,6 +190,18 @@ def main(argv=None):
                              "DOMAIN_LENGTH, DOMAIN_HALF_LENGTH and N_CELLS_BASE in case_params.json")
         ball_inputs = (R, L / nb, c)
 
+    box_corners = None
+    if source == "box":
+        # A fixed refinement box, independent of where the interface is. The translating
+        # sphere then crosses two 2:1 transitions, coarse -> fine -> coarse, which is the
+        # whole point of the test; the interface-tracking sources cannot produce that.
+        lo = lr.tok_vector(toks, "REFINE_BOX_MIN")
+        hi = lr.tok_vector(toks, "REFINE_BOX_MAX")
+        if lo is None or hi is None:
+            raise SystemExit(f"{lr.TAG} --source box needs REFINE_BOX_MIN and REFINE_BOX_MAX "
+                             "in case_params.json, each as three numbers")
+        box_corners = tuple(lo) + tuple(hi)
+
     if not a.no_base_mesh:
         # blockMesh rewrites points/faces/owner/neighbour/boundary but leaves a previous
         # run's cellLevel/pointLevel/refinementHistory in place, and hexRef8 READS them
@@ -201,7 +228,7 @@ def main(argv=None):
         k = k0
         layers = float("nan")
         while True:
-            ball = None
+            ball = box_corners if source == "box" else None
             if ball_inputs:
                 R, h_base, c = ball_inputs
                 h_cur = h_base / 2 ** (i - 1)      # spacing near the interface BEFORE this pass
@@ -211,6 +238,11 @@ def main(argv=None):
             if dry:
                 break
             selected = lr.read_set(case, "refineCells")
+            if source == "box":
+                # The box is fixed: dilating it would grow it every pass, and the
+                # interface-band width it is measured against is not its criterion.
+                lr.say(f"pass {i}: fixed box -> {len(selected)} cells selected")
+                break
             layers = lr.worst_case_layers_after_split(case, selected, before)
             lr.say(f"pass {i}: {k} dilations -> {len(selected)} cells selected, worst-case "
                    f"complete fine layers after the split {layers:.2f} (requested {band_cells})")
@@ -245,6 +277,15 @@ def main(argv=None):
     res = lr.band_check(case, "hex", band_cells, alpha_name, toks,
                         allow_pin_mismatch=a.allow_pin_mismatch
                         or lr.tok_bool(toks, "REFINE_ALLOW_PIN_MISMATCH"))
+    if source == "box":
+        # band_check asks "is every interface cell inside the fine region, with at least
+        # MIN_FINE_LAYERS beyond it?". For a FIXED box that an interface travels through,
+        # the answer is NO by construction -- the sphere starts and ends outside it, which
+        # is the experiment. Report the two numbers, do not fail on them.
+        if res["status"] == "FAIL":
+            res["status"] = "BOX"
+            res["reason"] = ("fixed box (--source box): " + res["reason"]
+                             + " -- expected, the interface travels through the box")
     res.update(lr.checkmesh_stats(os.path.join(case, "log.checkMesh")))
     res["levels"] = levels
     lr.write_csv(os.path.join(case, "refinement.csv"), rows)
