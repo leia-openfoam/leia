@@ -6520,3 +6520,31 @@ the mean CCS shift |p_final - p_start|/h (key positionDiag). It shows where the 
 gained: the position error before CCS carries the tilt (order p), and after CCS the tilt
 only through the pivot (order p + 1) if the position order of the normal-order study is the
 mechanism. Not predicted numerically; the ratio before/after is reported.
+
+### MEASURED, the bias test (2026-11-13/14; 78 cases on 8 ranks)
+
+Jobs: build 56305790; orchestrators 56305791 (balance), 56305792-94 (oblique translation N 32/64/128), 56305795-97 (rotation N 32/64/128); all completed. Tables: `/work/scratch/tm83tomy/davof/agents/normal/csv/bias/{nor_cases.csv,nor_orders.csv,nor_tables.md}`; preprint table body `table_bias.tex` on development.
+
+Orders over N = 32, 64, 128 (p: L1 angle; d: position; q: E_shape; omd: L1(1 - n.n_e)); the plain ring normal for reference (oblique 0.2: p 1.29, d 2.16, q 2.14, omd 2.38; oblique 1: 1.22, 2.37, 2.34, 2.27; rotation 0.2: 1.17, 1.90, 1.86, 2.14; rotation 1: 1.13, 1.90, 1.87, 2.06).
+
+| test, OF Co | tilt | c | p | d | q | omd | L1(theta) N 32 / ring | E_shape N 128 / ring |
+|---|---|---|---|---|---|---|---|---|
+| oblique 0.2 | biased | 0.125 / 0.25 / 0.5 | 1.18 / 1.13 / 1.12 | 2.17 / 2.13 / 2.05 | 2.09 / 2.06 / 2.02 | 2.35 / 2.29 / 2.25 | 1.13 / 1.52 / 2.68 | 0.95 / 1.16 / 1.95 |
+| | alternating | | 1.18 / 1.09 / 1.03 | 2.14 / 2.11 / 2.08 | 2.12 / 2.10 / 2.06 | 2.32 / 2.21 / 2.11 | 1.11 / 1.37 / 2.19 | 1.03 / 1.08 / 1.26 |
+| oblique 1 | biased | | 1.11 / 1.08 / 1.08 | 2.27 / 2.17 / 2.07 | 2.22 / 2.12 / 2.04 | 2.21 / 2.19 / 2.17 | 1.17 / 1.63 / 2.85 | 1.29 / 1.83 / 3.12 |
+| | alternating | | 1.12 / 1.06 / 1.02 | 2.34 / 2.29 / 2.18 | 2.31 / 2.26 / 2.14 | 2.22 / 2.14 / 2.06 | 1.15 / 1.51 / 2.51 | 1.05 / 1.15 / 1.46 |
+| rotation 0.2 | biased | | 1.21 / 1.18 / 1.15 | 1.92 / 1.94 / 1.99 | 1.88 / 1.90 / 1.94 | 2.30 / 2.30 / 2.27 | 1.27 / 1.64 / 2.58 | 1.01 / 1.02 / 1.05 |
+| | alternating | | 1.12 / 1.06 / 1.03 | 1.90 / 1.91 / 1.92 | 1.86 / 1.86 / 1.87 | 2.14 / 2.11 / 2.08 | 1.08 / 1.29 / 2.00 | 1.00 / 1.00 / 1.02 |
+| rotation 1 | biased | | 1.15 / 1.13 / 1.10 | 1.93 / 1.97 / 1.99 | 1.89 / 1.91 / 1.96 | 2.21 / 2.22 / 2.19 | 1.29 / 1.71 / 2.80 | 1.01 / 1.02 / 1.07 |
+| | alternating | | 1.07 / 1.03 / 1.01 | 1.90 / 1.91 / 1.93 | 1.87 / 1.87 / 1.89 | 2.06 / 2.05 / 2.04 | 1.11 / 1.41 / 2.33 | 1.00 / 1.01 / 1.03 |
+
+Wall clock at N 128, 8 ranks, shared nodes: oblique 0.2 1180-1490 s, oblique 1 244-306 s, rotation 0.2 8700-10700 s, rotation 1 1680-1880 s (the position diagnostic on in all of these rows; every row within 20 % of the plain ring normal's 1059 / 282 / 9327 / 2034 s except the biased c = 0.5 rows at Co 0.2 on the translation, 1492 s).
+
+**B-1 (the tilt): held in order, held in the factor for the biased tilt.** The angle order of the tilted rows is 1.01 to 1.21. The L1 angle at N 32 exceeds the ring normal's by 1.5 to 1.7 (biased c = 0.25) and 2.6 to 2.9 (biased c = 0.5), as registered; the alternating rows reach 1.29 to 1.51 at c = 0.25 (below the registered 1.5 on three of four tests) and 2.0 to 2.5 at c = 0.5.
+**B-2 (biased shape order near 1): FALSIFIED.** The biased shape order is 2.02 to 2.22 on the translation and 1.88 to 1.96 on the rotation for every c; the falsifier (above 1.6 for c = 0.25 and 0.5) occurred in all eight cells.
+**B-3 (controls near 2): held.** Alternating 2.06 to 2.31 (translation) and 1.86 to 1.89 (rotation); ring 2.14, 2.34, 1.86, 1.87; all in [1.6, 2.5].
+**B-4 (1 - n.n_e of order 2p): held** within 0.3 for every row (omd 2.04 to 2.35 against 2p of 2.02 to 2.42).
+
+The mechanism implied by the falsifier: CCS from alpha_k does not remove the fixed-sign tilt either, and neither is the shape order p + 1 produced by a cancellation of per-step errors of alternating sign. The step-resolved balance (nor_balance_N64: oblique translation, N 64, OF Co 0.2, c = 0.25, 155 steps, medians over the steps): per-step flux error relative to V_k 2.5e-4 (exact), 4.0e-4 (ring), 4.1e-4 (biased), 4.6e-4 (alternating); position error L1(d) of the plane at the CCS start (the closed-form position along the used normal, clamped into the vertex range) 1.33e-4, 2.08e-4, 2.52e-4, 2.98e-4 and after CCS 1.48e-4, 1.74e-4, 1.95e-4, 2.04e-4; mean CCS shift |p_final - p_start|/h 0.008, 0.009, 0.014, 0.012. The ratio before/after CCS is 0.9 (exact; CCS makes it slightly worse), 1.2, 1.3 and 1.5: CCS reduces the position error of the tilted planes by at most a third and does not change its order (over N: before 2.02 to 2.14, after 2.03 to 2.29 on the translation; 1.88 to 1.95 before and 1.90 to 2.01 after on the rotation). The order p + 1 of the position error is already in the plane at the CCS start; it is the lever arm of the normal (the position error O(h theta_k)), not the re-positioning, that carries it. The signed mean of the per-step flux error is 1.3e-4 (exact), 1.4e-4 (ring), 1.4e-4 (alternating) and -1.2e-6 (biased): a near-zero signed mean for the biased tilt, a change of the per-step flux bias by two orders of magnitude, which the shape order does not follow; its mechanism was not located.
+
+**Demonstrated** (sphere, oblique translation and rotation, N 32 to 128, OF Co 0.2 and 1, pieces path): a first-order normal error of fixed sign gives the same shape order as an alternating one and as the plain ring normal, and a larger constant (up to 3.1 times at c = 0.5); the position error has order p + 1 before CCS. **Limitation:** one form of bias (a tilt toward a fixed direction, not correlated with the curvature of the interface), one geometry, the pieces path only. **Open:** a tilt correlated with the interface curvature (toward the centre of the sphere); the one-plane path; why the signed mean of the per-step flux error vanishes for the biased tilt while the shape error does not follow.
