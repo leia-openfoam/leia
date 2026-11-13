@@ -41,7 +41,7 @@ axes_override:
   TPF_RECON_ERROR_EVERY_STEP: ["false"]
   TPF_PROFILING: ["false"]
 collapse_other_axes: true
-solve_mem_mb: 8000
+solve_mem_mb: 16000
 solve_runtime: 240
 export_slides: false
 env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
