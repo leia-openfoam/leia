@@ -1,0 +1,51 @@
+# PDE LEVEL SET, STEP A0.3: closestPoint repair 3, the fill of the failed descents and the Newton
+# step (plan docs/plan-velocity-extension-verification.md, section 4a; supervisor's go 2026-11-14).
+# THE DEFECT (STATUS 11.31 item 8, MEASURED): with fadePlacement extendThroughFade, np 4 sends 7 % of
+# the band to the fallback fill; the shipped fill (steadyUpwind) does not converge (11.30 item 6).
+# THE CHANGE: two strategy families of closestPoint (closestPointStrategies.H), defaults = shipped:
+#   cpFill (token CP_FILL): steadyUpwind | footPointTaylor (Jacobi propagation of the nearest foot
+#     point p with n, u and grad u at p over face and processor neighbours; Uext = u + (Pi - p).G,
+#     Pi = p + (I - n n).(C - p));
+#   cpStep (token CP_STEP): distance (dx = -psi n) | newton (dx = -psi n/|grad psi|).
+# THIS STUDY forces failures in serial: CP_MAX_DIST 0.5 caps the descent at 0.5 x 7 h = 3.5 h, so
+# every band cell beyond about 3.5 h fails and the fill alone sets it (CP_MAX_DIST 1.5 = the shipped
+# cap, almost no failures: the control).
+# Case: as aStatic2Dedge (circle in shear2D at t = 0, signed-distance input, levelSet band,
+# extendThroughFade, correction flux form), N 32 to 256, serial.
+# PRE-REGISTERED (2026-11-14, before any run). Orders over N 64-128-256, L1:
+#   F1 cap 0.5, footPointTaylor: E_EXT_L1_4H and E_FLUX_L1_4H order >= 1.8, and within a factor 3 of
+#      the cap-1.5 arm (the descent) at N 256.
+#   F2 cap 0.5, steadyUpwind: E_EXT_L1_4H order <= 1.2 (the shipped fill is the defect).
+#   F3 cap 1.5: footPointTaylor and steadyUpwind give the same errors to within 1 % (few failures).
+#   F4 the log reports 0 unreached cells for footPointTaylor.
+#   N1 newton against distance on this signed-distance input (|grad psi| = 1 + O(h^2)): E_EXT and
+#      E_FLUX within 2 % in every shell at N 64 to 256. The Newton step is tested on q != 1 in step A.
+# FALSIFIED: F1 below order 1.5 -- the tangential Taylor step is not second order (then the fill
+# needs the descent from the propagated foot point, not a Taylor step).
+# CONTROL: CP_FILL steadyUpwind, CP_STEP distance, CP_MAX_DIST 1.5 equals the extendThroughFade/levelSet
+# arm of aStatic2Dedge (clone leia-pde-a2) at tolerance 0.
+study_name: aStatic2Dfill
+case: 2Dvortex
+mesh: hex
+mode: serial
+np: 1
+solver: leiaTestVelocityExtension
+solve_runtime: 60
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  END_TIME: [1]
+  N_CELLS: [32, 64, 128, 256]
+  VELOCITY_EXTENSION: [closestPoint]
+  FADE_MODE: [levelSet]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  CP_FILL: [steadyUpwind, footPointTaylor]
+  CP_STEP: [distance, newton]
+  CP_MAX_DIST: [1.5, 0.5]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  PHASE_INDICATOR: [detrixheAslam]

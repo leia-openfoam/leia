@@ -1,0 +1,35 @@
+# PDE LEVEL SET, STEP A0.3, the advected 4-rank check of the fill (parallel twin). As a2Seam2Dvortex
+# (closestPoint, extendThroughFade, both band modes, N 64, 45 steps, PSI_TOLERANCE 1e-14), with
+# CP_FILL footPointTaylor.
+# PRE-REGISTERED (2026-11-14, before any run): psi at t = 0.02, serial against np 4, relative L1
+# (compare_psi_fields.py): at most the steadyUpwind value of a2Seam2Dvortex (levelSet 7.0e-8, layer
+# 5.7e-8); prediction: at least 3 times smaller. Both runs COMPLETED with 45 steps; 0 unreached cells.
+# FAIL = larger than the steadyUpwind value.
+study_name: a3Seam2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaLevelSetFoam
+solve_runtime: 30
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [64]
+  CFL: [0.5]
+  END_TIME: [0.02]
+  PSI_TOLERANCE: [1e-14]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [closestPoint]
+  VE_FLUX_FORM: [correction]
+  FADE_MODE: [levelSet, layer]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  CP_FILL: [footPointTaylor]
+  SDPLS_SOURCE: [noSource]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+  REPORT_WRITE_ONLY: ["false"]

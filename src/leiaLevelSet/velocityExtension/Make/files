@@ -8,6 +8,7 @@ anisotropicDiffusion.C
 pseudoTime.C
 steadyUpwind.C
 steadyUpwindLinear.C
+closestPointStrategies.C
 closestPoint.C
 projectionBlend.C
 meshWaveExt.C

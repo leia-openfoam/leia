@@ -7818,3 +7818,23 @@ The supervisor's go of 2026-11-13: A0 repair 2 first, then step A on the harder 
    and the one-layer halo cannot represent a foot point that far across a seam. The fallback is the
    steadyUpwind fill, which does not converge (11.30 item 6). Plan A0 repair 3 (the failure switch)
    must cover this before extendThroughFade is used on more ranks.
+
+### 11.32 PDE level set: step A0.3, closestPoint repair 3, and the fixed-width fade (2026-11-14)
+
+The supervisor's decisions of 2026-11-14 (decision log): (1) step B uses `extendThroughFade`; (2) the
+first-order fade is accepted, and its derivation is tested; (3) repair 3 first.
+
+1. **The change.** Two strategy families of `closestPoint` (`closestPointStrategies.{H,C}`), defaults =
+   the shipped model: `cpFill` (token `CP_FILL`): `steadyUpwind` | `footPointTaylor` (a Jacobi
+   propagation of the nearest foot point p with n, u and grad u at p over face and processor
+   neighbours; Uext = u + (Pi - p).G with Pi = p + (I - n n).(C - p); compact, MPI through the
+   processor patches, independent of the cell order); `cpStep` (token `CP_STEP`): `distance`
+   (dx = -psi n) | `newton` (dx = -psi n/|grad psi|). New tokens `CP_MAX_DIST` (2Dvortex) and
+   `N_LAYERS` in the extension block of 2Dvortex, 2Dtranslation, 2DstaticCircle and 3Dshear (default 3
+   = the hardcoded value). Laptop: compile check and the dependency guard only.
+2. **Gates, pre-registered:** inertness (aStatic2Dedge, a2Seam2Dvortex{,serial}, a0Identity2Dvortex
+   re-run in clone `leia-pde-a3`, tolerance 0 against `leia-pde-a2`); `aStatic2Dfill` (failures forced
+   by CP_MAX_DIST 0.5; predictions F1 to F4, N1); `aStatic2DfillPar` (np 4; P1, P2);
+   `a3Seam2Dvortex{,serial}`; `aStatic2DfixedWidth` (decision 2). Read-out `pde_a3_analysis.py` and
+   `pde_a_static_analysis.py` (the model label now names every token that varies; a varying
+   N_LAYERS reads as the fade width L).

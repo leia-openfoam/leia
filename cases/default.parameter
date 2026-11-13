@@ -614,6 +614,15 @@ FADE_MODE levelSet;
 // docs/plan-velocity-extension-verification.md, section 4a, repair 2 (2026-11-13).
 VE_FADE_PLACEMENT legacy;
 
+// closestPoint strategies (plan section 4a, repair 3, 2026-11-14). CP_STEP: the descent step,
+// distance (default: dx = -psi n, reads psi as a distance) | newton (dx = -psi grad psi/|grad psi|^2).
+// CP_FILL: the fill of the failed descents, steadyUpwind (default) | footPointTaylor (compact
+// propagation of the nearest foot point with a tangential Taylor step; MPI by processor patches).
+CP_STEP distance;
+CP_FILL steadyUpwind;
+// closestPoint path cap in cells of the band reach (code default 1.5; rendered by 2Dvortex only).
+CP_MAX_DIST 1.5;
+
 // closestPoint descent psi operator: cellPoint (default) | taylor.
 CP_INTERP cellPoint;
 

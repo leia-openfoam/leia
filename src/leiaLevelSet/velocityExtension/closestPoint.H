@@ -79,6 +79,7 @@ SourceFiles
 
 #include "steadyUpwind.H"
 #include "slReconstruction.H"
+#include "closestPointStrategies.H"
 
 namespace Foam
 {
@@ -244,6 +245,12 @@ class closestPoint
     //  and it lives in the same library as this class, so no build change is
     //  needed. Not one semi-Lagrangian file is modified.
     autoPtr<slReconstruction> recon_;
+
+    //- The descent step (cpStep: distance | newton) and the fill of the
+    //  failed descents (cpFill: steadyUpwind | footPointTaylor); both
+    //  strategies of closestPointStrategies.H, defaults = the shipped model.
+    autoPtr<closestPointStep> step_;
+    autoPtr<closestPointFill> fill_;
 
     //- LENT known-vicinity walk (Sec. 2.1.1, Fig. 2): from cell `seed`, step
     //  to the face-neighbour whose centre is closest to p until p is inside.
