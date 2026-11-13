@@ -6359,3 +6359,115 @@ interface cells and the CCS positionings per step (the cost of the smaller toler
 floor exits, maxIter exits (the non-convergence) and end-of-interval cells without a plane,
 the smallest |m_c|/V^(2/3) over the interface cells (is the ring normal defined on the
 round-off slivers), the wall clock np1 and np8 next to round 3 and the pieces row.
+
+### KISS round 3b, results (2026-11-13; binary 2a76f62c; jobs 56305812/13, 56307417-23)
+
+Runs: the scan of the eight failing cells (normal arm, OF Co 1, N 20 / 40 / 80 / 160, np1 and np8) over
+surfCellTol {1e-12, 1e-14, 0} x wispTol of the reconstruction {1e-3, 0} (`kiss_scan_np1/np8`; the
+first serial submission was OOM-killed at N 160, rc 137 at 8000 MB, and rerun at 16000 MB), the
+intermediate wispTol {1e-5, 1e-7, 1e-9} at surfCellTol 0 (`kiss_scanw_np1/np8`), and the complete
+gate at the baseline setting (1e-8, 1e-3) with the new rung OF Co 0.8 (`kiss_gate3b_*`; 64 cases per
+np). Round 3 is the surfCellTol 1e-8 row: the baseline gate below reproduces it digit for digit at
+OF Co 0.2 / 0.5 / 1 (e.g. normal, Co 0.2, N 20: L1 9.082e-15, Linf 6.539e-14).
+
+**The scan, np1 (np8 agrees in status and to the digits shown unless noted).** Columns: L1 and
+Linf of alpha_f, min alpha, noPlaneFaces of them cut (sums over the run), interface cells and CCS
+positionings per step (equal: one positioning per interface cell), CCS floor exits / maxIter exits,
+the smallest |m_c|/V^(2/3) over the interface cells.
+
+| wispTol | surfCellTol | N | status | L1(alpha_f) | Linf | min alpha | cut | cells/step = positionings/step | CCS floor / maxIter | min |m_c|/V^(2/3) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1e-3 | 1e-8 (round 3) / 1e-12 / 1e-14 / 0 (identical rows) | 20 | done | 8.6e-13 | 1.3e-11 | -9.9e-14 | 54 | 103 | 0 / 0 | 1.2e-3 |
+| 1e-3 | same | 40 | done | 1.1e-9 | 3.9e-8 | -5.5e-13 | 1235 | 384 | 6 / 0 | 1.0e-3 |
+| 1e-3 | same | 80 | done | 1.2e-4 | 7.2e-3 | -4.6e-13 | 52940 | 1520 | 2936 / 0 | 1.0e-3 |
+| 1e-3 | 1e-8 / 1e-12 / 1e-14 | 160 | done | 6.5e-3 | 0.16 | -1.5e-7 | 4.30e6 | 5990 | 126600 / 0 | 1.0e-3 |
+| 1e-3 | 0 | 160 | done | 1.7e-2 | 0.42 | -1.7e-7 | 4.31e6 | 6010 | 127042 / 0 | 1.0e-3 |
+| 1e-5 | 0 | 20 / 40 / 80 / 160 | done | 2.3e-11 / 4.9e-8 / 1.3e-2 / 1.7e-2 | 4.1e-10 / 5.4e-6 / 0.26 / 0.38 | -8.8e-13 / -4.7e-13 / -3.5e-9 / -7.8e-7 | 98 / 1519 / 156862 / 6.5e6 | 106 / 390 / 1540 / 6060 | 0 / 6 / 3128 / 129678 (maxIter 0 / 0 / 0 / 312) | 1.3e-5 / 1.9e-5 / 1.0e-5 / 1.0e-5 |
+| 1e-7 | 0 | 20 / 40 / 80 / 160 | done | 2.3e-11 / 8.3e-6 / 1.5e-2 / 1.7e-2 | 4.1e-10 / 3.2e-4 / 0.26 / 0.39 | -8.8e-13 / -5.0e-14 / -1.2e-9 / -4.0e-7 | 98 / 3036 / 198712 / 7.6e6 | 106 / 391 / 1540 / 6060 | 0 / 6 / 3140 / 129618 (maxIter 0 / 0 / 52 / 1150) | 1.3e-5 / 4.6e-6 / 3.3e-7 / 1.0e-7 |
+| 1e-9 | 0 | 20 | done | 2.3e-11 | 4.1e-10 | -8.8e-13 | 98 | 106 | 0 / 0 | 1.3e-5 |
+| 1e-9 | 0 | 40 / 80 / 160 | aborted (min alpha -1.0 / -1.0 / -0.78) | - | - | - | 1477 / 9093 / 24217 | 500 / 2540 / 12300 | 6 / 1816 / 33612 (maxIter 0 / 30 / 506) | 1.3e-9 / 1.0e-9 / 1.1e-9 |
+| 0 | 1e-12 | 20 | done | 2.3e-11 | 4.1e-10 | -8.8e-13 | 98 | 106 | 0 / 0 | 1.8e-12 |
+| 0 | 1e-12 | 40 / 80 / 160 | aborted (min alpha -1.0 / -0.74 / -1.0) | - | - | - | 752 / 3172 / 23964 | 565 / 2770 / 12300 | 4 / 1338 / 33626 (maxIter 2 / 34 / 756) | 5e-15 / 1e-12 / 1.6e-15 |
+| 0 | 1e-14 | 20 / 40 / 80 / 160 | aborted (min alpha -0.91 / -1.0 / -0.74 / -1.0) | - | - | - | 99 / 441 / 795 / 7785 | 120 / 600 / 2940 / 12700 | 0 / 22 / 948 / 26230 (maxIter 0 / 0 / 8 / 310) | 9e-16 / 6e-15 / 2e-15 / 2e-17 |
+| 0 | 0 | 20 / 40 / 80 / 160 | aborted (min alpha -1.0 / -0.74 / -4e-14 / -1e-13) | - | - | - | 103 / 101 / 5 / 144 | 134 / 918 / 5280 / 36500 | 0 / 16 / 436 / 18408 (maxIter 0 / 2 / 0 / 162) | 4e-27 / 1e-21 / 3e-17 / 1.5e-28 |
+
+The limiter columns (cells touched / moved volume in cells): baseline N 40: 860 cells, 1.2e-9 of a
+cell in total; N 80: 10 348 cells, 8.4e-4; N 160: 134 000 cells, 57 (a total over 52 steps); wispTol
+1e-7 N 160: 160 000 cells, 253. The limiter fires wherever the case fails.
+
+**Verdict on the scan: the prediction is FALSIFIED at every value.**
+
+1. surfCellTol is inert. At wispTol 1e-3 the rows for 1e-12, 1e-14 and 0 equal the 1e-8 row in
+   every number of the table at N 20 / 40 / 80 (and at N 160 for 1e-12 and 1e-14; N 160 at 0
+   differs in the 2nd digit, 1.7e-2 against 6.5e-3, the same failure). The interface-cell rule
+   `normalAndAlpha` needs |m_c| above wispTol V^(2/3) AND alpha inside; the sliver cells that carry
+   no plane fail the first half (|m_c|/V^(2/3) of a sliver of volume fraction e is of order
+   e^(2/3), below 1e-3 for e < 3e-5), so the alpha half never decides: the printed count of cells
+   above the |m_c| threshold with alpha outside (tol, 1 - tol) is 0 at nearly every step. The
+   smallest |m_c|/V^(2/3) over the interface cells is the threshold itself, 1.0e-3 .. 1.2e-3.
+2. Lowering the second half, wispTol (not what was asked, run because the first value change
+   could not act), makes the failure larger, not smaller. wispTol 1e-5 / 1e-7: N 20 passes the
+   numerical clauses except L1 and Linf (2.3e-11, 4.1e-10: worse than 1e-3's 8.6e-13, 1.3e-11),
+   N 40 8e-8 / 8e-6, N 80 and N 160 at 1e-2 with Linf 0.26 .. 0.39; wispTol 1e-9 and 0 abort at
+   N >= 40 with min alpha down to -1.0 (surfCellTol 1e-12, 1e-14, 0 alike), and N 20 aborts at
+   surfCellTol 1e-14 and 0. The newly planed cells carry noise normals: the smallest |m_c|/V^(2/3)
+   follows the tolerance down to 4e-27 (a cell whose face-fraction sum is round-off), the ring normal
+   is not defined on round-off slivers, and 1.2e5 CCS end-of-interval cells at N 160 get no plane
+   at all (the positioning of alpha < 1e-14 has nothing to bracket); the CCS floor exits are 127 000
+   at N 160 for wispTol 1e-3 and 18 000 .. 34 000 below it, and maxIter exits (CCS not converged in
+   30 iterations, 2 .. 1150 cells over the run) appear from wispTol 1e-5 on.
+3. The cost of the smaller value: the interface cells and CCS positionings per step at N 160 are
+   6.0e3 (wispTol 1e-3), 6.1e3 (1e-5, 1e-7), 1.2e4 (1e-9, surfCellTol 1e-12), 1.3e4 (surfCellTol
+   1e-14, wispTol 0) and 3.65e4 (both 0): a factor 2 .. 6 more positionings per step, each a CCS
+   iteration.
+4. np1 against np8: the scan's pairs differ everywhere the case fails (0.1 .. 0.6 relative) and
+   agree to 1e-10 only in two cells (wispTol 0, surfCellTol 1e-14, N 20: 2e-14; surfCellTol 1e-12, N
+   160: 8e-12 on an aborted run's first steps).
+
+**The complete gate at one setting (surfCellTol 1e-8, wispTol 1e-3), with OF Co 0.8, 64 cases per np.**
+Normal arm (targets 0.124 / 0.3101 / 0.4961 / 0.6202 = OF Co 0.2 / 0.5 / 0.8 / 1), oblique arm (target
+= OF Co). The rows of OF Co 0.8 (new) and the failing row of OF Co 1 on the normal arm; the others
+reproduce round 3. np1 / np8 where they differ; wall clock of the solve in s (the pieces row was not
+run at OF Co 0.8; its round-2 values at OF Co 0.2 / 0.5 / 1 stand in the round-3 table).
+
+| arm | OF Co | N | L1(alpha_f) | Linf(alpha_f) | E_shape | min alpha | cut / uncut noPlaneFaces | limiter cells / volume in cells | 0/1-cell faces off 0/1 | wall np1 | wall np8 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| normal | 0.8 | 20 | 1.5e-14 / 1.4e-14 | 6.4e-13 / 7.7e-13 | 4.6e-24 / 4.9e-24 | -1.0e-14 / -1.6e-14 | 34 / 1791 | 0 / 0 | 0 | 0 | 3 |
+| normal | 0.8 | 40 | 1.5e-14 / 1.6e-14 | 4.6e-13 / 3.7e-13 | 2.3e-24 | -1.8e-14 / -1.9e-14 | 559 / 12815 | 0 / 0 | 0 | 4 | 3 |
+| normal | 0.8 | 80 | 4.1e-14 / 3.0e-14 | 1.6e-12 / 8.9e-13 | 2.5e-24 / 2.3e-24 | -4.1e-14 / -4.0e-14 | 3140 / 99868 | 0 / 0 | 15 | 18 | 8 |
+| normal | 0.8 | 160 | 8.2e-14 | 1.3e-11 / 1.5e-11 | 3.0e-24 | -1.1e-13 / -9.8e-14 | 23990 / 797208 | 0 / 0 | 174 / 173 | 228 | 61 |
+| normal | 1 | 20 | 8.6e-13 / 8.9e-13 | 1.3e-11 / 1.6e-11 | 2.6e-22 | -9.9e-14 / -1.0e-13 | 54 / 1433 | 0 / 0 | 0 | 0 | 3 |
+| normal | 1 | 40 | 1.1e-9 / 8.0e-10 | 3.9e-8 / 2.2e-8 | 1.1e-19 / 8.0e-20 | -5.5e-13 / -5.8e-13 | 1235 / 9524 | 860 / 1.2e-9 | 40 / 39 | 2 | 3 |
+| normal | 1 | 80 | 1.2e-4 / 1.0e-4 | 7.2e-3 / 6.1e-3 | 6.5e-15 / 5.7e-15 | -4.6e-13 / -6.7e-13 | 52940 / 60263 | 10348 / 8.4e-4 | 1060 / 1058 | 16 | 11 |
+| normal | 1 | 160 | 6.5e-3 / 6.1e-3 | 0.16 / 0.17 | 1.7e-13 / 1.6e-13 | -1.5e-7 / -9.7e-10 | 4.30e6 / 4.2e5 | 133966 / 57 | 21112 / 21434 | 209 | 67 |
+| oblique | 0.8 | 20 / 40 / 80 / 160 | 2.8e-14 / 3.8e-14 / 5.5e-14 / 9.1e-14 | 1.7e-12 / 3.8e-12 / 4.0e-12 / 4.7e-12 | 1.7e-23 .. 2.3e-23 | -1.0e-14 .. -6.8e-14 | 72 / 379 / 3341 / 25750 (uncut 1741 .. 858000) | 0 / 0 | 0 | 1 / 2 / 16 / 197 | 2 / 3 / 6 / 53 |
+
+Verdict on the gate at the baseline setting against the corrected clauses (L1 < 1e-12, Linf < 1e-10,
+E_shape < 1e-15, min alpha > -1e-12, limiter volume < 1e-12 of a cell, np8 = np1 to 1e-10, cut = 0):
+- OF Co 0.8 holds on the numbers on both arms and every N: L1 <= 9.1e-14, Linf <= 1.5e-11,
+  E_shape <= 3e-24, min alpha >= -1.1e-13, limiter 0, np8 = np1 to 1e-13 (identity table: every
+  pair at OF Co <= 0.8 identical to 1e-10, worst 2.1e-14 relative on L1(n) of the normal arm N 80
+  Co 0.8, 1.1e-13 absolute on the mass at the oblique arm N 160). So the one-plane path holds on the
+  plane at OF Co 0.2, 0.5 and 0.8 on both arms and at OF Co 1 on the oblique arm (60 of 64 cells,
+  all but the normal arm at OF Co 1 at N 40 / 80 / 160; N 20 holds the numerical clauses but is
+  one of the four np1/np8 pairs that differ).
+- The normal arm at OF Co 1 fails at N >= 40, grows with N, as in round 3 and in the scan.
+- The clause "cut = 0" is not met in any case (34 .. 4.3e6 faces): faces whose vertex ring holds
+  a cell with 1e-12 < alpha < 1 - 1e-12 and no plane. At OF Co <= 0.8 they are harmless (the
+  numerical clauses hold with them: the ring cells are slivers below the wispTol threshold whose
+  faces take the all-or-nothing value within round-off of the clipped value), so the counter as
+  defined does not discriminate below alpha of about 1e-8; what discriminates the failing cells
+  is the alpha of the plane-less ring cell at the centroid cell (1e-12 .. 5e-9, round 3) and the
+  limiter firing.
+- Identity np1 = np8: 28 of 32 pairs identical to 1e-10; the four that differ are the normal arm at
+  OF Co 1 (N 20: round-off floor of L1(n), 1.5e-15 against 1.9e-15 is not a difference of
+  consequence, N 40 / 80 / 160: 0.29 / 0.13 / 0.06).
+
+**Consequence (the pre-registered falsifier).** The normal arm at OF Co 1 does not reach round-off at
+any value of surfCellTol, with or without the second half of the interface-cell test; the smaller
+tolerance gives noise normals on round-off slivers, planes where the CCS has nothing to bracket,
+more positionings, and aborts. One plane per face is a Co <= 0.8 scheme on the tilted plane (the
+per-face Courant number of the largest face of the normal arm is 0.40 at OF Co 0.8 and 0.50 at OF
+Co 1; the oblique arm's east face is 1.0 at OF Co 1 and passes), and the pieces path stays the
+Co 1 scheme. No rule, tolerance, fallback or branch was added; the only code of this round is the
+two template tokens, the two counters and one print.
