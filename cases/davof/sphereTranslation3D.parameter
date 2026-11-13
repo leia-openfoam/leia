@@ -209,4 +209,6 @@ values
     TPF_TILT_C ( none );
     TPF_TILT_MODE ( biased );
     TPF_POSITION_DIAG ( false );
+    // the print-only flux error diagnostics (sweptFluxErrorDiag, 2026-11-14)
+    TPF_FLUX_ERROR_DIAG ( false );
 }

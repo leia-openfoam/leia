@@ -217,6 +217,7 @@ Foam::davofSweptAdvection::davofSweptAdvection
     sweptExactCaps_(modelDict().getOrDefault<bool>("sweptExactCaps", false)),
     sweptReinitFaceFractions_(modelDict().getOrDefault<bool>("sweptReinitFaceFractions", false)),
     sweptExactFluxError_(modelDict().getOrDefault<bool>("sweptExactFluxError", false)),
+    sweptFluxErrorDiag_(modelDict().getOrDefault<bool>("sweptFluxErrorDiag", false)),
     sweptFragmentLog_(modelDict().getOrDefault<bool>("sweptFragmentLog", false)),
     fragFallbackFaces_(),
     fragFallbackFacesPrev_(),

@@ -622,6 +622,12 @@ class davofSweptAdvection
             //  translated sphere (key sweptExactFluxError, default false;
             //  2026-11-12, see exactFluxError)
             bool sweptExactFluxError_;
+            //- Print-only diagnostics of the flux error (key
+            //  sweptFluxErrorDiag, default false; 2026-11-14): the signed mean
+            //  under three sign conventions, the per-cell net error e_k and
+            //  the split by face orientation, one line per step after the
+            //  exactFluxError line (the transport unchanged)
+            bool sweptFluxErrorDiag_;
             bool sweptFragmentLog_;
             bitSet fragFallbackFaces_;
             bitSet fragFallbackFacesPrev_;

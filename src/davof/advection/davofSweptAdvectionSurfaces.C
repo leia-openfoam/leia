@@ -3038,6 +3038,35 @@ void Foam::davofSweptAdvection::exactFluxError(const scalar dt)
     const polyBoundaryMesh& pbm = mesh_.boundaryMesh();
 
     scalar sumW = 0, sumE = 0, sumS = 0, maxE = 0;
+
+    // the print-only diagnostics (sweptFluxErrorDiag, 2026-11-14)
+    scalarField alphaNei;
+    scalarField cellNet;
+    scalar sumFlow = 0, sumWet = 0, sumRawAbs = 0;
+    FixedList<scalar, 3> grpS(0), grpW(0);
+    if (sweptFluxErrorDiag_)
+    {
+        const scalarField& a1 = alpha1_.primitiveField();
+        alphaNei.setSize(nFaces, 0);
+        forAll(alphaNei, f)
+        {
+            alphaNei[f] = (f < nInt) ? a1[nei[f]] : a1[own[f]];
+        }
+        forAll(alpha1_.boundaryField(), patchi)
+        {
+            const fvPatchScalarField& pf = alpha1_.boundaryField()[patchi];
+            if (pf.coupled())
+            {
+                const scalarField pn(pf.patchNeighbourField());
+                const label start = pf.patch().start();
+                forAll(pn, i)
+                {
+                    alphaNei[start + i] = pn[i];
+                }
+            }
+        }
+        cellNet.setSize(mesh_.nCells(), 0);
+    }
     forAll(inSet, f)
     {
         if (!inSet[f]) continue;
@@ -3065,6 +3094,21 @@ void Foam::davofSweptAdvection::exactFluxError(const scalar dt)
         sumE += w*mag(diff);
         sumS += w*diff;
         maxE = max(maxE, mag(diff));
+        if (sweptFluxErrorDiag_)
+        {
+            const scalar raw = faceValue(dVf_, f) - vEx;
+            sumFlow += w*diff*((pv >= 0) ? 1 : -1);
+            sumWet += w*diff*((alpha1_.primitiveField()[own[f]] >= alphaNei[f]) ? 1 : -1);
+            sumRawAbs += w*mag(raw);
+            const vector& sf = Sf[f];
+            const label g =
+                (mag(sf.x()) >= mag(sf.y()) && mag(sf.x()) >= mag(sf.z())) ? 0
+              : (mag(sf.y()) >= mag(sf.z()) ? 1 : 2);
+            grpS[g] += w*diff;
+            grpW[g] += w;
+            cellNet[own[f]] += raw;
+            if (f < nInt) cellNet[nei[f]] -= raw;
+        }
     }
     reduce(sumW, sumOp<scalar>());
     reduce(sumE, sumOp<scalar>());
@@ -3077,4 +3121,47 @@ void Foam::davofSweptAdvection::exactFluxError(const scalar dt)
         << " faces: L1 " << sumE/max(sumW, scalar(1)) << ", Linf " << maxE
         << ", signed mean " << sumS/max(sumW, scalar(1))
         << " (|dVf - dVf_exact|/V); wall " << wall << " s" << endl;
+
+    if (sweptFluxErrorDiag_)
+    {
+        scalar nI = 0, eL1 = 0, eL2 = 0, eInf = 0, eS = 0, netAll = 0;
+        for (const label celli : surf_->interfaceLabels())
+        {
+            const scalar e = cellNet[celli]/V[celli];
+            nI += 1;
+            eL1 += mag(e);
+            eL2 += sqr(e);
+            eInf = max(eInf, mag(e));
+            eS += e;
+        }
+        netAll = sum(cellNet);
+        reduce(nI, sumOp<scalar>());
+        reduce(eL1, sumOp<scalar>());
+        reduce(eL2, sumOp<scalar>());
+        reduce(eInf, maxOp<scalar>());
+        reduce(eS, sumOp<scalar>());
+        reduce(netAll, sumOp<scalar>());
+        reduce(sumFlow, sumOp<scalar>());
+        reduce(sumWet, sumOp<scalar>());
+        reduce(sumRawAbs, sumOp<scalar>());
+        for (label g = 0; g < 3; ++g)
+        {
+            reduce(grpS[g], sumOp<scalar>());
+            reduce(grpW[g], sumOp<scalar>());
+        }
+        const scalar nn = max(nI, scalar(1));
+        const scalar sw = max(sumW, scalar(1));
+        Info<< "davofSwept: flux error diagnostics: signed mean orientation "
+            << sumS/sw << ", flow " << sumFlow/sw << ", wetter " << sumWet/sw
+            << "; per-cell net error over " << label(nI + 0.5)
+            << " interface cells: L1 " << eL1/nn << ", L2 " << Foam::sqrt(eL2/nn)
+            << ", Linf " << eInf << ", signed mean " << eS/nn
+            << ", sum(e V) " << netAll << " (sum|dVf - dVf_exact| "
+            << sumRawAbs << "); signed mean by face normal x "
+            << grpS[0]/max(grpW[0], scalar(1)) << " (" << label(grpW[0] + 0.5)
+            << "), y " << grpS[1]/max(grpW[1], scalar(1)) << " ("
+            << label(grpW[1] + 0.5) << "), z "
+            << grpS[2]/max(grpW[2], scalar(1)) << " (" << label(grpW[2] + 0.5)
+            << ")" << endl;
+    }
 }

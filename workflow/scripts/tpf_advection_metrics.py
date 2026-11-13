@@ -126,7 +126,10 @@ LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
             "timeStepTime",
             # 2026-11-12: the per-step flux error on the translated sphere
             "fluxErrFaces", "fluxErrL1", "fluxErrInf", "fluxErrSigned", "fluxErrWall",
-            "posBefore", "posAfter", "ccsShift")
+            "posBefore", "posAfter", "ccsShift",
+            # 2026-11-14: the flux error diagnostics (sweptFluxErrorDiag)
+            "fsgnOrient", "fsgnFlow", "fsgnWet", "ekFaces", "ekL1", "ekL2", "ekInf",
+            "ekSigned", "ekSum", "ekRawAbs", "sgnX", "sgnY", "sgnZ")
 COLUMNS = (["TIME", "step"] + list(AF_COLS.values()) + list(REC_COLS.values())
            + list(VOL_COLS.values()) + list(LOG_COLS)
            + ["status", "abortStep", "abortReason", "tpfCommit", "tpfVersion"])
@@ -190,6 +193,11 @@ _RE_POSDIAG = re.compile(
 _RE_FLUXERR = re.compile(
     r"^davofSwept: exact flux error over (\d+) faces: L1 (\S+), Linf (\S+), "
     r"signed mean (\S+) \(\|dVf - dVf_exact\|/V\); wall (\S+) s")
+_RE_FLUXDIAG = re.compile(
+    r"^davofSwept: flux error diagnostics: signed mean orientation (\S+), flow (\S+), "
+    r"wetter (\S+); per-cell net error over (\d+) interface cells: L1 (\S+), L2 (\S+), "
+    r"Linf (\S+), signed mean (\S+), sum\(e V\) (\S+) \(sum\|dVf - dVf_exact\| (\S+)\); "
+    r"signed mean by face normal x (\S+) \(\d+\), y (\S+) \(\d+\), z (\S+) \(\d+\)")
 _RE_T = re.compile(
     r"^t = ([^,]+),\s*sum\(alpha\*V\) = ([^,]+),\s*dev = ([^%]+)%,\s*"
     r"1-max\(alpha1\) = (\S+) at cell \S+,\s*min\(alpha1\) = (\S+) at cell")
@@ -385,6 +393,13 @@ def read_log(path):
                     cur["posBefore"] = m.group(1)
                     cur["posAfter"] = m.group(2)
                     cur["ccsShift"] = m.group(3)
+                continue
+            m = _RE_FLUXDIAG.match(line)
+            if m:
+                for k, v in zip(("fsgnOrient", "fsgnFlow", "fsgnWet", "ekFaces", "ekL1", "ekL2",
+                                 "ekInf", "ekSigned", "ekSum", "ekRawAbs", "sgnX", "sgnY", "sgnZ"),
+                                m.groups()):
+                    cur[k] = v
                 continue
             m = _RE_FLUXERR.match(line)
             if m:

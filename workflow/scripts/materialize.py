@@ -253,6 +253,9 @@ def _with_derived_tokens(tokens):
         extra += ("\n        // the ringTilt model's tilt theta_b = tiltC h / R (2026-11-13)"
                   "\n        tiltC " + tc + ";"
                   "\n        tiltMode " + str(out.get("TPF_TILT_MODE", "biased")) + ";")
+    if str(out.get("TPF_FLUX_ERROR_DIAG", "false")) == "true":
+        extra += ("\n        // the print-only flux error diagnostics (2026-11-14)"
+                  "\n        sweptFluxErrorDiag true;")
     if str(out.get("TPF_POSITION_DIAG", "false")) == "true":
         extra += "\n        positionDiag true;"
     out["TPF_CORRECTOR_KEYS"] = out["TPF_CORRECTOR_KEYS"] + extra
