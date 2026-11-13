@@ -9,7 +9,7 @@ tags: [concept, part/advection]
 date: 2026-11-13
 decided_by: [config/gates/ghostCellRefinedBox3D.yaml, config/gates/ghostCellRefinedBoxUniform3D.yaml, config/gates/ghostCellRefinedBoxN256Ghost3D.yaml, applications/test/leiaTestGhostCellReconstruction]
 code: [src/leiaLevelSet/semiLagrangian/ghostCellQuadraticWeightedLeastSquaresReconstruction.C, src/leiaLevelSet/semiLagrangian/ghostCellQuadraticWeightedLeastSquaresReconstruction.H]
-sources: ["STATUS 11.31"]
+sources: ["STATUS 11.32"]
 ---
 # Ghost cells for the semi-Lagrangian fit at a 2:1 transition
 
@@ -25,7 +25,7 @@ The goal is an adaptive solver. The matrix symbol of the original scheme predict
 
 ## The numbers
 
-All numbers and the limits of the gate are in [STATUS 11.31](https://github.com/leia-openfoam/leia/blob/feature/sl-ghost-cells/STATUS.md). Shape error (L1) at T = 1 over N = 32, 64, 128, 256: original 5.588e-3, 3.736e-2, 2.512e-1, 5.059e-1; ghost cells 5.695e-3, 2.287e-3, 3.488e-4, 1.122e-4; uniform coarse control 6.403e-3, 2.766e-3, 5.687e-4, 1.361e-4. At N = 64 and T = 1, 71 % of the summed level-set error of the original scheme lies within 3 coarse cells of a transition. Cost of the class: 1.4 to 1.7 times the solve wall clock, and more than 4.9 GB per rank at 10.2e6 cells on 8 ranks against 2.7 GB.
+All numbers and the limits of the gate are in [STATUS 11.32](https://github.com/leia-openfoam/leia/blob/feature/sl-ghost-cells/STATUS.md). Shape error (L1) at T = 1 over N = 32, 64, 128, 256: original 5.588e-3, 3.736e-2, 2.512e-1, 5.059e-1; ghost cells 5.695e-3, 2.287e-3, 3.488e-4, 1.122e-4; uniform coarse control 6.403e-3, 2.766e-3, 5.687e-4, 1.361e-4. At N = 64 and T = 1, 71 % of the summed level-set error of the original scheme lies within 3 coarse cells of a transition. Cost of the class: 1.4 to 1.7 times the solve wall clock, and more than 4.9 GB per rank at 10.2e6 cells on 8 ranks against 2.7 GB.
 
 ## Open
 
@@ -37,6 +37,6 @@ All numbers and the limits of the gate are in [STATUS 11.31](https://github.com/
 
 ## Log
 
-- 2026-11-13 · gate `ghostCellRefinedBox3D` on Lichtenberg: G1 holds, G2 passes, the falsification condition is not met (STATUS 11.31).
+- 2026-11-13 · gate `ghostCellRefinedBox3D` on Lichtenberg: G1 holds, G2 passes, the falsification condition is not met (STATUS 11.32).
 
 [[hubs/advection]] - [[models/sl-reconstruction]] - [[concepts/sl-amplification-symbol]] - [[concepts/polyhedral-fit-amplification]] - [[concepts/advection-regression-set]]

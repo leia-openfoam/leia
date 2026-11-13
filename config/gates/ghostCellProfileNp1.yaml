@@ -4,7 +4,7 @@
 #
 # WHY. The ghost-cell class ghostCellQuadraticWeightedLeastSquares is 1.4 times slower than
 # uncachedQuadraticWeightedLeastSquares at N = 128 on 8 ranks (282 s against 204 s, STATUS
-# 11.31) and uses about 2 times the memory. This study prepares the cases for a profile
+# 11.32) and uses about 2 times the memory. This study prepares the cases for a profile
 # that attributes the cost. It is the N = 128 rung of ghostCellRefinedBox3D.yaml, with
 # mode serial. Both reconstructions are arms, so that the profile of the original class is
 # the reference.

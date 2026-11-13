@@ -301,7 +301,9 @@ int main(int argc, char *argv[])
             return velModel->velocity(x - d*g);
         };
 
-        const label nK = 4;
+        // Shells |d| <= 1h..8h (8h since 2026-11-13: the fade of the default
+        // nLayers 3 reaches 2L = 8h; plan section 4a, repair 2).
+        const label nK = 8;
         scalarField e1(nK + 1, 0), e2(nK + 1, 0), r1(nK + 1, 0), r2(nK + 1, 0), vv(nK + 1, 0);
         forAll(C, c)
         {
@@ -325,10 +327,24 @@ int main(int argc, char *argv[])
         const surfaceVectorField& Cf = mesh.Cf();
         const surfaceScalarField& magSf = mesh.magSf();
         scalar f1 = 0, f2 = 0, fr1 = 0, fr2 = 0, fa = 0;
-        // The flux error also per shell |d(x_f)| <= k h (k = 1..4), so that an
+        // The flux error also per shell |d(x_f)| <= k h (k = 1..8), so that an
         // interpolation error inside the band can be told from a jump at the
         // band edge (2026-11-12: the first ladder could not tell them apart).
         scalarField g1(nK, 0), g2(nK, 0), ga(nK, 0);
+        // The flux error against the reference WITH the intended fade:
+        //     ue_ref(x) = w(a) u(Pi(x)) + (1 - w(a)) u(x),
+        //     w(a) = 1 (a <= 0), (1 + cos(pi a))/2 (0 < a < 1), 0 (a >= 1),
+        // a = (|d| - L)/L (fadePlacement legacy, extendThroughFade) or
+        // a = (|d| - L/2)/(L/2) (insideBand), L = (nLayers + 1) h, over the
+        // faces with |d(x_f)| <= 3L. This is the operator the interfaceExtension
+        // base intends in fadeMode levelSet on a signed-distance input; a
+        // velocity jump at L is a first-order error against it. Not meaningful
+        // for fadeMode layer (its fade is per layer) or for a model outside
+        // the interfaceExtension base.
+        const label nLay = velExtDict.getOrDefault<label>("nLayers", 3);
+        const word placement =
+            velExtDict.getOrDefault<word>("fadePlacement", "legacy");
+        scalar q1 = 0, q2 = 0, qa = 0;
         const labelUList& fOwn = mesh.owner();
         forAll(phiE, f)
         {
@@ -344,6 +360,23 @@ int main(int argc, char *argv[])
                     g1[k] += e*A; g2[k] += e*e*A; ga[k] += A;
                 }
             }
+            {
+                const scalar hf = cellSize[fOwn[f]];
+                const scalar L = (nLay + 1)*hf;
+                if (Foam::mag(d) <= 3*L)
+                {
+                    const scalar a = (placement == "insideBand")
+                        ? (Foam::mag(d) - 0.5*L)/(0.5*L)
+                        : (Foam::mag(d) - L)/L;
+                    const scalar w = (a <= 0) ? 1.0
+                        : (a >= 1) ? 0.0 : 0.5*(1.0 + Foam::cos(M_PI*a));
+                    const vector uf = velModel->velocity(Cf[f]);
+                    const scalar refF =
+                        (w*ueStar + (1.0 - w)*uf) & mesh.Sf()[f];
+                    const scalar q = Foam::mag(phiE[f] - refF)/A;
+                    q1 += q*A; q2 += q*q*A; qa += A;
+                }
+            }
             if (Foam::mag(d) > W) continue;
             const scalar r = Foam::mag(phi[f] - ref)/A;
             f1 += e*A; f2 += e*e*A; fr1 += r*A; fr2 += r*r*A; fa += A;
@@ -354,6 +387,7 @@ int main(int argc, char *argv[])
         reduce(vv, sumOp<scalarField>());
         reduce(f1, sumOp<scalar>()); reduce(f2, sumOp<scalar>());
         reduce(fr1, sumOp<scalar>()); reduce(fr2, sumOp<scalar>()); reduce(fa, sumOp<scalar>());
+        reduce(q1, sumOp<scalar>()); reduce(q2, sumOp<scalar>()); reduce(qa, sumOp<scalar>());
 
         Info<< "Exact extension reference ue* = u(Pi(x)) (" << sDict.get<word>("type")
             << "), W = " << W << ":" << nl;
@@ -383,6 +417,7 @@ int main(int argc, char *argv[])
             {
                 csv << ",E_FLUX_L1_" << (k + 1) << "H,E_FLUX_L2_" << (k + 1) << "H";
             }
+            csv << ",E_FADEFLUX_L1,E_FADEFLUX_L2";
             csv << "\n";
             csv << h << "," << W;
             for (label k = 0; k <= nK; ++k)
@@ -398,6 +433,8 @@ int main(int argc, char *argv[])
                 const scalar GA = Foam::max(ga[k], SMALL);
                 csv << "," << g1[k]/GA << "," << Foam::sqrt(g2[k]/GA);
             }
+            const scalar QA = Foam::max(qa, SMALL);
+            csv << "," << q1/QA << "," << Foam::sqrt(q2/QA);
             csv << "\n";
         }
     }

@@ -20,7 +20,7 @@ date: 2026-09-28
 
 ## What is being worked on
 
-0. 2026-11-13: the branch `integration/sl-pde` joins three lines: the PDE level-set work on the hub's `development` ([[concepts/pde-level-set-verification]], STATUS 11.29 and 11.30), the semi-Lagrangian amplification analysis that lived only in laptop commits ([[concepts/sl-amplification-symbol]]), and the ghost-cell reconstruction for 2:1 transitions ([[concepts/sl-ghost-cell-reconstruction]], STATUS 11.31). `development` moves to it only after the build and the bit-identity runs on Lichtenberg pass. The SLURM account is `special00005` since this date.
+0. 2026-11-13: the branch `integration/sl-pde` joins three lines: the PDE level-set work on the hub's `development` ([[concepts/pde-level-set-verification]], STATUS 11.29 and 11.30), the semi-Lagrangian amplification analysis that lived only in laptop commits ([[concepts/sl-amplification-symbol]]), and the ghost-cell reconstruction for 2:1 transitions ([[concepts/sl-ghost-cell-reconstruction]], STATUS 11.32). `development` moves to it only after the build and the bit-identity runs on Lichtenberg pass. The SLURM account is `special00005` since this date.
 
 1. 2026-09-28: this knowledge base (Quartz site, three.js graph), the separation of the
    semi-Lagrangian topic from the source-term topic (four sections of the gcls pre-print moved to

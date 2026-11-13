@@ -13,8 +13,10 @@ other cell is unchanged. Run it before prepare_tables.py (on Lichtenberg, not on
 import csv
 
 MAP = "data/eshape/preprint_eshape_map.csv"
-TABLES = {"table_advection_sphere.tex": ("table_advection_sphere", 8),
-          "table_advection_curved.tex": ("table_advection_curved", 9)}
+# the E_shape column (10 and 11 since L1(1 - n.n_Sigma) and its order were added after
+# L1(n) on 2026-11-12; 8 and 9 before)
+TABLES = {"table_advection_sphere.tex": ("table_advection_sphere", 10),
+          "table_advection_curved.tex": ("table_advection_curved", 11)}
 NOTE = ("% E_shape column re-scored against the exact sphere (fork davof-swept 1f3f238) and "
         "written by set_eshape.py from " + MAP)
 

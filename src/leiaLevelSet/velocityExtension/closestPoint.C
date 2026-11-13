@@ -80,7 +80,7 @@ Foam::closestPoint::closestPoint(const fvMesh& mesh)
         // walks a tetrahedral mesh around a spherical obstacle), and the
         // floor of 16 keeps the budget sane for the usual nLayers_ = 3.
         cpWalkMaxSteps_ =
-            Foam::max(label(16), label(4*cpMaxDist_*nLayers_ + 8));
+            Foam::max(label(16), label(4*cpMaxDist_*reachLayers() + 8));
     }
 
     if (cpKnownVicinity_)
@@ -522,7 +522,7 @@ void Foam::closestPoint::extend()
         }
 
         const scalar hc = cellSize_[c];
-        const scalar maxDist = cpMaxDist_*nLayers_*hc;
+        const scalar maxDist = cpMaxDist_*reachLayers()*hc;
         // Taylor-vs-interpolation operator jumps at a processor crossing are
         // O(h^2); allow them without tripping the divergence guard.
         const scalar crossSlack = 1e-3*hc;
@@ -569,7 +569,8 @@ void Foam::closestPoint::extend()
         //
         // haveHalo now controls ONLY whether halo DATA is available, never the
         // iteration.
-        const label nIter = nDescent_ + nLayers_ + 2;
+        // reachLayers() = nLayers_ for fadePlacement legacy (unchanged).
+        const label nIter = nDescent_ + reachLayers() + 2;
 
         for (label it = 0; it < nIter; ++it)
         {

@@ -1,0 +1,59 @@
+# PDE LEVEL SET, STEP A0.2: the band-edge repair (plan docs/plan-velocity-extension-verification.md,
+# section 4a, repair 2). Supervisor's go 2026-11-13.
+# THE DEFECT (STATUS 11.30 item 9, MEASURED): closestPoint and meshWaveExt write the extension for
+# |psi| <= L only (L = (nLayers+1) h = 4 h); the fade over [L, 2L] then blends U with U, so Uext
+# jumps from u(Pi(x)) to U at L. closestPoint's face-flux error against u(Pi(x_f)) is second order in
+# the shells |d| <= 1h..3h and first order only in the 4h shell, which holds L.
+# THE CHANGE: velocityExtension.fadePlacement (token VE_FADE_PLACEMENT, default legacy = the old
+# behaviour): extendThroughFade computes the extension out to 2L and fades it into U over [L, 2L]
+# (closestPoint's descent reach and step budget scale with the band: reachLayers() = 2 nLayers + 1);
+# insideBand keeps the band at L and fades over [L/2, L].
+# NEW METRIC: E_FADEFLUX_L1/L2 = the face-flux error against the reference WITH the intended fade,
+# ue_ref = w u(Pi(x)) + (1 - w) u(x), over |d(x_f)| <= 3L; a jump at L is a first-order error against
+# it. Meaningful for fadeMode levelSet on this signed-distance input only. Shells now 1h..8h.
+# Case: as aStatic2D (2Dvortex circle in shear2D at t = 0, signed-distance input, serial).
+#
+# GATE A0.2a, INERTNESS (pre-registered 2026-11-13, before any run): every legacy arm of this study
+# equals the same (model, fadeMode, N) arm of aStatic2Dfade (clone leia-pde-a0, binaries f3b8cd90)
+# at tolerance 0 in every common column of leiaTestVelocityExtension.csv and
+# leiaTestVelocityExtensionExact.csv. Also a0Identity2Dvortex (advected, np 4, closestPoint and
+# projectionBlend) re-run in the new clone equals the leia-pde-a0 run at tolerance 0.
+# FAIL = any difference: the default is not inert.
+#
+# PRE-REGISTERED PREDICTIONS (2026-11-13, before any run). Orders over N 64-128-256, L1:
+#   P1 closestPoint/levelSet/legacy: E_FADEFLUX order 0.8 to 1.3 (the jump).
+#   P2 closestPoint/levelSet/extendThroughFade: E_FADEFLUX order >= 1.8, and E_FLUX order >= 1.8 in
+#      every shell 1h..4h. E_EXT in the shells 1h..3h within 1 % of legacy (the same descent there).
+#      Fallback cells (log "fallback cells") zero or a fraction below 1 % of the band.
+#   P3 closestPoint/levelSet/insideBand: E_FADEFLUX order >= 1.8; E_FLUX order ~1 in the shells 3h-4h
+#      (the fade [2h, 4h] is first order against u(Pi(x)) by construction).
+#   P4 closestPoint/layer/extendThroughFade: E_FLUX order >= 1.8 in every shell 1h..4h.
+#   P5 meshWave (control: a first-order extension): E_FADEFLUX order ~1 for every placement; the
+#      metric must not reward a first-order model.
+# FALSIFIED: if P2 gives an E_FADEFLUX order below 1.5 at 128-256, the jump is not the only first-
+# order source at the band edge (candidates: the descent reach, the fallback fill); repair 2 is then
+# not done.
+# HOW IT COULD PASS FOR THE WRONG REASON: the token not consumed (check: extendThroughFade differs
+# from legacy in E_FLUX_L1_4H); the reference fade not the code's fade (check: P3 and P2 both pass).
+study_name: aStatic2Dedge
+case: 2Dvortex
+mesh: hex
+mode: serial
+np: 1
+solver: leiaTestVelocityExtension
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 60
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  END_TIME: [1]
+  N_CELLS: [32, 64, 128, 256]
+  VELOCITY_EXTENSION: [closestPoint, meshWave]
+  FADE_MODE: [levelSet, layer]
+  VE_FADE_PLACEMENT: [legacy, extendThroughFade, insideBand]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  PHASE_INDICATOR: [detrixheAslam]

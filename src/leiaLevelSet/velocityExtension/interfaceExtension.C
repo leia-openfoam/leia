@@ -72,7 +72,8 @@ Foam::interfaceExtension::interfaceExtension(const fvMesh& mesh)
         mesh,
         dimensionedVector("0", dimless, vector::zero)
     ),
-    seedCells_()
+    seedCells_(),
+    fadePlacement_(velExtDict_.getOrDefault<word>("fadePlacement", "legacy"))
 {
     // Anchors must stay strictly inside the application band.
     if (nAnchorLayers_ > nLayers_ - 1)
@@ -86,6 +87,23 @@ Foam::interfaceExtension::interfaceExtension(const fvMesh& mesh)
     {
         nAnchorLayers_ = 0;
     }
+    if
+    (
+        fadePlacement_ != "legacy"
+     && fadePlacement_ != "extendThroughFade"
+     && fadePlacement_ != "insideBand"
+    )
+    {
+        FatalIOErrorInFunction(velExtDict_)
+            << "fadePlacement " << fadePlacement_ << " is not one of"
+            << " (legacy extendThroughFade insideBand)" << exit(FatalIOError);
+    }
+}
+
+
+Foam::label Foam::interfaceExtension::reachLayers() const
+{
+    return (fadePlacement_ == "extendThroughFade") ? 2*nLayers_ + 1 : nLayers_;
 }
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
@@ -266,7 +284,9 @@ void Foam::interfaceExtension::buildBand()
     //
     // In layer mode the full nBand dilation IS the band, because there is no
     // |psi| shell to union with.
-    const label bandExtent = (fadeMode_ == "levelSet") ? nAnchorLayers_ : nBand;
+    const bool through = (fadePlacement_ == "extendThroughFade");
+    const label bandExtent =
+        (fadeMode_ == "levelSet") ? nAnchorLayers_ : (through ? nFade : nBand);
     forAll(layer_, c)
     {
         if (layer_[c] >= 0 && layer_[c] <= bandExtent)
@@ -286,7 +306,8 @@ void Foam::interfaceExtension::buildBand()
         // band and fade are then measured in the same coordinate.
         forAll(psi_, c)
         {
-            if (Foam::mag(psi_[c]) <= (nLayers_ + 1)*cellSize_[c])
+            const scalar L = (nLayers_ + 1)*cellSize_[c];
+            if (Foam::mag(psi_[c]) <= (through ? 2*L : L))
             {
                 band_[c] = 1;
             }
@@ -403,6 +424,7 @@ void Foam::interfaceExtension::updateFlux()
     // damage to the zero contour.
     const label nBand = nLayers_ + 1;
     const label nFade = 2*nBand;
+    const bool inside = (fadePlacement_ == "insideBand");
 
     forAll(Uext_, c)
     {
@@ -411,14 +433,31 @@ void Foam::interfaceExtension::updateFlux()
         if (fadeMode_ == "levelSet")
         {
             const scalar L = (nLayers_ + 1)*cellSize_[c];
-            a = (Foam::mag(psi_[c]) - L)/Foam::max(L, SMALL);
+            if (inside)
+            {
+                // fadePlacement insideBand: the fade covers [L/2, L].
+                a = (Foam::mag(psi_[c]) - 0.5*L)/Foam::max(0.5*L, SMALL);
+            }
+            else
+            {
+                a = (Foam::mag(psi_[c]) - L)/Foam::max(L, SMALL);
+            }
         }
         else
         {
             const label l = layer_[c];
             // Outside the dilated region entirely: raw velocity.
-            a = (l < 0) ? 1.0
-              : scalar(l - nBand)/scalar(Foam::max(nFade - nBand, 1));
+            if (inside)
+            {
+                // fadePlacement insideBand: the fade covers layers nBand/2 to nBand.
+                a = (l < 0) ? 1.0
+                  : (scalar(l) - 0.5*nBand)/Foam::max(0.5*nBand, scalar(1));
+            }
+            else
+            {
+                a = (l < 0) ? 1.0
+                  : scalar(l - nBand)/scalar(Foam::max(nFade - nBand, 1));
+            }
         }
 
         if (a >= 1.0)

@@ -312,6 +312,7 @@ levelSet
         // levelSet (default): band and fade on |psi| <= (nLayers+1) h, which assumes psi is a distance;
         // layer: band and fade on the topological layer index from the alpha seed (no distance assumed)
         fadeMode    @!FADE_MODE!@;
+        fadePlacement @!VE_FADE_PLACEMENT!@;
         // projectionBlend (D. Bothe 2026-10; read only by that model): P(x) = x - dist n,
         // Uext = delta U + (1 - delta) U(P), delta from 0 (|dist| <= w1 h) to 1 (>= w2 h)
         distance    @!PB_DISTANCE!@;
