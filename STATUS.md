@@ -7748,3 +7748,69 @@ built on the login node, CI PASS. Read-outs in `studies/pdeLevelSet/{step0,a0,aS
    reconstruction: it keeps the Navier-Stokes flux exactly at the interface (Pi(x_f) = x_f) and adds
    only a difference of two samples of one field.
 
+
+### 11.31 Ghost cells for the semi-Lagrangian fit at a 2:1 transition: the refined-box gate (2026-11-13, Lichtenberg)
+
+Branch `feature/sl-ghost-cells`, clone `/work/scratch/tm83tomy/leia-ghost` (own binaries,
+libraries `davof-v1.0-42-g5b853707`, OpenFOAM-v2606). Configs
+`config/gates/ghostCellRefinedBox3D.yaml`, `ghostCellRefinedBoxUniform3D.yaml` and
+`ghostCellRefinedBoxN256Ghost3D.yaml`; the read-out was written in the first header before the
+build of the class. Tables: `docs/semi-lagrangian-level-set/sl-level-set-article/data/tables/
+ghostCellRefined{Box3D,BoxUniform3D,BoxN256Ghost3D}_errors.csv`. Driver jobs 56260684 and
+56267191, 8 ranks per case.
+
+The case: `3Dtranslation`, a sphere (R = 0.15) moves with U = (1 0 0) from x = 0.5 to x = 1.5
+through a fixed refined box, x in [0.8, 1.2], one refinement level, CFL 0.5 on the fine cells.
+N is the cell count per unit length IN the box; outside it is N/2. The two arms differ only in
+`SL_RECONSTRUCTION`: `uncachedQuadraticWeightedLeastSquares` (the original scheme, C-Cp/L2) and
+`ghostCellQuadraticWeightedLeastSquares` (C-Cp/L2+g, new class, hexRef8 meshes only). The
+control is the original scheme on a uniform mesh with N/2.
+
+All numbers at T = 1. Shape error: `E_GEOM_ALPHA` (L1, absolute). Volume error: relative.
+Gradient error: the band column `gradientErrorBand` of the errors table.
+
+| N | steps | shape, original | shape, ghost | shape, uniform N/2 | volume, original | volume, ghost | volume, uniform N/2 | band gradient, original | band gradient, ghost | band gradient, uniform N/2 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 32  | 111 | 5.588e-3 | 5.695e-3 | 6.403e-3 | 8.53e-2 | 1.351e-1 | 2.259e-1 | 0.760  | 0.230  | 0.298  |
+| 64  | 172 | 3.736e-2 | 2.287e-3 | 2.766e-3 | 2.59    | 3.215e-2 | 3.481e-2 | 288    | 0.115  | 0.118  |
+| 128 | 296 | 2.512e-1 | 3.488e-4 | 5.687e-4 | 17.9    | 4.529e-3 | 3.557e-3 | 7.6e6  | 0.0589 | 0.0805 |
+| 256 | 548 | 5.059e-1 | 1.122e-4 | 1.361e-4 | 35.8    | 7.370e-4 | 8.091e-4 | 3.6e16 | 0.0133 | 0.0114 |
+
+Observed orders of the shape error (per pair of rungs): ghost 1.32, 2.71, 1.64, fitted over the
+four rungs 1.97; uniform control 1.21, 2.28, 2.06. Orders of the volume error: ghost 2.07, 2.83,
+2.62; uniform control 2.70, 3.29, 2.14.
+
+1. **G1 (the original scheme does not converge on the refined box): HOLDS, MEASURED.** The
+   shape error grows at every rung and the band gradient error grows from 288 (N = 64) to
+   7.6e6 (N = 128). All four runs reach T = 1; the solver does not stop, the field is destroyed.
+   Location, N = 64, T = 1 (job 56272383, `|psi - exact distance|` summed over the cells, not
+   volume-weighted): the cell with the largest error is 0.65 coarse cells from the transition
+   at x = 0.8 and 25 coarse cells from the interface; 71 % of the summed error lies within 3
+   coarse cells of a transition, where 31 % of the cells are. With ghost cells that share is
+   17 %. Limit of this diagnostic: at t <= 0.5 the sum of both arms is dominated by the far
+   field upstream of the sphere (largest error in the first cell layer at the inflow patch,
+   equal in both arms), so the diagnostic does not show WHEN the growth at the transition starts.
+2. **G2 (ghost cells): PASS, MEASURED.** All four rungs complete. Shape error at most 0.89
+   times and volume error at most 1.27 times the uniform coarse control (limit 2). Shape order
+   over the four rungs 1.97 (limit 1.5).
+3. **The falsification condition is not met.** The ghost arm does not diverge, and its shape
+   error is larger than that of the original scheme at one rung only (N = 32, 5.695e-3 against
+   5.588e-3).
+4. **Cost.** Solve wall clock, ghost against original: 282 s against 204 s at N = 128, 5193 s
+   against 3043 s at N = 256. Memory: more than 4.9 GB per rank at N = 256 (10.2e6 cells, 8
+   ranks) against 2.7 GB; the first N = 256 ghost run was killed for lack of memory in step 1
+   (job 56265553, a launch failure, not a result) and was re-run with 12 GB per rank.
+5. **The ghost path is active.** Log at N = 256: 2 refinement levels, 1 177 287 ghost data,
+   291 848 restricted data, 0 linear and 0 constant fallback fits, 0 refined cells without a
+   parent point, 32 768 cells that are not a hexahedron (they keep coarse neighbours as data).
+6. **Before the gate.** `leiaTestGhostCellReconstruction` (E1 to E3) passes in serial and on 4
+   ranks: linear field exact to 3.0e-16; quadratic field exact to 3.2e-16 away from a
+   transition and 2.7e-6 at a transition (the restriction is the mean of the children, which is
+   not exact for a quadratic).
+7. **Open.** (a) A serial against np 4 equivalence run of the solver arm. (b) The interface
+   starts and ends on coarse cells, so the gate does not show a gain from the fine box; against
+   a uniform mesh with the same N the ghost shape error is 2.1, 4.0 and 2.6 times larger. (c) A
+   restriction that is exact for a quadratic. (d) More than one refinement level, refinement
+   that follows the interface, 2D, and the coupled solvers. (e) The memory and the cost of the
+   class. (f) The symbol predicts the two arms in the right sense, but the measured growth of
+   the original scheme was not compared with 1.096 per step.

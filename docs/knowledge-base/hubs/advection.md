@@ -33,6 +33,7 @@ The production transport is the quadratic semi-Lagrangian scheme: a constant-fre
 | model | [[models/volume-correction]] | settled | the global correction is a crossover, not a fix |
 | concept | [[concepts/departure-foot-ab2-centring]] | settled | the arrival form leaves $+\Delta t^2 \partial_t u$; taylor equals rk2 |
 | concept | [[concepts/polyhedral-fit-amplification]] | settled | $\Lambda$ 1.26 on pMesh; not a time-step effect |
+| concept | [[concepts/sl-ghost-cell-reconstruction]] | open | the original fit is destroyed at a hexRef8 2:1 transition; ghost cells pass the refined-box gate |
 | concept | [[concepts/idec-defect-correction-failure]] | retracted | iDEC diverges, $\rho > 1$ |
 | concept | [[concepts/trace-velocity-projected-flux]] | settled | the reconstruct operator carries 70 % of the projectedFlux win |
 | concept | [[concepts/psi-outer-correctors]] | settled | re-advect in every outer iteration; default yes |
