@@ -7785,3 +7785,36 @@ The supervisor's go of 2026-11-13: A0 repair 2 first, then step A on the harder 
    check: the serial/np 4 difference of extendThroughFade at most 10 times that of legacy). The
    advected identity re-runs `a0Identity2Dvortex` in the new clone. Read-out
    `workflow/scripts/pde_a2_analysis.py` and `pde_a_static_analysis.py`. Clone `leia-pde-a2`.
+4. **Results** (jobs 56296366 to 56296370, special00005, clone `leia-pde-a2` at bfa0b14a, all
+   COMPLETED; read-out `studies/pdeLevelSet/a2/a2_summary.txt` and
+   `studies/pdeLevelSet/aStatic2Dedge/aStatic_summary.txt` of the clone). Orders over N 64-128-256, L1.
+   **Inertness: PASS.** 32 of 32 CSVs of the legacy arms equal aStatic2Dfade at tolerance 0; the
+   advected a0Identity2Dvortex (np 4, closestPoint and projectionBlend) 4 of 4 identical.
+5. **The band-edge jump is removed inside L (P2, shells): CONFIRMED.** closestPoint, levelSet band,
+   face-flux error against u(Pi(x_f)) in the 4h shell (the shell that holds L): legacy 1.58e-3 at
+   N 256, orders 0.56 / 1.19; extendThroughFade 6.71e-5, orders 1.75 / 1.97 (24 times smaller). The
+   shells 1h-3h are identical between the two placements (same descent), orders 1.8 to 2.1. The
+   fallback cells are 0 at N 64 to 256 (4 cells, 0.9 %, at N 32).
+6. **E_FADEFLUX (P2, P3): FALSIFIED as pre-registered.** Against the reference with the intended fade,
+   extendThroughFade gives 2.50e-4 at N 256, orders 1.37 / 1.15 (predicted >= 1.8); insideBand 2.28e-4,
+   1.22 / 1.05; legacy 9.08e-3, 1.07 / 1.00 (P1 CONFIRMED). The repair lowers the error by a factor of
+   36 but does not raise its order. DERIVED, not yet tested: the fade width L = (nLayers+1) h scales with
+   h, so the fade weight has w'' ~ 1/L^2 and the interpolation of w (u_e - u), where u_e - u ~ L |grad u|,
+   commits an error h^2 w'' L |grad u| ~ h: a fade whose width scales with h is first order by itself.
+   The falsification condition of the config says "the jump is not the only first-order source at the
+   band edge; repair 2 is not done": that holds. Discriminator (not run): a fade of fixed physical
+   width (nLayers proportional to N) predicts order 2 for E_FADEFLUX.
+7. **P4 (layer band, extendThroughFade): FAILED in the 4h shell** (orders 1.41 / 1.51; the 1h-3h shells
+   pass at 1.8 to 2.1). The layer index is not the normal distance: on a circle the cells of layer 4
+   lie between about 3h and 5.7h from the interface, so the 4h shell holds fade cells. **P5 CONFIRMED**:
+   meshWave gives E_FADEFLUX order 1.0 to 1.1 in every placement; the metric does not reward a first-
+   order extension.
+8. **The 4-rank check: PASS, and better than predicted.** psi at t = 0.02, serial against np 4, relative
+   L1: levelSet legacy 2.3e-5, extendThroughFade 7.0e-8 (330 times smaller); layer legacy 7.8e-6,
+   extendThroughFade 5.7e-8. READING (HYPOTHESIS): with legacy, a cell near |psi| = L that is in the band
+   on one decomposition and out of it on the other carries the whole O(h) jump; without the jump that
+   sensitivity goes. A NEW DEFECT for the parallel path: with extendThroughFade, np 4 sends 66 to 67 of
+   about 900 band cells (7 %) to the fallback fill (serial: 0 to 1), because the descents now reach 8h
+   and the one-layer halo cannot represent a foot point that far across a seam. The fallback is the
+   steadyUpwind fill, which does not converge (11.30 item 6). Plan A0 repair 3 (the failure switch)
+   must cover this before extendThroughFade is used on more ranks.
