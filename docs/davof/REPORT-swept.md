@@ -6348,3 +6348,112 @@ normal; N-2 and N-3 are not evaluated on them. Added, with the same predictions 
 the oblique translation `nor_transOb_N{32,64,128}` (8 ranks), U = (0.3 0.5 0.8124), |U| = 1,
 over 0.3 (the sphere stays in the box), OpenFOAM Co = (|Ux| + |Uy| + |Uz|) dt/h = 1.6124
 Co_target, so the targets 0.124039 and 0.620194 give OpenFOAM Co 0.2 and 1.
+
+### MEASURED (2026-11-12/13; 54 cases on 8 ranks, 12 serial; every job completed)
+
+Jobs: build 56255681; orchestrators 56255682-89 (axial translation N 32/64/128 and N 32
+serial, rotation N 32/64/128 and N 32 serial), 56258347-49 (the oblique translation, post
+hoc). Tables: `/work/scratch/tm83tomy/davof/agents/normal/csv/run1/{nor_cases.csv,
+nor_orders.csv,nor_tables.md}` (every norm (a)-(f), least-squares and pairwise orders, wall
+clock); the 1 - n.n_e columns of the finished studies in `csv/existing/{standing,corrector,
+ladders}/`. Two rotation cases ended early: the Youngs row at N 128 aborted by the solver's
+guard at both Courant numbers (min alpha -0.85 at step 4919 of 6912, -0.72 at step 658 of
+1382); they are not resubmitted, the abort is the row's result.
+
+The four orders, least squares over N 32, 64, 128 (p = L1 of the angle; d = L1 of the
+in-cell position error; flux = max over the steps of the per-step L1 flux error relative to
+the cell volume; q = E_shape; the last column L1(1 - n.n_e), exactly twice the L2 order of
+|n - n_e|). OF Co is the OpenFOAM Courant number.
+
+| test | OF Co | normal | p | d | flux | q | 1 - n.n_e | wall s at N 128 (8 ranks) |
+|---|---|---|---|---|---|---|---|---|
+| axial translation | 0.2 | exact | 1.63 | 1.92 | 0.97 | 1.95 | 2.28 | 314 |
+| | | ring | 0.96 | 1.88 | 0.89 | 1.86 | 1.76 | 305 |
+| | | Youngs | 0.02 | 1.02 | 0.10 | 1.08 | 0.00 | 469 |
+| oblique translation | 0.2 | exact | 2.53 | 1.94 | 0.91 | 1.92 | 6.06 | 1040 |
+| | | ring | 1.29 | 2.16 | 1.11 | 2.14 | 2.38 | 1060 |
+| | | Youngs | 0.15 | 0.73 | -0.35 | 0.66 | 0.20 | 1360 |
+| oblique translation | 1 | exact | 2.33 | 1.99 | 0.93 | 1.93 | 4.77 | 266 |
+| | | ring | 1.22 | 2.37 | 1.34 | 2.34 | 2.27 | 282 |
+| | | Youngs | 0.13 | 0.77 | -0.28 | 0.75 | 0.22 | 234 |
+| rotation | 0.2 | exact | 1.83 | 1.69 | - | 1.67 | 3.61 | 9660 |
+| | | ring | 1.17 | 1.90 | - | 1.86 | 2.14 | 9330 |
+| | | Youngs (N 32, 64; N 128 aborted) | 0.18 | 1.22 | - | 1.16 (pair) | 0.33 | aborted |
+| rotation | 1 | exact | 1.73 | 1.72 | - | 1.69 | 3.36 | 1760 |
+| | | ring | 1.13 | 1.90 | - | 1.87 | 2.06 | 2030 |
+| | | Youngs (N 32, 64; N 128 aborted) | 0.14 | 1.08 | - | 1.00 (pair) | 0.27 | aborted |
+
+The axial translation at OF Co 1 is an exact one-cell shift per step (E_shape 1e-15, flux
+error 1e-13 to 5e-12 for all three normals) and carries no order information (addendum).
+
+Readings needed before the verdicts. (i) The Youngs normal from the Gauss linear gradient is
+not a first-order normal under transport: its angle error is 0.12 to 0.22 at every N (order
+0.02 to 0.18), a zero-order normal, as the static tables of the preprint find for gradAlpha.
+The row tests the argument at p = 0, not at p = 1. (ii) The exact-normal row's angle column
+is not a normal error of the scheme: the model takes the exact normal at the first-pass
+centroid, and the score compares it with the exact normal at the final centroid, so the
+column measures the centroid's displacement. Its mechanical verdicts against "p" are void;
+the row is the control with no normal error.
+
+**N-1 (position order p + 1): HELD for the ring normal on every test** (d 1.88, 2.16, 2.37,
+1.90, 1.90 against p + 1 = 1.96, 2.29, 2.22, 2.17, 2.13; within 0.3) and for the Youngs
+normal on the axial translation and the rotation (1.02 against 1.02; 1.22 and 1.08 against
+1.18 and 1.14), FAILED for Youngs on the oblique translation (0.73 and 0.77 against 1.15 and
+1.13). The position is one order above the angle: the pivot of the CCS-positioned plane.
+
+**N-2 (per-step flux order p + 1): FALSIFIED for all three rows.** Measured relative to the
+cell volume the per-step flux error has the order of the angle, not one more: ring 0.89,
+1.11, 1.34 (p 0.96, 1.29, 1.22), Youngs 0.10, -0.35, -0.28 (p 0.02, 0.15, 0.13). The control
+with the exact normal has order 0.91 to 0.97: a plane through a sphere leaves the sagitta
+sliver in every swept slab, O(Co h/R) of the cell volume per step, whatever the normal. The
+pre-registered budget lost one power of h in the normalisation: a tilt theta changes a face's
+wetted fraction by O(theta), and the flux through it by O(Co theta) of the cell volume.
+
+**N-3 (shape order near p + 1 for exact and ring, near p for Youngs): HELD for the ring
+normal on the axial translation, on both oblique translations and on both rotations**
+(q - p = 0.90, 0.85, 1.13, 0.69, 0.74); **FALSIFIED for the Youngs normal**, whose shape
+error converges one order above its angle as well (q - p = 1.06 on the axial translation,
+about 1 on the rotation pairs; 0.52 and 0.62 on the oblique translation, undecided and
+p + 1). In every row and test the order of E_shape equals the order of the in-cell position
+error within 0.05 (1.95/1.92, 1.86/1.88, 1.08/1.02, 2.14/2.16, 2.34/2.37, 0.66/0.73,
+0.75/0.77, 1.67/1.69, 1.86/1.90, 1.87/1.90). Neither stated falsifier occurred: the ring
+row is near p + 1 on the translation and on the rotation.
+
+**N-4 (1 - n.n_e of order 2p): HELD for the ring normal on every test** (1.76, 2.38, 2.27,
+2.14, 2.06 against 2p = 1.92, 2.58, 2.44, 2.34, 2.26) and trivially for Youngs; the measure
+is exactly half the square of the L2 of |n - n_e| (verified on every case to 5e-13
+relative), so its order is twice the L2 order, which lags the L1 order by 0.05 to 0.1 for
+the ring normal. A first-order ring normal reads as second order in this measure: at N 128
+on the rotation L1(theta) = 1.13e-2 and L1(1 - n.n_e) = 1.10e-4, orders 1.17 and 2.14.
+
+**N-5 (serial against 8 ranks at N 32): HELD for the exact and the ring normal** (E_shape,
+L1(theta), L1(d), L1(alphaf) agree to 1e-9 relative or better on the translation and the
+rotation), **FAILED for the Youngs normal on the rotation at OF Co 0.2** (L1(alphaf) differs
+by 2e-3 relative, min alpha -1.6e-6 on 8 ranks against -4e-11 serial; the other norms to
+6e-7).
+
+Bounds and mass: the exact and the ring rows are bounded to 1e-10 and conservative to
+1e-11 % on every case; the Youngs row loses the bound on the rotation (-1.6e-6 at N 32,
+-7.3e-5 at N 64, abort at N 128).
+
+**What is demonstrated, what is a limitation, what is open.** Demonstrated on the sphere
+translation (axial and oblique) and rotation, N 32 to 128, OF Co 0.2 and 1, pieces path: a
+first-order normal does not give a first-order scheme; with the plane positioned by CCS from
+alpha_k the in-cell position and the shape error converge one order above the angle of the
+normal, for the ring normal (angle 1.0 to 1.3, shape 1.9 to 2.3) and for a zero-order normal
+(Youngs: angle 0 to 0.2, shape 0.7 to 1.1). Limitation: the "biased first-order normal" row
+did not exist as specified (Youngs is zero order), so the bias hypothesis itself, shape
+order near p for a biased normal of order p >= 1, is not tested; no row showed a shape order
+near p. The per-step flux budget of the pre-registration is wrong by one power of h. Open: a
+normal that is first order AND biased (for example the ring normal with a prescribed O(h)
+tilt of fixed sign) to test the bias clause; the mechanism by which per-step flux errors of
+order p sum to a shape error of order p + 1 (the next reconstruction re-positions the plane
+from alpha_k; not measured step by step here); the one-plane path's rows 4-6 (the KISS
+round 3 gate jobs 56250533-34 completed, their verdict is the KISS agent's to report; not
+run here).
+
+The 1 - n.n_e columns of the finished studies (derived exactly from the stored L2 and Linf
+of |n - n_e|; no case needed a re-run): the standing matrix (405 cases; 90 diverged or
+crashed DAVOF cases report no normal error at all), the corrector tables (34 cases), the
+sphere ladders (38 cases); in the preprint tables on branch `davof-normal-order-article`
+(040aad92, 1d423d24).
