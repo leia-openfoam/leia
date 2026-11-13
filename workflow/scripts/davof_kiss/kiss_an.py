@@ -398,7 +398,7 @@ def main():
     ap.add_argument("--standing-tables", default=None, help="the directory of make_standing_tables.py's CSVs (mode standing)")
     a = ap.parse_args()
     if a.mode == "scan":
-        mode_plane(a, "kiss_scan_*_np[18]", "scan", IDENT_TOL_3B)
+        mode_plane(a, "kiss_scan*_np[18]", "scan", IDENT_TOL_3B)
     elif a.mode == "gate3b":
         mode_plane(a, "kiss_gate3b_*_np[18]", "gate3b", IDENT_TOL_3B)
     else:

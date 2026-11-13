@@ -1,0 +1,46 @@
+# KISS round 3b (Tomislav, 2026-11-13): the complete plane gate at ONE setting, surfCellTol 1e-8 and
+# the reconstruction's wispTol 1e-3: both arms, N 20 / 40 / 80 / 160, OF Co 0.2 / 0.5 / 0.8 / 1 (the
+# normal arm's TARGET_ADVECTIVE_CO = OF Co / 1.6124: 0.124 / 0.3101 / 0.4961 / 0.6202; the oblique
+# arm's = OF Co), np8, the one-plane row only. docs/davof/REPORT-swept.md "KISS round 3b".
+# sbatch -J kiss-gate3b-oblique-np8 --export=ALL,STUDY=davof/kiss_gate3b_oblique_np8,PROFILE=profiles/slurm-small run-studies.sbatch
+study_name: kiss_gate3b_oblique_np8
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: parallel
+np: 8
+solver: davofAdvectorFoam
+theme:  davof
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+axes_override:
+  TPF_SURF_CELL_TOL: ["1e-8"]
+  TPF_RECON_WISP_TOL: ["1e-3"]
+  TPF_ENRIGHT_SETTING: [onePlane]
+  TPF_GRAZING_CUT: [fork]
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5, 0.8, 1]
+  TPF_VELOCITY_ARM: [oblique]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_AXIS_PLANES: ["true"]
+  TPF_SWEPT_TET_CACHE: ["true"]
+  TPF_SWEPT_POINT_VELOCITY_LAZY: ["true"]
+  TPF_SWEPT_PRE_TEST_COPLANAR_SIDE: ["true"]
+  TPF_WRITE_PRECISION: ["17"]
+  TPF_RECON_ERROR_EVERY_STEP: ["false"]
+  TPF_PROFILING: ["false"]
+collapse_other_axes: true
+solve_mem_mb: 4000
+solve_runtime: 240
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
