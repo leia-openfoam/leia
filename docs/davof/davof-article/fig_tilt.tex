@@ -1,0 +1,51 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.55, >=Stealth, font=\small]
+  \colorlet{fluidcol}{blue!18}
+  \colorlet{gascol}{gray!10}
+  \colorlet{ifacecol}{blue!65!black}
+  \colorlet{planecol}{red!65!black}
+  \colorlet{sweptcol}{black!14}
+  \colorlet{slivercol}{orange!85!black}
+  \def\th{10}      % the exaggerated tilt of the plane, degrees
+  \def\ta{18}      % the angle of the exact interface, degrees
+  \coordinate (P) at (1.5, 1.5);
+  % cell
+  \fill[gascol] (0,0) rectangle (3,3);
+  % liquid below the plane of the cell (it cuts the cell volume alpha_k V_k)
+  \fill[fluidcol]
+    (0,0)--(3,0)--($(P)+({1.5},{1.5*tan(\ta+\th)})$)
+    --($(P)+({-1.5},{-1.5*tan(\ta+\th)})$)--cycle;
+  % swept slab of the face S_f: the pre-image of the face over one step
+  \fill[sweptcol,opacity=0.9] (2.0,0) rectangle (3,3);
+  % the sliver between the plane and the exact interface inside the slab
+  \fill[slivercol] ($(P)+({0.5},{0.5*tan(\ta)})$)--($(P)+({1.5},{1.5*tan(\ta)})$)
+    --($(P)+({1.5},{1.5*tan(\ta+\th)})$)--($(P)+({0.5},{0.5*tan(\ta+\th)})$)--cycle;
+  \draw[black!60, line width=0.6pt] (0,0) rectangle (3,3);
+  \draw[black!60, dashed, line width=0.6pt] (2.0,0)--(2.0,3);
+  % exact interface and the plane
+  \draw[ifacecol, line width=1.1pt]
+    ($(P)+({-1.5},{-1.5*tan(\ta)})$)--($(P)+({1.5},{1.5*tan(\ta)})$);
+  \draw[planecol, line width=1.3pt]
+    ($(P)+({-1.5},{-1.5*tan(\ta+\th)})$)--($(P)+({1.5},{1.5*tan(\ta+\th)})$);
+  % the pivot and the tilt angle
+  \fill (P) circle (1.3pt);
+  \draw[black, line width=0.5pt] ($(P)+({180+\ta}:0.8)$) arc ({180+\ta}:{180+\ta+\th}:0.8);
+  % labels outside the cell, with leader lines
+  \draw[black!70, line width=0.4pt] (P)--(1.5,-0.35);
+  \node[below] at (1.5,-0.35) {pivot $\mathbf{x}_k$};
+  \draw[black!70, line width=0.4pt] ($(P)+({180+\ta+0.5*\th}:0.95)$)--(-0.45,0.9);
+  \node[left] at (-0.45,0.9) {tilt $\theta_k$};
+  \draw[black!70, line width=0.4pt] (2.5,3.0)--(2.5,3.45);
+  \node[above] at (2.5,3.45) {swept slab $\mathbf{U}\Delta t\,\mathbf{S}_f$};
+  \draw[black!70, line width=0.4pt] ($(P)+({-1.5},{-1.5*tan(\ta)})$)--(-0.45,1.7);
+  \node[left] at (-0.45,1.7) {exact interface $\Sigma$};
+  \draw[black!70, line width=0.4pt] ($(P)+({-1.5},{-1.5*tan(\ta+\th)})$)--(-0.45,0.1);
+  \node[left] at (-0.45,0.1) {plane, normal $\mathbf{n}_k$};
+  \draw[black!70, line width=0.4pt] ($(P)+(1.0,{1.0*tan(\ta+0.5*\th)})$)--(3.45,1.35);
+  \node[right] at (3.45,1.35) {sliver in the slab};
+  \node[right, align=left] at (3.45,0.85) {$|\Delta V_f|/V_k = O(\mathrm{Co}\,\theta_k)$};
+\end{tikzpicture}
+\caption{A cell $k$ cut by the plane that CCS positions from $\alpha_k$. The plane (red) has the volume $\alpha_k V_k$ below it and pivots about its position $\mathbf{x}_k$ in the cell; the exact interface $\Sigma$ (blue) and the plane cross near this pivot, and a normal turned by $\theta_k$ separates them by about $\theta_k$ times the distance from it, so the plane centroid is within $(h/2)\,\theta_k$ of $\Sigma$. The volume flux of the face $f$ is the liquid volume in the swept slab (grey); the sliver between the plane and $\Sigma$ inside the slab (orange) is the error of the flux of one step, of the relative size $\mathrm{Co}\,\theta_k$ of the cell volume. The tilt is drawn at $10^\circ$ for visibility.}
+\label{fig:tilt}
+\end{figure}
