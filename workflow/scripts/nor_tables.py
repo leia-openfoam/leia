@@ -108,7 +108,9 @@ def measure(c):
     out = dict(
         study=os.path.basename(os.path.dirname(c)), case=os.path.basename(c),
         family=family(os.path.basename(os.path.dirname(c))),
-        row=tok.get("TPF_ROW"), arm=tok.get("TPF_VELOCITY_ARM", "-"),
+        row=(tok.get("TPF_ROW") if tok.get("TPF_ROW") != "davof-planeSurf-ringTilt" else
+             "ringTilt c=%s %s" % (tok.get("TPF_TILT_C"), tok.get("TPF_TILT_MODE"))),
+        arm=tok.get("TPF_VELOCITY_ARM", "-"),
         corrector=tok.get("TPF_FACE_FRACTION_CORRECTOR", "none"),
         enright=tok.get("TPF_ENRIGHT_SETTING", "-"),
         Co=tok.get("TARGET_ADVECTIVE_CO"), N=int(float(tok["N_CELLS"])), np=tok.get("NP", "1"),
@@ -120,6 +122,9 @@ def measure(c):
         flux1Max=max(fe) if fe else None, flux1Med=statistics.median(fe) if fe else None,
         fluxInfMax=max(col("fluxErrInf")) if col("fluxErrInf") else None,
         fluxWall=sum(fw) if fw else None,
+        posBefore=f(next((r.get("posBefore") for r in reversed(rows) if f(r.get("posBefore")) is not None), None)),
+        posAfter=f(next((r.get("posAfter") for r in reversed(rows) if f(r.get("posAfter")) is not None), None)),
+        ccsShift=f(next((r.get("ccsShift") for r in reversed(rows) if f(r.get("ccsShift")) is not None), None)),
         Eshape=f(next((r.get("Eshape") for r in reversed(rows) if f(r.get("Eshape")) is not None), None)),
         L1af=f(next((r.get("L1_alphaf") for r in reversed(rows) if f(r.get("L1_alphaf")) is not None), None)),
         massDev=f(last.get("devPercent")),
@@ -134,7 +139,7 @@ def measure(c):
 QUANT = [("angle1", "L1(theta)"), ("angleInf", "Linf(theta)"), ("omd1", "L1(1-n.ne)"),
          ("omdInf", "Linf(1-n.ne) = SR L_inf^n"), ("nd1", "L1|n-ne|"), ("nd2", "L2|n-ne|"),
          ("ndInf", "Linf|n-ne|"), ("pos1", "L1(d)"), ("flux1Max", "flux L1 max/step"),
-         ("Eshape", "E_shape"), ("L1af", "L1(alphaf)")]
+         ("Eshape", "E_shape"), ("L1af", "L1(alphaf)"), ("posBefore", "d before CCS"), ("posAfter", "d after CCS")]
 
 
 def g(x, nd=3):
