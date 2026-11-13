@@ -61,7 +61,7 @@ mesh: poly
 mode: parallel
 np: 48
 solver: leiaSemiLagrangeLevelSetFoam
-solve_runtime: 14400
+solve_runtime: 1440
 axes_override:
   SL_VALUE_BOUND: ["none", "lipschitzCone", "stencilBounds"]
   SL_CONE_L_MODE: ["unity"]

@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -J leia-curv
-#SBATCH -A special00004
+#SBATCH -A special00005
 #SBATCH -N 1
 #SBATCH -n 32
 #SBATCH --mem-per-cpu=4000

@@ -5,7 +5,7 @@
 ### Choose a partition: 
 ### Set the account from which HPC resources are used. For now, this is
 ### fixed for our project.
-#SBATCH -A special00004
+#SBATCH -A special00005
 ### Set a name identifying the job
 #SBATCH -J poly_serial
 ### Do not send email notifcations, check job status with 'squeue`

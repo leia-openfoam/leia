@@ -196,7 +196,7 @@ printshellcmds: true
 rerun-incomplete: true
 
 default-resources:
-  slurm_account: "special00004"
+  slurm_account: "special00005"
   mem_mb_per_cpu: 4000
   runtime: 1440            # minutes (24 h)
 

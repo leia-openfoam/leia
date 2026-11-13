@@ -40,3 +40,5 @@ All numbers and the limits of the gate are in [STATUS 11.32](https://github.com/
 - 2026-11-13 · gate `ghostCellRefinedBox3D` on Lichtenberg: G1 holds, G2 passes, the falsification condition is not met (STATUS 11.32).
 
 [[hubs/advection]] - [[models/sl-reconstruction]] - [[concepts/sl-amplification-symbol]] - [[concepts/polyhedral-fit-amplification]] - [[concepts/advection-regression-set]]
+- 2026-11-13 · HPCToolkit profile at N = 128 (STATUS 11.33): the fit per cell is 60 % of the serial time and costs the same in the original class; on 4 ranks 622 of 2405 rank-seconds are a wait caused by the level-by-level exchange with a decomposition that does not balance levels. OPEN DEFECT: serial and 4 ranks differ (volume error up to 6.1e-5 relative); the cause is not established and the original class has no control run.
+- 2026-11-13 · the class is on `integration/sl-pde`; the N = 64 rung reproduces the feature-branch result at tolerance 0 and the unit gate passes in serial and on 4 ranks (STATUS 11.34). The gate section is STATUS 11.32 after the merge of the hub's 11.31.

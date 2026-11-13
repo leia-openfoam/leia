@@ -7884,3 +7884,104 @@ four rungs 1.97; uniform control 1.21, 2.28, 2.06. Orders of the volume error: g
    that follows the interface, 2D, and the coupled solvers. (e) The memory and the cost of the
    class. (f) The symbol predicts the two arms in the right sense, but the measured growth of
    the original scheme was not compared with 1.096 per step.
+
+### 11.33 Ghost-cell class: HPCToolkit profile, serial and 4 ranks (2026-11-13, Lichtenberg, special00005)
+
+The full note with commands, jobs and the text reports of the databases is
+`docs/semi-lagrangian-level-set/ghost-cell-profile-2026-11-13.md`. Case: the N = 128 rung of
+`config/gates/ghostCellRefinedBox3D.yaml` (1 269 760 cells, 296 steps), HPCToolkit 2025.0.1,
+`REALTIME@5000`, clone `/work/scratch/tm83tomy/leia-ghost`. All compared runs are on m01 nodes.
+No source file was changed.
+
+1. **Serial bottleneck (MEASURED).** The ghost class runs 1644 s. The reconstruction `update`
+   takes 1132 s (69 %). The fit per cell (`fitCell`) takes 985 s (60 %): the solve of the fit
+   567 s, the basis 103 s, heap allocation 94 s. The coefficient exchange for all stencil
+   entries takes 109 s. The function objects take 220 s; `fvc::reconstruct` 83 s; the
+   departure-point evaluation 41 s.
+2. **The fit is not specific to ghost cells (MEASURED).** The fit arithmetic costs 857 s with
+   the ghost class and 853 s with the original class. Both classes assemble and factorise the
+   fit of every cell in every step on a static mesh. The `update` of the ghost class costs
+   1.28 times that of the original class (1132 s against 883 s).
+3. **Memory (MEASURED totals, DERIVED split).** 7.0 GB against 2.9 GB in serial. The
+   per-stencil-entry lists explain about 3.8 GB of the difference (derived from the list sizes).
+4. **Do not compare the wall clock of the two classes on this mesh.** The serial totals are
+   1644 s and 1648 s by coincidence: the original class destroys the field, and its
+   iso-surface function object then costs 295 s against 104 s. Compare `update`.
+5. **Parallel bottleneck on 4 ranks (MEASURED).** Wall clock 583 s to 602 s, speed-up 2.7 to
+   3.0, efficiency 0.68 to 0.76. 686 of 2405 rank-seconds are inside MPI. 622 s of them are at
+   two call sites: `MPI_Waitall` in the coefficient exchange between the levels (299 s, ranks
+   1 and 2) and `MPI_Allreduce` in `slCorrector::footRadiusGuard`, the first collective call
+   after `update` (324 s, ranks 0 and 3). Cause: the decomposition balances cells and not
+   levels. Ranks 0 and 3 hold about 196 000 level-0 cells each, ranks 1 and 2 about 12 000.
+   The class fits level 0, exchanges, then fits level 1, so two ranks wait in each phase. The
+   fit work per rank is balanced (260 s to 271 s). Without the wait the speed-up is about 3.7
+   (DERIVED).
+6. **OPEN DEFECT: the ghost class depends on the decomposition (MEASURED).** Serial against
+   4 ranks, the metric CSVs differ at tolerance 0 and at 1e-10. The volume error differs from
+   step 8 (1.4e-12 relative) and reaches 6.1e-5 relative (1.3e-11 absolute). The L1 shape
+   error differs by at most 1.0e-6 relative; the L2 gradient error by 1.0e-4 at T = 1. Each
+   decomposition is deterministic. The cause is not established. HYPOTHESIS: the summation
+   order of the restriction (`syncTools::syncPointList`). There is no control: the original
+   class has no serial against 4 ranks run on this mesh. Until the control and the cause
+   exist, a multi-rank result of the ghost class is not a reference value. The unit gate
+   `leiaTestGhostCellReconstruction` gives equal numbers in serial and on 4 ranks (11.34), so
+   the one-step reconstruction is not the visible source.
+7. **Proposed changes, not made.** (a) Fit the cells that need no coarser coefficients first,
+   exchange once, then fit the transition cells. (b) Exchange and store coefficients only for
+   stencil entries coarser than their cell. (c) Remove the heap allocation from `fitCell`.
+   (d) HYPOTHESIS: store the factorised fit per cell on a static mesh, for both classes.
+   (e) Exclude the function objects from timing comparisons.
+
+### 11.34 Integration of the semi-Lagrangian and the PDE level-set lines: the identity check (2026-11-13, Lichtenberg, special00005)
+
+Branch `integration/sl-pde` joins the hub's `development` (PDE level-set work), the laptop
+commits of the amplification analysis and `feature/sl-ghost-cells`. Scripts:
+`workflow/scripts/integration_identity_check.{sh,py}` and `workflow/scripts/integration/`;
+configs `config/integration/`. Clones: merged `/work/scratch/tm83tomy/leia-integration`, base
+`/work/scratch/tm83tomy/leia-integration-base`; each has its own binaries. Job ledgers: the
+`.my_jobs` of each clone (188 and 168 ids, all COMPLETED, none cancelled).
+
+**Pre-registered read-out (written before the runs).** PASS if (1) both trees build and
+`leia-check-deps.py` passes; (2) every metric CSV of the merged tree equals that of the base
+tree at tolerance 0, wall-clock columns skipped, for `advConv2Dtranslation`,
+`advConv3DshearHex`, `advConv3DshearPoly` (shared mesh), `pdeLevelSet/s0Translation2D` and
+`pdeLevelSet/a0Identity2Dvortex`; (3) `leiaTestGhostCellReconstruction` exits 0 in serial and
+on 4 ranks; (4) the N = 64 rung of the ghost-cell gate reproduces the feature-branch result at
+tolerance 0.
+
+**Result (MEASURED): PASS on all four items, for merged 0ba14c08 against base 87a70b22.**
+
+| study | case pairs | ranks | CSV pairs identical |
+|---|---|---|---|
+| `advConv2Dtranslation` (N 32 to 256, three value bounds) | 12 | 8 | 36 of 36 |
+| `advConv3DshearHex` (N 32 to 128, three value bounds) | 9 | 48 | 27 of 27 |
+| `advConv3DshearPoly` (cell size 0.04, 0.02, 0.01, three value bounds, shared meshes) | 9 | 48 | 27 of 27 |
+| `pdeLevelSet/s0Translation2D` (`leiaLevelSetFoam`) | 16 | 4 | 48 of 48 |
+| `pdeLevelSet/a0Identity2Dvortex` (`leiaLevelSetFoam`) | 2 | 4 | 6 of 6 |
+| ghost-cell gate N = 64, both arms, against `leia-ghost` | 2 | 8 | 10 of 10 |
+
+154 of 154 CSV pairs in 50 case pairs. Each pair passed `compare_metrics_csv.py --tol 0` and
+an exact text comparison of every cell outside `ELAPSED_CPU_TIME` and `ELAPSED_CLOCK_TIME`.
+Every log state is COMPLETED in both trees. The unit gate (N = 32 refined-box mesh) exits 0
+in serial and on 4 ranks with equal numbers; the ghost class has a relative error of 2.7e-6
+for a quadratic field at a transition (the restriction is not exact for a quadratic) and
+round-off elsewhere.
+
+**Limits of the check.**
+
+1. The hub moved from 87a70b22 to 4e89b060 during the check (PDE level set A0.2, the token
+   `VE_FADE_PLACEMENT` with the default `legacy`, changes in `velocityExtension`; the
+   davof-article). The branch now contains these commits. The measured identity is for the
+   pair 0ba14c08 and 87a70b22. The check for the new pair is not done yet.
+2. `config/advConv3DshearHex.yaml` and `config/advConv3DshearPoly.yaml` had
+   `solve_runtime: 14400` (minutes, 10 days); sbatch refused the jobs in both trees. This was
+   a launch failure. The value is 1440 now. The time limit does not enter the solver.
+3. The polyhedral rung used one mesh per resolution, built in the merged clone; each tree ran
+   its own `leiaSetFields` and solver on it. The rendered dictionaries come from the merged
+   tree.
+4. The check proves that the merge changes no number of the listed studies. It does not test
+   a coupled two-phase solver, and it has no study that uses a semi-Lagrangian model and a
+   PDE level-set model in one run: the two lines are separate solvers (rule 7 of "Extension
+   without modification").
+5. `compare_metrics_csv.py` does not detect a difference between two non-numeric cells or two
+   NaN cells. The identity script adds the text comparison for this reason.

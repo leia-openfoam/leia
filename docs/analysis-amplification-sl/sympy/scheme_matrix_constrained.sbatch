@@ -5,7 +5,7 @@
 #   sbatch docs/analysis-amplification-sl/sympy/scheme_matrix_constrained.sbatch
 # Needs a Python with numpy in $LEIA_AMP_PY (default: python3 on the PATH). No OpenFOAM.
 #SBATCH --job-name=leia-schemes-c
-#SBATCH --account=special00004
+#SBATCH --account=special00005
 #SBATCH --array=0-3
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=24
