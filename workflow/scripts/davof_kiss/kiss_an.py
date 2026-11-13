@@ -392,13 +392,15 @@ def mode_standing(args):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("mode", choices=("plane", "identity", "rotation", "standing", "scan", "gate3b"))
+    ap.add_argument("mode", choices=("plane", "identity", "rotation", "standing", "scan", "gate3b", "gate95"))
     ap.add_argument("--studies-dir", default=os.path.join(REPO, "studies", "davof"))
     ap.add_argument("--out", default=os.path.join(REPO, "studies", "davof", "kiss_tables"))
     ap.add_argument("--standing-tables", default=None, help="the directory of make_standing_tables.py's CSVs (mode standing)")
     a = ap.parse_args()
     if a.mode == "scan":
         mode_plane(a, "kiss_scan*_np[18]", "scan", IDENT_TOL_3B)
+    elif a.mode == "gate95":
+        mode_plane(a, "kiss_gate95_*_np[18]", "gate95", IDENT_TOL_3B)
     elif a.mode == "gate3b":
         mode_plane(a, "kiss_gate3b_*_np[18]", "gate3b", IDENT_TOL_3B)
     else:

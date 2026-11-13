@@ -224,6 +224,15 @@ class davof
         //  (printed; round 3b of the KISS variant: is the ring normal defined
         //  on the cells a smaller tolerance newly gives a plane)
         scalar minInterfaceMagRel_ = GREAT;
+
+        //- The last CCS positioning's record (print-only diagnostic of the KISS
+        //  round 3c: the positionings that hit maxIter or got no plane are
+        //  printed with the cell's alpha, |m_c|/V^(2/3) and |n|, at most
+        //  ccsFailPrintMax_ lines per run; no effect on the result)
+        label lastCcsExit_ = 0;
+        label lastCcsEvals_ = 0;
+        scalar lastCcsRFinal_ = 0;
+        label ccsFailPrinted_ = 0;
         label nRuleOutsidePlane_;
         label nRuleResetCells_;
         label nRuleResetFaces_;

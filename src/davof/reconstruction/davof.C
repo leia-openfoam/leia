@@ -163,6 +163,9 @@ bool Foam::reconstruction::davof::positionPlane
             mesh_, cutCellPos_, celli, ac, n/nMag, pPlane_[celli],
             positioningTol_, positioningMaxIter_, rec
         );
+        lastCcsExit_ = rec.exitCode;
+        lastCcsEvals_ = rec.nEvals;
+        lastCcsRFinal_ = rec.rFinal;
         const bool atEnd = (ac < isoFaceTol_) || (1 - ac < isoFaceTol_);
         ++nPosCells_;
         nPosEvals_ += rec.nEvals;
@@ -889,7 +892,19 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
     {
         if (!twoPass || changed[i])
         {
+            lastCcsExit_ = 0;
             const bool ok = positionPlane(interfaceLabels_[i], nUse[i]);
+            if (positioning_ == "ccs" && (!ok || lastCcsExit_ == 4) && ccsFailPrinted_ < 60000)
+            {
+                ++ccsFailPrinted_;
+                const label fc = interfaceLabels_[i];
+                Pout<< "ccsFail t " << mesh_.time().timeIndex() << " cell " << fc
+                    << " alpha " << alpha1_[fc]
+                    << " mRel " << mag(m[fc])/Foam::pow(V[fc], 2.0/3.0)
+                    << " nMag " << mag(nUse[i])
+                    << " exit " << lastCcsExit_ << " plane " << (ok ? 1 : 0)
+                    << " evals " << lastCcsEvals_ << " rFinal " << lastCcsRFinal_ << endl;
+            }
             if (tensorRequested_)
             {
                 polyMoment_[i] = ok ? cutPolygonMoments() : symmTensor(Zero);

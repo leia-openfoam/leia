@@ -6471,3 +6471,33 @@ per-face Courant number of the largest face of the normal arm is 0.40 at OF Co 0
 Co 1; the oblique arm's east face is 1.0 at OF Co 1 and passes), and the pieces path stays the
 Co 1 scheme. No rule, tolerance, fallback or branch was added; the only code of this round is the
 two template tokens, the two counters and one print.
+
+## KISS round 3c (Tomislav, 2026-11-13): the rung OF Co 0.95, and the CCS on slivers
+
+Tomislav: "OF Co 0.8 is satisfactory. Try OF Co 0.95", and the question what the CCS positioning
+does for very small volume fractions.
+
+### The rung OF Co 0.95: an open measurement (no prediction)
+
+The baseline gate setting (surfCellTol 1e-8, wispTol 1e-3, the one-plane row), both arms, N 20 /
+40 / 80 / 160, np1 and np8, one rung: `kiss_gate95_<arm>_np<k>` (normal arm TARGET_ADVECTIVE_CO
+0.5892 = OF Co 0.95 / 1.6124; oblique 0.95). The clauses of round 3b (L1(alpha_f) < 1e-12, Linf <
+1e-10, E_shape < 1e-15, min alpha > -1e-12, limiter volume < 1e-12 of a cell, np8 = np1 to 1e-10,
+the cut counter reported); pass or fail per N; on a fail the same location data as at OF Co 1:
+the limiter's cells and volume, the alpha of the planeless centroid cell
+(`kiss_noplane_tally.py`). Displacements at this rung: the normal arm |U| dt / h = 0.589 (the
+per-axis displacements 0.177, 0.295, 0.479 h for U = (0.3, 0.5, 0.8124) |U|; the per-face Co of the
+x / y / z faces 0.177 / 0.295 / 0.479, the OF Co = the sum 0.95); the oblique arm 0.95 h along x
+(the east face's per-face Co 0.95, the y and z faces at 0). No code change, no rule.
+
+### The CCS on slivers: read-only analysis plus a print-only diagnostic
+
+The class is the inline function `Foam::davof::ccsPositionPlane` with the kernels `hermiteRoot01`
+and `hermiteRootFrom` in `src/davof/reconstruction/davofCcsPositioning.H`, called from
+`reconstruction::davof::positionPlane` (`davof.C`), used by the one-plane path through the
+reconstruction. To separate a positioning failure with a well-defined normal from a consequence
+of an undefined normal, a diagnostic line `ccsFail` (cell, alpha, |m_c|/V^(2/3), |n| of the used
+normal, exit code, plane found, evaluations, final residual) is printed for every positioning that
+exits at maxIter or returns no plane, capped at 60 000 lines per run (davof.C, print only, no effect
+on the result); run on `kiss_ccsdiag_np1`: the normal arm at OF Co 1, N 80 / 160, np1,
+surfCellTol {1e-8, 0} x wispTol {1e-3, 1e-7, 0}. The method is not changed.

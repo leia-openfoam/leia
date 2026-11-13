@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Tally the NO PLANE dumps of the round-3 plane cases: per case the dumped faces by the state of
-their vertex ring (all 0, all 1, mixed 0/1 pure, any partial alpha) and by the sweep."""
+"""Tally the NO PLANE dumps of the one-plane plane cases (python3 kiss_noplane_tally.py <glob>):
+per case the dumped faces by ring state and the alpha of the planeless centroid cell
+(the dumps are the first five cut faces per rank and step)."""
 import glob, json, os, re, sys
 S = "/work/scratch/tm83tomy/davof/agents/enright/kiss/leia/studies/davof"
+PAT = sys.argv[1] if len(sys.argv) > 1 else "kiss_plane_*_np[18]"
 DUMP = re.compile(r"NO PLANE in the vertex ring of face (\d+) at \(([^)]*)\) phi (\S+) sweeps (\d) V_swept (\S+) centroid \(([^)]*)\) centroid cell (-?\d+) alpha (\S+); ring:(.*)")
 RING = re.compile(r"\[(\d+) a (\S+?)( P)?\]")
-print("study,case,arm,N,co,steps,noPlaneSum,noPlaneMaxStep,dumps,ringAll0,ringAll1,ringMixedPure,ringPartial,ringWithPlane,dumpSweeps,dumpZeroFlux,limFacesSum,limVolumeSum,offFacesSum")
-for d in sorted(glob.glob(os.path.join(S, "kiss_plane_*_np[18]"))):
+print("study,case,arm,N,co,steps,noPlaneSum,noPlaneCutSum,dumps,cenAlphaPartialN,cenAlphaMin,cenAlphaMax,ringPartialMax,limFacesSum,limVolumeSum,offFacesSum")
+for d in sorted(glob.glob(os.path.join(S, PAT))):
     for c in sorted(glob.glob(os.path.join(d, "planeTranslation3D_*"))):
         lp = os.path.join(c, "log.davofAdvectorFoam")
         if not os.path.isfile(lp):
@@ -14,20 +16,18 @@ for d in sorted(glob.glob(os.path.join(S, "kiss_plane_*_np[18]"))):
         t = json.load(open(os.path.join(c, "case_params.json")))["tokens"]
         log = open(lp, errors="replace").read()
         nps = [int(x) for x in re.findall(r"none \(noPlaneFaces\) (\d+)", log)]
+        cut = [int(x) for x in re.findall(r"of them cut (\d+)", log)]
         lim = re.findall(r"limiter faces changed (\d+), cells (\d+), volume moved (\S+); faces of 0/1 cells with alphaf off 0/1 by more than 1e-12: (\d+)", log)
-        k = dict(all0=0, all1=0, mixed=0, partial=0, plane=0, sweeps=0, zero=0)
-        nd = 0
+        cen = []; rmax = 0.0; nd = 0
         for m in DUMP.finditer(log):
             nd += 1
-            ring = [(float(a), bool(p)) for _, a, p in RING.findall(m.group(9))]
-            al = [a for a, _ in ring]
-            if any(p for _, p in ring): k["plane"] += 1
-            if all(a == 0 for a in al): k["all0"] += 1
-            elif all(a == 1 for a in al): k["all1"] += 1
-            elif all(a in (0.0, 1.0) for a in al): k["mixed"] += 1
-            else: k["partial"] += 1
-            if m.group(4) == "1": k["sweeps"] += 1
-            else: k["zero"] += 1
+            a = float(m.group(8))
+            if 1e-12 < a < 1 - 1e-12:
+                cen.append(min(a, 1 - a))
+            for _, ra, _p in RING.findall(m.group(9)):
+                ra = float(ra)
+                if 1e-12 < ra < 1 - 1e-12:
+                    rmax = max(rmax, min(ra, 1 - ra))
         print(",".join(str(x) for x in (os.path.basename(d), os.path.basename(c), t["TPF_VELOCITY_ARM"], t["N_CELLS"], t["TARGET_ADVECTIVE_CO"],
-              len(re.findall(r"\nTime = ", log)), sum(nps), max(nps) if nps else "", nd, k["all0"], k["all1"], k["mixed"], k["partial"], k["plane"], k["sweeps"], k["zero"],
+              len(re.findall(r"\nTime = ", log)), sum(nps), sum(cut), nd, len(cen), "%.3g" % min(cen) if cen else "", "%.3g" % max(cen) if cen else "", "%.3g" % rmax,
               sum(int(x[0]) for x in lim), sum(float(x[2]) for x in lim), sum(int(x[3]) for x in lim))))
