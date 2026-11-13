@@ -40,8 +40,9 @@ git-ignored — rebuild it locally in seconds with `make docs`. So slides are
 - **User / login:** `tm83tomy@lclusterN.hrz.tu-darmstadt.de`. Helper `~/bin/licht N`
   opens `ssh -vvX tm83tomy@lclusterN...`. Login nodes: **1–7** (Phase 2 / i02),
   **13–19** (Phase 1 / i01); any is fine for submission. Passwordless (SSH key).
-- **SLURM account:** `special00004` (current default for runs). Also available:
-  `special00005`, `project00186/00450/00524/00727/01204/01456`.
+- **SLURM account:** `special00005` (the default for runs since 2026-11-13, supervisor's
+  decision; `special00004` before that, and the build recipes below still name it). Also
+  available: `special00004`, `project00186/00450/00524/00727/01204/01456`.
 - **SLURM gotcha:** the `job_submit` plugin **rejects any job without
   `--mem-per-cpu`**; partition is auto-routed from the time limit (default
   `deflt`, 24 h; `deflt_short` 30 min; `long` 7 d). The snakemake slurm profile

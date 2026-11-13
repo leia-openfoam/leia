@@ -334,7 +334,7 @@ non-cubic cells.
 Full, verified workflow in **[CLUSTER.md](CLUSTER.md)**; the site-independent
 recipe (any SLURM cluster, same traps) is **[SLURM.md](SLURM.md)**. Essentials:
 `ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de` (passwordless; `~/bin/licht N` helper);
-SLURM account `special00004`; jobs **must** set `--mem-per-cpu` (the slurm
+SLURM account `special00005` (since 2026-11-13); jobs **must** set `--mem-per-cpu` (the slurm
 profile does); OpenFOAM-v2512 source-built in `$HOME/OpenFOAM` (a v2606 build is
 needed there since the preambles moved to v2606 on 2026-09-28); pull raw output
 back with `make pull-runs` / `make pull-study STUDY=<name>`.

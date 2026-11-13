@@ -21,7 +21,7 @@ Every cell fits its quadratic on a uniform stencil at its own cell size. A fine 
 
 ## Why it matters
 
-The goal is an adaptive solver. The matrix symbol of the original scheme predicts a growth factor of 1.096 per step at a planar hexahedral 2:1 transition at Co 0.5 and at most 1.0044 with ghost cells (analysis of 2026-11-12, `docs/analysis-amplification-sl` on the laptop branch `development`, not on the hub yet). This gate is the first solver test of that prediction, and it agrees in sense: the original scheme is destroyed at the transition, ghost cells are not. This is a different defect from the polyhedral one of [[concepts/polyhedral-fit-amplification]].
+The goal is an adaptive solver. The matrix symbol of the original scheme predicts a growth factor of 1.096 per step at a planar hexahedral 2:1 transition at Co 0.5 and at most 1.0044 with ghost cells ([[concepts/sl-amplification-symbol]], analysis of 2026-11-12 in `docs/analysis-amplification-sl`). This gate is the first solver test of that prediction, and it agrees in sense: the original scheme is destroyed at the transition, ghost cells are not. This is a different defect from the polyhedral one of [[concepts/polyhedral-fit-amplification]].
 
 ## The numbers
 
@@ -39,4 +39,4 @@ All numbers and the limits of the gate are in [STATUS 11.31](https://github.com/
 
 - 2026-11-13 · gate `ghostCellRefinedBox3D` on Lichtenberg: G1 holds, G2 passes, the falsification condition is not met (STATUS 11.31).
 
-[[hubs/advection]] - [[models/sl-reconstruction]] - [[concepts/polyhedral-fit-amplification]] - [[concepts/advection-regression-set]]
+[[hubs/advection]] - [[models/sl-reconstruction]] - [[concepts/sl-amplification-symbol]] - [[concepts/polyhedral-fit-amplification]] - [[concepts/advection-regression-set]]
