@@ -1,0 +1,51 @@
+# ============================================================================
+# INTEGRATION IDENTITY CHECK of the branch integration/sl-pde (2026-11-13)
+#
+# The N = 32 refined-box mesh for the unit gate leiaTestGhostCellReconstruction: the N = 32
+# rung of config/gates/ghostCellRefinedBox3D.yaml with np 4. The workflow stops after the
+# decomposition (`--until decompose`); no solver runs. The unit gate then runs in each case
+# directory in serial and on 4 ranks (workflow/scripts/integration/unit_gate.sbatch).
+#
+# PRE-REGISTERED READ-OUT (before the run). The application exits 0 in serial and on 4 ranks.
+# ============================================================================
+study_name: ghostCellUnitGateN32
+case: 3Dtranslation
+mesh: hexRefined
+mode: parallel
+np: 4
+solver: leiaSemiLagrangeLevelSetFoam
+theme: semi-lagrangian-level-set
+solve_runtime: 7200
+setfields_args: "-alphaName alpha"
+axes_override:
+  # The domain is [0,2] x [0,1] x [0,1]; the sphere starts at (0.5 0.5 0.5) with radius 0.15
+  # and travels to x = 1.5 at U = 1, T = 1. The box spans x in [0.8, 1.2] and the full cross
+  # section, so the sphere meets a coarse -> fine transition at x = 0.8 and a fine -> coarse
+  # one at x = 1.2, and starts and ends well clear of both.
+  REFINE_SOURCE: ["box"]
+  REFINE_LEVELS: ['1']
+  REFINE_BOX_MIN: ["(0.8 -0.1 -0.1)"]
+  REFINE_BOX_MAX: ["(1.2 1.1 1.1)"]
+  N_CELLS: ['32']
+  CFL: ['0.5']
+  END_TIME: ['1.0']
+  OSCILLATION: ['off']
+  END_REFERENCE: ['translate']
+  ADVECTION: [semiLagrangian]
+  PHASE_INDICATOR: [detrixheAslam]
+  PROFILE: [signedDistance]
+  # The one variable: the reconstruction. Everything else is the production transport.
+  SL_SCHEME: [pointValue]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares, ghostCellQuadraticWeightedLeastSquares]
+  SL_VALUE_BOUND: ["none"]
+  SL_LIMITER: ["none"]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_STENCIL: ["point"]
+  SL_CLIP: ["false"]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_SOURCE: [none]
+  FLUX_PROJECTION: ["none"]
+  SDPLS_SOURCE: [noSource]
+  SOURCE_SCHEME: [explicit]
+collapse_other_axes: true
+export_slides: false

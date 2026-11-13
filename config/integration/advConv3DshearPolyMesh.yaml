@@ -1,0 +1,41 @@
+# ============================================================================
+# INTEGRATION IDENTITY CHECK of the branch integration/sl-pde (2026-11-13)
+#
+# The three polyhedral meshes of config/advConv3DshearPoly.yaml, built ONCE: that file with
+# one SL_VALUE_BOUND arm. The workflow stops after the pre-processing (`--until preprocess`).
+# cfMesh is not bit-reproducible, so the merged tree and the base tree must run on the SAME
+# mesh. workflow/scripts/advect_bound_arm.sh then copies each mesh into every arm of both
+# trees and regenerates 0/ with the binaries of that tree
+# (workflow/scripts/integration/poly_arm.sbatch).
+#
+# PRE-REGISTERED READ-OUT (before the run). For each mesh and each valueBound arm the solver
+# CSV and gradPsiError.csv of the merged tree equal those of the base tree at tolerance 0 in
+# every column that is not a wall-clock column, and the mesh digests match.
+# ============================================================================
+study_name: advConv3DshearPolyMesh
+case: 3Dshear
+mesh: poly
+mode: parallel
+np: 48
+solver: leiaSemiLagrangeLevelSetFoam
+solve_runtime: 14400
+axes_override:
+  SL_VALUE_BOUND: ["none"]
+  SL_CONE_L_MODE: ["unity"]
+  SL_CONE_INADMISSIBLE: ["cellOnly"]
+  SL_CONE_L: [1]
+  SL_LIMITER: ["none"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_STENCIL: ["point"]
+  SL_CLIP: ["false"]
+  SL_CLIP_REGION: ["all"]
+  SL_CLIP_KEEP_EXTREMA: ["false"]
+  PHASE_INDICATOR: [detrixheAslam]
+  MAX_CELL_SIZE: [0.04, 0.02, 0.01]
+  CFL: [0.3]
+  END_TIME: [3.0]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

@@ -1,0 +1,39 @@
+# ============================================================================
+# INTEGRATION IDENTITY CHECK of the branch integration/sl-pde (2026-11-13)
+#
+# config/advConv3DshearHex.yaml with ONE changed line: solve_runtime 1440 instead of 14400.
+# The value is in MINUTES. 14400 minutes are 10 days, and Lichtenberg accepts 7 days at most.
+# MEASURED 2026-11-13: sbatch refused all 9 solve jobs of the committed config, in the merged
+# tree and in the base tree. The time limit does not enter the solver. The study name is
+# unchanged, so the study directory is studies/advConv3DshearHex.
+#
+# PRE-REGISTERED READ-OUT: the read-out of the integration identity check
+# (workflow/scripts/integration/README.md).
+# ============================================================================
+study_name: advConv3DshearHex
+case: 3Dshear
+mesh: hex
+mode: parallel
+np: 48
+solver: leiaSemiLagrangeLevelSetFoam
+solve_runtime: 1440
+axes_override:
+  SL_VALUE_BOUND: ["none", "lipschitzCone", "stencilBounds"]
+  SL_CONE_L_MODE: ["unity"]
+  SL_CONE_INADMISSIBLE: ["cellOnly"]
+  SL_CONE_L: [1]
+  SL_LIMITER: ["none"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_STENCIL: ["point"]
+  SL_CLIP: ["false"]
+  SL_CLIP_REGION: ["all"]
+  SL_CLIP_KEEP_EXTREMA: ["false"]
+  PHASE_INDICATOR: [detrixheAslam]
+  N_CELLS: [32, 64, 128]
+  CFL: [0.3]
+  END_TIME: [3.0]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
