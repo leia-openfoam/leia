@@ -117,6 +117,7 @@ ROWS = OrderedDict([
     # same plane surface everywhere: the deliberately biased first-order normal of the
     # normal-order study (leia davof-normal-order, 2026-11-12)
     ("davof-planeSurf-youngs",         ("davof", "youngs",    "all",   "0",    "15",  "keep", "plane", "plane",      "volume", "none")),
+    ("davof-planeSurf-ringTilt",      ("davof", "ringTilt",  "all",   "0",    "15",  "keep", "plane", "plane",      "volume", "none")),
     ("plicRDF",                 ("plicRDF",  "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
     ("isoAlpha",                 ("isoAlpha", "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
     # The eleventh element (2026-11-06, the fork branch davof-isoAdvector fab3805):
@@ -224,6 +225,7 @@ LABELS = OrderedDict([
     ("davof-planeSurf-exact",          "DAVOF, plane surface by volume, exact normal (control)"),
     ("davof-planeSurf-ringArea",       "DAVOF, plane surface by volume, ring-area normal"),
     ("davof-planeSurf-youngs",         "DAVOF, plane surface by volume, Youngs normal"),
+    ("davof-planeSurf-ringTilt",       "DAVOF, plane surface by volume, ring normal with a prescribed tilt"),
     ("plicRDF",             "plicRDF"),
     ("isoAlpha",            "isoAlpha"),
 ])
@@ -262,6 +264,7 @@ COLORS = {
     "davof-planeSurf-exact":          "#3a0ca3",  # dark violet: the plane-surface control
     "davof-planeSurf-ringArea":       "#f72585",  # pink: the plane surface with the ring normal
     "davof-planeSurf-youngs":         "#2a9d8f",  # teal: the plane surface with the Youngs normal
+    "davof-planeSurf-ringTilt":       "#8d6e63",  # brown: the ring normal with a prescribed tilt
     "plicRDF":             "#eb6834",   # plicRDF's orange (make_davof_normal_table.COLORS)
     "isoAlpha":            "#eda100",   # isoAlpha's yellow (make_davof_normal_table.COLORS)
 }
@@ -282,7 +285,7 @@ MARKERS = {
     "davof-paraboloidRing-ringFit": "p",
     "davof-paraboloidOne-exact": "+", "davof-paraboloidOne-cellLocal": "1",
     "davof-planeSurf-exact": "x", "davof-planeSurf-ringArea": "D",
-    "davof-planeSurf-youngs": "s",
+    "davof-planeSurf-youngs": "s", "davof-planeSurf-ringTilt": "P",
     "plicRDF": "^", "isoAlpha": "v",
     "plicRDF-ccs": "<", "davof-ringArea-vofCutCell": ">",
 }

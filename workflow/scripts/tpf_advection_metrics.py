@@ -125,7 +125,8 @@ LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
             "oneMinusMaxAlpha", "minAlpha", "executionTime", "clockTime",
             "timeStepTime",
             # 2026-11-12: the per-step flux error on the translated sphere
-            "fluxErrFaces", "fluxErrL1", "fluxErrInf", "fluxErrSigned", "fluxErrWall")
+            "fluxErrFaces", "fluxErrL1", "fluxErrInf", "fluxErrSigned", "fluxErrWall",
+            "posBefore", "posAfter", "ccsShift")
 COLUMNS = (["TIME", "step"] + list(AF_COLS.values()) + list(REC_COLS.values())
            + list(VOL_COLS.values()) + list(LOG_COLS)
            + ["status", "abortStep", "abortReason", "tpfCommit", "tpfVersion"])
@@ -183,6 +184,9 @@ _RE_BOUND = re.compile(
     r"max\(alpha\) = 1 \+ (\S+)")
 # the per-step flux error against the exact flux of the translated sphere
 # (sweptExactFluxError, leia davof-normal-order 2026-11-12)
+_RE_POSDIAG = re.compile(
+    r"^davof: position error L1 before CCS (\S+) after CCS (\S+), mean CCS shift "
+    r"\|p_final - p_start\|/h (\S+) over (\d+) cells")
 _RE_FLUXERR = re.compile(
     r"^davofSwept: exact flux error over (\d+) faces: L1 (\S+), Linf (\S+), "
     r"signed mean (\S+) \(\|dVf - dVf_exact\|/V\); wall (\S+) s")
@@ -374,6 +378,13 @@ def read_log(path):
             if m:
                 cur["minAlphaBound"] = m.group(1)
                 cur["maxAlphaBound"] = m.group(2)
+                continue
+            m = _RE_POSDIAG.match(line)
+            if m:
+                if "posBefore" not in cur:      # the advection step's reconstruction
+                    cur["posBefore"] = m.group(1)
+                    cur["posAfter"] = m.group(2)
+                    cur["ccsShift"] = m.group(3)
                 continue
             m = _RE_FLUXERR.match(line)
             if m:

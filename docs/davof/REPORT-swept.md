@@ -6457,3 +6457,66 @@ of |n - n_e|; no case needed a re-run): the standing matrix (405 cases; 90 diver
 crashed DAVOF cases report no normal error at all), the corrector tables (34 cases), the
 sphere ladders (38 cases); in the preprint tables on branch `davof-normal-order-article`
 (040aad92, 1d423d24).
+
+## The bias test (2026-11-13, leia branch `davof-normal-order`)
+
+Tomislav's instruction of 2026-11-13: "Do the bias test." The normal-order study (above)
+measured that the plane positioned by CCS from alpha_k has a position and a shape error one
+order above the angle of the normal, for the ring normal (angle order 1.0 to 1.3, shape 1.9
+to 2.3), and that the Youngs normal, which was meant as a biased first-order normal, is a
+zero-order normal. The hypothesis that the shape order is set by the BIAS of the normal,
+not by its order, is therefore untested. This test gives the bias a known size and sign.
+
+### The model (src/davof/normalModels/ringTiltNormal.{H,C}, key normalModel ringTilt)
+
+The ring area normal n_k rotated by theta_b = c h / R, h = V_k^(1/3), R = 0.15 the radius
+of the exact sphere, about the axis a = e_z x n_k / |e_z x n_k| (where |e_z x n_k| < 1e-6,
+e_x x n_k): n' = n_k cos(s theta_b) + (a x n_k) sin(s theta_b). The rotation turns n_k
+away from e_z in the plane of e_z and n_k, and keeps |n_k|. biased: s = +1 in every cell:
+one sense relative to the fixed direction e_z everywhere, so the tilt is first order and
+has a fixed sign. alternating: s = +1 or -1 by the parity of floor(x/h + 1/2) +
+floor(y/h + 1/2) + floor(z/h + 1/2) of the cell centre, the same magnitude and order, no
+bias (the parity is geometric, independent of the cell numbering and the decomposition).
+c is chosen so that theta_b at N 32 is comparable to the ring normal's own L1 angle error
+of 0.041 to 0.058 (the oblique translation and the rotation, measured above):
+c = 0.125, 0.25, 0.5 give theta_b = 0.026, 0.052, 0.104 at N 32 (c = 0.5, 1, 2 would give
+0.10, 0.21, 0.42, two to eight times the ring error; the instruction's two clauses
+conflict and the comparability clause is followed).
+
+### The tests
+
+The oblique translation (U = (0.3 0.5 0.8124), over 0.3) and the rotation (one turn), N 32,
+64, 128, OpenFOAM Co 0.2 and 1, 8 ranks, the pieces path of the normal-order study, with
+the position diagnostic. Configs `config/davof/nor_bias{Ob,Rot}_N*.yaml` and
+`nor_balance_N64.yaml` (`workflow/scripts/nor_make_bias_configs.py`). Same measures as the
+normal-order study: the angle, 1 - n.n_e, the position error, the per-step flux error (the
+translation), E_shape, the orders over N, the wall clock at 8 ranks.
+
+### Predictions (stated before any run; p = the L1 order of the angle error)
+
+- **B-1 (the tilt):** the L1 angle error of the biased and the alternating rows is
+  theta_b + (the ring error): order about 1 (0.7 to 1.3), and the L1 angle of the tilted
+  rows exceeds the plain ring normal's by at least the factor 1.5 at N 32 for c = 0.25 and
+  0.5.
+- **B-2 (the biased row):** E_shape of the biased tilt converges near p = 1: the order lies
+  in [0.7, 1.4] for c = 0.25 and 0.5.
+- **B-3 (the controls):** E_shape of the alternating tilt and of the plain ring normal
+  converges near p + 1: the order lies in [1.6, 2.5].
+- **B-4:** the order of L1(1 - n.n_e) is 2p within 0.3 for all rows.
+
+Falsifier: the biased row also converges near 2 (order above 1.6 for c = 0.25 and 0.5). The
+mechanism is then that CCS re-positioning removes a fixed-sign first-order tilt too, and
+the shape order is p + 1 regardless of bias; the bias clause of the argument is then
+falsified, and the tilt sets the constant, not the order.
+
+### The step-resolved balance (oblique translation, N 64, OpenFOAM Co 0.2, c = 0.25)
+
+Per step, for the exact, the ring, the biased and the alternating normal: (i) the per-step
+flux error (L1 over the faces of the interface cells, relative to V_k of the upwind cell,
+and its signed mean), (ii) the position error of the plane at the CCS start (the closed-form
+position along the used normal, clamped into the vertex range) and of the final plane, both
+the distance of the plane centroid from the exact sphere, L1 over the interface cells, and
+the mean CCS shift |p_final - p_start|/h (key positionDiag). It shows where the order is
+gained: the position error before CCS carries the tilt (order p), and after CCS the tilt
+only through the pivot (order p + 1) if the position order of the normal-order study is the
+mechanism. Not predicted numerically; the ratio before/after is reported.

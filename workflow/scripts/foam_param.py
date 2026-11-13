@@ -148,7 +148,8 @@ _DERIVED_INPUTS = {
                            "TPF_CORRECTOR_TOLERANCE", "TPF_CORRECTOR_LOG",
                            # the normal-order study's keys, appended to the block
                            # (2026-11-12; empty at the defaults)
-                           "TPF_EXACT_FLUX_ERROR", "TPF_YOUNGS_GRAD_SCHEME"),
+                           "TPF_EXACT_FLUX_ERROR", "TPF_YOUNGS_GRAD_SCHEME",
+                           "TPF_TILT_C", "TPF_TILT_MODE", "TPF_POSITION_DIAG"),
     # the advection scheme of the leia route follows the row's reconstruction scheme,
     # or the study's override TPF_ADVECTION_SCHEME (2026-11-09)
     "DAVOF_ADVECTION_SCHEME": ("TPF_ROW", "TPF_ADVECTION_SCHEME"),

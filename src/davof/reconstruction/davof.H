@@ -298,6 +298,22 @@ class davof
         //  interface cell is described by the plane that cuts it; the
         //  neighbour's alpha says nothing about the face's wet area).
         word correctorNoPlaneRule_;
+
+        //- The position diagnostic (key positionDiag, default false; leia
+        //  davof-normal-order 2026-11-13): with positioning ccs and a sphere
+        //  in the exactNormal dictionary, the distance of the plane centroid
+        //  from the exact sphere |R - |x - o|| of the plane at the CCS start
+        //  position (before CCS: the closed-form position pPlane_ clamped
+        //  into the vertex range, along the used normal) and of the final
+        //  plane (after CCS), L1 over the interface cells, and the mean CCS
+        //  shift |p_final - p_start|/h, printed per reconstruction
+        bool positionDiag_;
+        point posDiagO_;
+        scalar posDiagR_;
+        scalar posDiagSumBefore_;
+        scalar posDiagSumAfter_;
+        scalar posDiagSumShift_;
+        label posDiagN_;
         label correctedTimeIndex_;
         label corrIterationsUsed_;
         scalarList corrMaxChange_;

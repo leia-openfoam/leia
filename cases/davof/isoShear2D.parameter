@@ -133,4 +133,9 @@ values
     // youngsGradScheme (the Youngs model's gradient; Gauss_linear -> "Gauss linear")
     TPF_EXACT_FLUX_ERROR ( false );
     TPF_YOUNGS_GRAD_SCHEME ( none );
+    // the bias test (2026-11-13; materialize.py): tilt of the ringTilt model, its mode,
+    // and the position diagnostic of the davof reconstruction
+    TPF_TILT_C ( none );
+    TPF_TILT_MODE ( biased );
+    TPF_POSITION_DIAG ( false );
 }

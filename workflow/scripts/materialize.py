@@ -246,6 +246,15 @@ def _with_derived_tokens(tokens):
     if ygs != "none":
         extra += ("\n        // the gradient of the Youngs normal model (2026-11-12)"
                   "\n        youngsGradScheme \"" + ygs.replace("_", " ") + "\";")
+    # the bias test (leia davof-normal-order, 2026-11-13): TPF_TILT_C other than none
+    # renders tiltC and tiltMode (the ringTilt model), TPF_POSITION_DIAG true positionDiag
+    tc = str(out.get("TPF_TILT_C", "none"))
+    if tc != "none":
+        extra += ("\n        // the ringTilt model's tilt theta_b = tiltC h / R (2026-11-13)"
+                  "\n        tiltC " + tc + ";"
+                  "\n        tiltMode " + str(out.get("TPF_TILT_MODE", "biased")) + ";")
+    if str(out.get("TPF_POSITION_DIAG", "false")) == "true":
+        extra += "\n        positionDiag true;"
     out["TPF_CORRECTOR_KEYS"] = out["TPF_CORRECTOR_KEYS"] + extra
     # The advection scheme override of the leia route (TPF_ADVECTION_SCHEME auto |
     # davofSwept | isoAdvector): the DAVOF reconstruction under OpenFOAM's isoAdvection

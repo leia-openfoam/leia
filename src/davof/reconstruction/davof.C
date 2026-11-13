@@ -29,6 +29,7 @@ License
 #include "emptyPolyPatch.H"
 #include "davofInit.H"
 #include "davofCcsPositioning.H"
+#include "davofOrbit.H"
 #include "zoneDistribute.H"
 #include "syncTools.H"
 #include "cutFacePLIC.H"
@@ -165,6 +166,23 @@ bool Foam::reconstruction::davof::positionPlane
             mesh_, cutCellPos_, celli, ac, n/nMag, pPlane_[celli],
             positioningTol_, positioningMaxIter_, rec
         );
+        if (positionDiag_ && status == 0 && posDiagR_ > 0)
+        {
+            // the plane at the CCS start and the final plane: the distance
+            // of each centroid from the exact sphere (positionDiag)
+            const point cFin = cutCellPos_.faceCentre();
+            const label st0 = cutCellPos_.calcSubCell(celli, rec.pStart, n/nMag);
+            const point cSt = cutCellPos_.faceCentre();
+            cutCellPos_.calcSubCell(celli, rec.pFinal, n/nMag);   // restore
+            if (st0 == 0)
+            {
+                posDiagSumBefore_ += mag(posDiagR_ - mag(cSt - posDiagO_));
+                posDiagSumAfter_ += mag(posDiagR_ - mag(cFin - posDiagO_));
+                posDiagSumShift_ +=
+                    mag(rec.pFinal - rec.pStart)/Foam::cbrt(mesh_.V()[celli]);
+                ++posDiagN_;
+            }
+        }
         const bool atEnd = (ac < isoFaceTol_) || (1 - ac < isoFaceTol_);
         ++nPosCells_;
         nPosEvals_ += rec.nEvals;
@@ -428,6 +446,13 @@ Foam::reconstruction::davof::davof
     (
         modelDict().getOrDefault<word>("correctorNoPlaneRule", "clip")
     ),
+    positionDiag_(modelDict().getOrDefault<bool>("positionDiag", false)),
+    posDiagO_(Zero),
+    posDiagR_(0),
+    posDiagSumBefore_(0),
+    posDiagSumAfter_(0),
+    posDiagSumShift_(0),
+    posDiagN_(0),
     correctedTimeIndex_(-1),
     corrIterationsUsed_(0),
     corrMaxChange_(),
@@ -720,6 +745,26 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
     interfaceLabels_.clear();
 
     const scalar tState = stateTime();
+
+    posDiagSumBefore_ = posDiagSumAfter_ = posDiagSumShift_ = 0;
+    posDiagN_ = 0;
+    posDiagR_ = 0;
+    if (positionDiag_ && positioning_ == "ccs" && modelDict().found("exactNormal"))
+    {
+        const dictionary& ed = modelDict().subDict("exactNormal");
+        if (ed.found("radius") && ed.found("origin"))
+        {
+            const point o0 = ed.get<point>("origin");
+            vector om;
+            point ap;
+            Foam::davof::readOrbit(ed, o0, om, ap);
+            posDiagO_ = Foam::davof::orbitOrigin
+            (
+                o0, ed.getOrDefault<vector>("U0", vector::zero), om, ap, tState
+            );
+            posDiagR_ = ed.get<scalar>("radius");
+        }
+    }
 
     const vectorField& Sf = mesh_.faceAreas();
     const vectorField& Cf = mesh_.faceCentres();
@@ -1096,6 +1141,17 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
         }
     }
     Info<< endl;
+    if (positionDiag_ && posDiagR_ > 0)
+    {
+        scalar sb = posDiagSumBefore_, sa = posDiagSumAfter_, ss = posDiagSumShift_;
+        label nn = posDiagN_;
+        reduce(sb, sumOp<scalar>()); reduce(sa, sumOp<scalar>());
+        reduce(ss, sumOp<scalar>()); reduce(nn, sumOp<label>());
+        const scalar d = max(nn, label(1));
+        Info<< "davof: position error L1 before CCS " << sb/d << " after CCS "
+            << sa/d << ", mean CCS shift |p_final - p_start|/h " << ss/d
+            << " over " << nn << " cells" << endl;
+    }
 }
 
 

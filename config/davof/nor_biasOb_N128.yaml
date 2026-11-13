@@ -1,0 +1,78 @@
+# The bias test, the oblique translation at N 128 on 8 ranks: the ring normal rotated by a prescribed
+# tilt theta_b = c h / R (c = 0.125, 0.25, 0.5; ringTiltNormal.H), the same sense in every
+# cell (biased) or alternating by cell parity, OpenFOAM Co 0.2 and 1.
+# Written by workflow/scripts/nor_make_configs.py (leia davof-normal-order, 2026-11-12);
+# edit the script. Pre-registration: docs/davof/REPORT-swept.md "Normal order versus
+# normal bias".
+#
+#   sbatch --parsable -J leia-nor_biasOb_N128 --export=ALL,STUDY=davof/nor_biasOb_N128 run-studies.sbatch
+study_name: nor_biasOb_N128
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the numbers rendered into the dictionaries are QUOTED.
+axes_override:
+  N_CELLS: [128]
+  TPF_ROW: [davof-planeSurf-ringTilt]
+  TPF_TILT_C: [0.125, 0.25, 0.5]
+  TPF_TILT_MODE: [biased, alternating]
+  TPF_VELOCITY_ARM: [normal]
+  TARGET_ADVECTIVE_CO: [0.124039, 0.620194]
+  TPF_EXACT_FLUX_ERROR: ["true"]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_ANCHOR_SKIP_CONVERGED: ["true"]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_WISP_SURFACE: [matched]
+  TPF_SWEPT_WISP_TOL: [0]
+  TPF_SWEPT_CONSISTENT: ["true"]
+  TPF_SWEPT_WISP_MATCH_TOL: [1e-9]
+  TPF_SWEPT_VOLUME_CORRECTION: [scale]
+  TPF_SWEPT_PRE_TEST: [touching]
+  TPF_SWEPT_STATE_SHORTCUT: ["false"]
+  TPF_SWEPT_TRACE_CACHE: ["true"]
+  TPF_SWEPT_AXIS_PLANES: ["true"]
+  TPF_SWEPT_TET_CACHE: ["true"]
+  TPF_SWEPT_POINT_VELOCITY_LAZY: ["true"]
+  TPF_SWEPT_PRE_TEST_COPLANAR_SIDE: ["true"]
+  TPF_POSITIONING_TOL: [1e-14]
+  TPF_GRAZING_CUT: [openfoam]
+  TPF_ENRIGHT_SETTING: [recommended]
+  TPF_YOUNGS_GRAD_SCHEME: [Gauss_linear]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_REF_METHOD: [exactSphere]
+  TPF_WRITE_PRECISION: ["17"]
+  TPF_PROFILING: ["false"]
+  TPF_RECON_ERROR_EVERY_STEP: ["false"]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_AFE_WRITE_CONTROL: [adjustableRunTime]
+  TPF_AFE_WRITE_INTERVAL: ["0.075"]
+  TPF_VFE_WRITE_CONTROL: [adjustableRunTime]
+  TPF_VFE_WRITE_INTERVAL: ["0.075"]
+  TPF_WRITE_INTERVAL: ["0.075"]
+  END_TIME: ["0.3"]
+  TPF_POSITION_DIAG: ["true"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 1800
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
