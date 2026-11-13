@@ -80,3 +80,4 @@ Step 0.1 PASS (the transport keeps a distance to second order and better); the f
 
 ### 2026-11-13
 The Eulerian baseline's serial/np 4 difference is solver noise (it falls by 2e4 from psi tolerance 1e-10 to 1e-14); closestPoint's first-order face flux is the band-edge jump, the flux is second order inside the band (STATUS 11.30 items 8 and 9).
+The supervisor's go for A0 repair 2 (the band edge) and then step A on q != 1, the ellipse and 3D; jobs on project special00005. `fadePlacement` (`legacy` default, `extendThroughFade`, `insideBand`) and the pre-registered gates `aStatic2Dedge`, `a2Seam2Dvortex` (STATUS 11.31).

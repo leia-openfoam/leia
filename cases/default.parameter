@@ -608,6 +608,12 @@ NARROW_BAND signChange;
 // velocityExtension fade metric: layer (default) | levelSet (historical |psi|).
 FADE_MODE levelSet;
 
+// velocityExtension.fadePlacement: legacy (default; the extension stops at L and the fade
+// [L, 2L] blends U with U, so Uext jumps at L) | extendThroughFade (the extension is computed
+// out to 2L, the fade blends it into U) | insideBand (fade over [L/2, L]). Plan
+// docs/plan-velocity-extension-verification.md, section 4a, repair 2 (2026-11-13).
+VE_FADE_PLACEMENT legacy;
+
 // closestPoint descent psi operator: cellPoint (default) | taylor.
 CP_INTERP cellPoint;
 

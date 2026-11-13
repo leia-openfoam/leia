@@ -348,6 +348,7 @@ levelSet
         // levelSet -- the historical |psi| <= n*cellSize fade, for reproducing
         //             results published before the switch
         fadeMode    @!FADE_MODE!@;
+        fadePlacement @!VE_FADE_PLACEMENT!@;
         // Foot-point + pin this many additional cell layers around the
         // interface layer (Dirichlet anchors; 0 = interface layer only).
         nAnchorLayers @!ANCHOR_LAYERS!@;

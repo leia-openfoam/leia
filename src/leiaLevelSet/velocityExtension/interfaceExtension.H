@@ -161,6 +161,22 @@ protected:
     //  not see it interact. The table above uses a physical window.
     word fadeMode_;
 
+    //- Where the fade from Uext to U sits relative to the band edge L
+    //  (L = (nLayers+1) h in levelSet mode, layer nLayers+1 in layer mode).
+    //    legacy            -- the extension is computed for |psi| <= L only,
+    //                         the fade covers [L, 2L]. The fade then blends
+    //                         U with U, so Uext jumps from u(Pi(x)) to U at L
+    //                         (DEFAULT: the behaviour of every earlier study).
+    //    extendThroughFade -- the extension is computed out to 2L and the
+    //                         fade over [L, 2L] blends it smoothly into U.
+    //    insideBand        -- the extension is computed for |psi| <= L and
+    //                         the fade covers [L/2, L].
+    //  MEASURED 2026-11-13 (STATUS 11.30 item 9): with legacy, the face-flux
+    //  error of closestPoint against u(Pi(x_f)) is second order in the shells
+    //  |d| <= 1h..3h and first order only in the shell that holds L. Plan
+    //  docs/plan-velocity-extension-verification.md, section 4a, repair 2.
+    word fadePlacement_;
+
 
     // Backbone steps
 
@@ -181,6 +197,11 @@ protected:
 
         //- Reset Uext_ = U_ outside the band; build phiExt_ from Uext_.
         void updateFlux();
+
+        //- The half-width of the band in cell layers, for a model that
+        //  bounds its search reach by it: nLayers_ (legacy, insideBand) or
+        //  2*nLayers_ + 1 (extendThroughFade, band edge at 2L).
+        label reachLayers() const;
 
         //- Model-specific extension of Uext_ through the band (seed pinned).
         virtual void extend() = 0;

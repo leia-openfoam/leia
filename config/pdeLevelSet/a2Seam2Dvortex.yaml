@@ -1,0 +1,39 @@
+# PDE LEVEL SET, STEP A0.2, the 4-rank check of the band-edge repair (parallel run; the twin is
+# a2Seam2Dvortexserial.yaml). extendThroughFade doubles the band of closestPoint (out to 2L = 8 h)
+# and its descent reach, so more descents cross a processor seam and use the one-layer halo.
+# 2D vortex, N 64, 45 steps (t = 0.02), PSI_TOLERANCE 1e-14 (the seam test of STATUS 11.30 item 8:
+# at 1e-10 the solver noise alone is 3e-10 L1).
+# PRE-REGISTERED (2026-11-13, before any run): psi at t = 0.02, serial against np 4, relative to
+# max|psi| (compare_psi_fields.py): for each fadeMode, the L1 difference of extendThroughFade is at
+# most 10 times that of legacy. Both runs reach t = 0.02 (foam_log_state.sh COMPLETED, same step
+# count). FAIL = a factor above 10 or an incomplete run: the repair adds a decomposition dependence.
+# NOTE: closestPoint is not round-off-equal between serial and np 4 by design (the halo branch
+# reads psi by a linear Taylor step, the local branch by cellPoint interpolation; O(h^2)); legacy
+# measures that floor.
+study_name: a2Seam2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaLevelSetFoam
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 30
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [64]
+  CFL: [0.5]
+  END_TIME: [0.02]
+  PSI_TOLERANCE: [1e-14]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [closestPoint]
+  VE_FLUX_FORM: [correction]
+  FADE_MODE: [levelSet, layer]
+  VE_FADE_PLACEMENT: [legacy, extendThroughFade]
+  SDPLS_SOURCE: [noSource]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+  REPORT_WRITE_ONLY: ["false"]

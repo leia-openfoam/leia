@@ -7765,3 +7765,23 @@ built on the login node, CI PASS. Read-outs in `studies/pdeLevelSet/{step0,a0,aS
    (a fixed 4 cells) puts the edge elsewhere: closestPoint 4h cell error 5.1e-4 (layer) against
    9.2e-5 (levelSet), meshWave 3.6e-3 against 3.2e-3. steadyUpwind does not converge in either mode.
 
+
+### 11.31 PDE level set: step A0.2, the band-edge repair (2026-11-13, Lichtenberg, special00005)
+
+The supervisor's go of 2026-11-13: A0 repair 2 first, then step A on the harder inputs.
+
+1. **The change.** `interfaceExtension` gets the dictionary entry `fadePlacement` (token
+   `VE_FADE_PLACEMENT`, default `legacy`, rendered by the 17 templates with `fadeMode`):
+   `legacy` = the old behaviour (the extension stops at L, the fade [L, 2L] blends U with U);
+   `extendThroughFade` = the band goes out to 2L and the fade blends the extension into U;
+   `insideBand` = the band stays at L, the fade covers [L/2, L]. `closestPoint` scales its descent
+   reach, its step budget and its walk budget with `reachLayers()` (= nLayers for legacy, so the
+   default is unchanged; 2 nLayers + 1 for extendThroughFade). Laptop: compile check only.
+2. **The test application** writes the shells 1h..8h (cell and flux) and `E_FADEFLUX_L1/L2`, the face-
+   flux error against the reference with the intended fade, over |d(x_f)| <= 3L; a jump at L is a
+   first-order error against it. The columns of 11.30 keep their names and definitions.
+3. **Gates, pre-registered** in `config/pdeLevelSet/aStatic2Dedge.yaml` (inertness against
+   aStatic2Dfade at tolerance 0; predictions P1 to P5) and `a2Seam2Dvortex{,serial}.yaml` (the 4-rank
+   check: the serial/np 4 difference of extendThroughFade at most 10 times that of legacy). The
+   advected identity re-runs `a0Identity2Dvortex` in the new clone. Read-out
+   `workflow/scripts/pde_a2_analysis.py` and `pde_a_static_analysis.py`. Clone `leia-pde-a2`.
