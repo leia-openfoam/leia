@@ -17,6 +17,8 @@
 # RUN  the name of the run; the copy is studies/ghostCellProfileRuns/<RUN>
 # NP   1: serial, the solver command of the workflow's solve rule for mode serial
 #      >1: the launcher of profiles/slurm and the option -parallel
+# Add --constraint=<feature> to keep compared runs on one node type: the partition `mem`,
+# which 12000 MB per CPU selects, has two (features m01 and m02).
 # HPC  1: the solver runs under hpcrun (-e REALTIME@5000, one sample per 5 ms of wall clock
 #         per thread), then hpcstruct and hpcprof run in this job; 0: the plain solver
 #
@@ -56,7 +58,8 @@ PRE=""
 
 {
 echo "solver=$SOLVER"; echo "np=$NP"; echo "hpc=$HPC"; echo "slurmJobId=$SLURM_JOB_ID"
-echo "host=$(hostname)"; echo "cpus=$(nproc)"; echo "commit=$(git -C "$REPO" rev-parse HEAD)"
+echo "host=$(hostname)"; echo "cpus=$(nproc)"
+echo "cpuModel=$(lscpu | sed -n 's/^Model name: *//p' | head -1)"; echo "commit=$(git -C "$REPO" rev-parse HEAD)"
 echo "command=$LAUNCH $PRE $SOLVER $PAR"
 echo "start=$(date +%s.%N)"
 } > .leia_launch
