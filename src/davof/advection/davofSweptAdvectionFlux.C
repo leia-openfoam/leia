@@ -2239,6 +2239,10 @@ void Foam::davofSweptAdvection::sweptOnePlaneFlux
     label cBest = -1;
     const davof::remoteCell* rcBest = nullptr;
     scalar dBest = GREAT;
+    // the ring holds a cell that is not at 0 or 1 to round-off (1e-12): the
+    // face is then cut and a missing plane is a finding; else it is an uncut
+    // candidate face of the gas or liquid side (round 3b counter split)
+    bool ringPartial = false;
     point xBest(GREAT, GREAT, GREAT);
     auto better = [&](const point& x) -> bool
     {
@@ -2257,6 +2261,7 @@ void Foam::davofSweptAdvection::sweptOnePlaneFlux
         for (const label c : pointCells[pi])
         {
             if (cCentroid < 0 && inCellTol(mesh_, xc, c, 1e-12, h)) cCentroid = c;
+            if (a0[c] > 1e-12 && a0[c] < 1 - 1e-12) ringPartial = true;
             if (hasSurface_.test(c) && better(Cc[c]))
             {
                 dBest = magSqr(Cc[c] - xc);
@@ -2278,6 +2283,7 @@ void Foam::davofSweptAdvection::sweptOnePlaneFlux
                 if (davof::inRemoteCellTol(rc, P[pi], 1e-9, h)) { shares = true; break; }
             }
             if (!shares) continue;
+            if (rc.alpha0 > 1e-12 && rc.alpha0 < 1 - 1e-12) ringPartial = true;
             if (cCentroid < 0 && !rcCentroid && davof::inRemoteCellTol(rc, xc, 1e-12, h))
             {
                 rcCentroid = &rc;
@@ -2378,6 +2384,7 @@ void Foam::davofSweptAdvection::sweptOnePlaneFlux
         // found nowhere: the upwind cell); counted, the first five of a
         // step dumped with their ring
         ++nOnePlaneNoPlane_;
+        if (ringPartial) ++nOnePlaneNoPlaneCut_;
         scalar alphaD;
         if (cCentroid >= 0) alphaD = a0[cCentroid];
         else if (rcCentroid) alphaD = rcCentroid->alpha0;
@@ -2391,7 +2398,7 @@ void Foam::davofSweptAdvection::sweptOnePlaneFlux
         af = wet;
         aWet = wet*Sf[facei];
         vLiq = sweeps ? wet*vTotal : 0;
-        if (nOnePlaneNoPlaneDumped_ < 5)
+        if (ringPartial && nOnePlaneNoPlaneDumped_ < 5)
         {
             ++nOnePlaneNoPlaneDumped_;
             Pout<< "davofSwept: one plane: NO PLANE in the vertex ring of face "

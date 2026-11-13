@@ -132,6 +132,12 @@ values
     REFERENCE_SPEED ( 1 );
 
     TPF_WISP_TOL ( 1e-3 );
+    // the reconstruction's own interface-cell tolerances (the KISS round 3b scan,
+    // 2026-11-13): wispTol of the reconstruction's dictionary only (the initialisation and
+    // the error function objects keep TPF_WISP_TOL) and surfCellTol; the defaults render
+    // the dictionary byte for byte as before
+    TPF_RECON_WISP_TOL ( 1e-3 );
+    TPF_SURF_CELL_TOL ( 1e-8 );
 
     // repetition index of a timing study (a comment in controlDict; an axis only)
     TPF_REPEAT ( 1 );

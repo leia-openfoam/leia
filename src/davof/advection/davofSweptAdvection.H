@@ -768,6 +768,7 @@ class davofSweptAdvection
             label nOnePlaneDonorNearest_;
             label nOnePlaneDonorRemote_;
             label nOnePlaneNoPlane_;
+            label nOnePlaneNoPlaneCut_;
             label nOnePlaneNoPlaneDumped_;
             label nOnePlaneOutOfRange_;
             label nOnePlaneLimFaces_;

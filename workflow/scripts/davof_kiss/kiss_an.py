@@ -29,15 +29,19 @@ import argparse, csv, glob, json, math, os, re, statistics, sys
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
 IDENT_TOL = 1e-12
+IDENT_TOL_3B = 1e-10
+BOX_L = 0.004   # the plane case: a 4 mm cube, h = BOX_L / N
 P1_TOL = 1e-12
 
 ONEPLANE_RE = re.compile(
     r"; one plane: faces (\d+) \(sweeping (\d+)\), clipped triangles (\d+); donor plane: centroid cell (\d+), "
-    r"nearest interface cell (\d+), of another rank (\d+), none \(noPlaneFaces\) (\d+); wet volume out of range (\d+)")
-ONEPLANE_KEYS = ("faces", "sweeping", "clipTris", "donorCentroid", "donorNearest", "donorRemote", "noPlane", "outOfRange")
+    r"nearest interface cell (\d+), of another rank (\d+), none \(noPlaneFaces\) (\d+), of them cut (\d+); wet volume out of range (\d+)")
+ONEPLANE_KEYS = ("faces", "sweeping", "clipTris", "donorCentroid", "donorNearest", "donorRemote", "noPlane", "noPlaneCut", "outOfRange")
 RULE2_RE = re.compile(r"one plane: limiter faces changed (\d+), cells (\d+), volume moved (\S+); faces of 0/1 cells with alphaf off 0/1 by more than 1e-12: (\d+)")
 P1_E = 1e-15
 P1_MIN = -1e-12
+P1_LINF = 1e-10
+P1_LIMV = 1e-12   # of a cell (the total over the run is compared: an upper bound)
 
 
 
@@ -68,7 +72,8 @@ def read_case(c):
                row=t.get("TPF_ROW", ""), setting=t.get("TPF_ENRIGHT_SETTING", "reference"),
                arm=t.get("TPF_VELOCITY_ARM", ""), N=int(float(t.get("N_CELLS", 0))),
                co=float(t.get("TARGET_ADVECTIVE_CO", 0)), rep=int(float(t.get("TPF_REPETITION", 1))),
-               dt=num(t.get("MAX_DELTA_T")), T=num(t.get("END_TIME")), grazingCut=t.get("TPF_GRAZING_CUT", ""))
+               dt=num(t.get("MAX_DELTA_T")), T=num(t.get("END_TIME")), grazingCut=t.get("TPF_GRAZING_CUT", ""),
+               surfCellTol=t.get("TPF_SURF_CELL_TOL", "1e-8"), wispTol=t.get("TPF_RECON_WISP_TOL", "1e-3"))
     rec["label"] = rec["row"] if rec["setting"] in ("reference", None) else rec["row"] + " [" + rec["setting"] + "]"
     csvp = os.path.join(c, "advectorVoF.csv")
     rows = list(csv.DictReader(open(csvp))) if os.path.isfile(csvp) and os.path.getsize(csvp) else []
@@ -111,6 +116,16 @@ def read_case(c):
                     agg[k + "Sum"] = sum(vals); agg[k + "MaxStep"] = max(vals)
             agg["stepsWithClause"] = len(ops)
             rec["onePlane"] = agg
+        # the reconstruction's per-step lines (round 3b): interface cells, CCS positionings, floor and
+        # maxIter exits, end-of-interval cells, the smallest |m_c|/V^(2/3) over the interface cells
+        ic = [int(x) for x in re.findall(r"davof: (\d+) interface cells", log)]
+        pos = [int(x) for x in re.findall(r"positioning ccs: (\d+) positionings", log)]
+        ex = re.findall(r"floor exits (\d+), maxIter exits (\d+), end-of-interval cells (\d+) \((\d+) without a plane\)", log)
+        mm = [float(x) for x in re.findall(r"min \|m_c\|/V\^\(2/3\) over the interface cells (\S+);", log)]
+        st_ = max(len(ic), 1)
+        rec.update(icPerStep=(sum(ic)/st_) if ic else None, posPerStep=(sum(pos)/max(len(pos), 1)) if pos else None,
+                   floorExits=sum(int(x[0]) for x in ex) if ex else None, maxIterExits=sum(int(x[1]) for x in ex) if ex else None,
+                   endNoPlane=sum(int(x[3]) for x in ex) if ex else None, minMagRel=min(mm) if mm else None)
         r2 = RULE2_RE.findall(log)
         if r2:
             rec["rule2"] = dict(limFacesSum=sum(int(x[0]) for x in r2), limCellsSum=sum(int(x[1]) for x in r2),
@@ -223,21 +238,23 @@ def table(rows, cols, title):
         print("  " + " | ".join(str(r.get(c, "")).ljust(w) for c, w in zip(cols, widths)))
 
 
-def mode_plane(args):
-    recs = collect(args.studies_dir, "kiss_plane_*_np[18]")
-    write_csv(os.path.join(args.out, "kiss_plane_cases.csv"), [flat(r) for r in recs])
+def mode_plane(args, pattern="kiss_plane_*_np[18]", tag="plane", identTol=IDENT_TOL):
+    recs = collect(args.studies_dir, pattern)
+    write_csv(os.path.join(args.out, "kiss_%s_cases.csv" % tag), [flat(r) for r in recs])
     rows = []
     nCells = 0; fails = []
-    for r in sorted(recs, key=lambda r: (r["arm"], r["co"], r["N"], r["study"], r["setting"])):
+    for r in sorted(recs, key=lambda r: (r["arm"], r["co"], r["N"], r["surfCellTol"], r["wispTol"], r["study"], r["setting"])):
         op = r["onePlane"]; r2 = r["rule2"]
         steps = max(r["steps"] or 1, 1)
         v = ""
         if r["setting"] == "onePlane":
             noPlane = int(op.get("noPlaneSum", 0)) if op else None
             lim = int(r2.get("limFacesSum", 0)) if r2 else None
-            checks = dict(L1=(r["L1af"] is not None and r["L1af"] < P1_TOL), Linf=(r["Linfaf"] is not None and r["Linfaf"] < P1_TOL),
+            limV = (r2.get("limVolumeSum", 0.0)/((BOX_L/r["N"])**3)) if r2 else None
+            cut = int(op.get("noPlaneCutSum", 0)) if op else None
+            checks = dict(L1=(r["L1af"] is not None and r["L1af"] < P1_TOL), Linf=(r["Linfaf"] is not None and r["Linfaf"] < P1_LINF),
                           E=(r["Eshape"] is not None and r["Eshape"] < P1_E), minA=(r["minAlpha"] is not None and r["minAlpha"] > P1_MIN),
-                          lim=(lim == 0), noPlane=(noPlane == 0), done=(r["status"] != "aborted"))
+                          lim=(limV is not None and limV < P1_LIMV), cut=(cut == 0), done=(r["status"] != "aborted"))
             ok = all(checks.values())
             v = "P1 ok" if ok else "P1 FAIL (" + ", ".join(k for k, c in checks.items() if not c) + ")"
             nCells += 1
@@ -246,28 +263,34 @@ def mode_plane(args):
                          L1af=f(r["L1af"]), Linfaf=f(r["Linfaf"]), Eshape=f(r["Eshape"]), L1x=f(r["L1x"]), L1n=f(r["L1n"]),
                          minAlpha=g(r["minAlpha"], 6), excess=g(r["excess"]), massDev=g(r["massDevPct"]),
                          steps=r["steps"], wall_s=g(r["wall"], 4), stepMedian_s=g(r["stepMedian"]), np=r["np"], status=r["status"],
-                         noPlane=int(op.get("noPlaneSum", 0)) if op else "", limFaces=int(r2.get("limFacesSum", 0)) if r2 else "",
+                         surfCellTol=r["surfCellTol"], wispTol=r["wispTol"],
+                         noPlane=int(op.get("noPlaneSum", 0)) if op else "", noPlaneCut=int(op.get("noPlaneCutSum", 0)) if op else "", limFaces=int(r2.get("limFacesSum", 0)) if r2 else "",
                          limCells=int(r2.get("limCellsSum", 0)) if r2 else "", limVolume=g(r2.get("limVolumeSum")) if r2 else "",
+                         limVolCells=g(r2.get("limVolumeSum", 0.0)/((BOX_L/r["N"])**3)) if r2 else "",
+                         icPerStep=g(r["icPerStep"]), posPerStep=g(r["posPerStep"]), floorExits=r["floorExits"], maxIterExits=r["maxIterExits"],
+                         endNoPlane=r["endNoPlane"], minMagRel=g(r["minMagRel"]),
                          offFaces=int(r2.get("offFacesSum", 0)) if r2 else "", outOfRange=int(op.get("outOfRangeSum", 0)) if op else "",
                          donorsPerStep="centroid %.0f, nearest %.0f, remote %.0f" % tuple(op.get(k + "Sum", 0)/steps for k in ("donorCentroid", "donorNearest", "donorRemote")) if op else "",
                          facesPerStep="%.0f (sweeping %.0f)" % (op.get("facesSum", 0)/steps, op.get("sweepingSum", 0)/steps) if op else "",
                          clipTrisPerStep=g(op.get("clipTrisSum", 0)/steps) if op else "", verdict=v))
-    table(rows, ["study", "setting", "arm", "N", "Co", "ofCo", "L1af", "Linfaf", "Eshape", "minAlpha", "noPlane", "limFaces", "limCells", "limVolume", "offFaces", "outOfRange", "steps", "wall_s", "np", "status", "verdict"], "P1 the plane gate, round 3")
+    table(rows, ["study", "setting", "surfCellTol", "wispTol", "arm", "N", "Co", "ofCo", "L1af", "Linfaf", "Eshape", "minAlpha", "noPlane", "noPlaneCut", "limFaces", "limCells", "limVolCells", "offFaces", "outOfRange", "steps", "wall_s", "np", "status", "verdict"], "P1 the plane gate, round 3b (%s)" % tag)
+    table(rows, ["study", "surfCellTol", "wispTol", "arm", "N", "Co", "icPerStep", "posPerStep", "floorExits", "maxIterExits", "endNoPlane", "minMagRel"], "the reconstruction counters per step")
     table(rows, ["study", "setting", "arm", "N", "Co", "facesPerStep", "donorsPerStep", "clipTrisPerStep", "stepMedian_s", "wall_s", "np"], "the one-plane counters per step and the cost")
-    write_csv(os.path.join(args.out, "kiss_plane_table.csv"), rows)
+    write_csv(os.path.join(args.out, "kiss_%s_table.csv" % tag), rows)
     print(f"\nP1 (round 3): {nCells} onePlane cells, failing {len(fails)}: " + ("HELD" if nCells and not fails else "FALSIFIED" if fails else "no cells"))
     r1 = [r for r in recs if r["study"].endswith("np1")]; r8 = [r for r in recs if r["study"].endswith("np8")]
-    pairs = identity_pairs(r1, r8, lambda r: (r["setting"], r["arm"], r["N"], r["co"]))
+    pairs = identity_pairs(r1, r8, lambda r: (r["setting"], r["arm"], r["N"], r["co"], r["surfCellTol"], r["wispTol"]))
     for p in pairs:
-        p["setting"], p["arm"], p["N"], p["Co"] = p.pop("key")
-    prow = [dict(setting=p["setting"], arm=p["arm"], N=p["N"], Co=p["Co"], steps=f"{p['steps1']}/{p['steps8']}",
+        p["setting"], p["arm"], p["N"], p["Co"], p["surfCellTol"], p["wispTol"] = p.pop("key")
+    prow = [dict(setting=p["setting"], surfCellTol=p["surfCellTol"], wispTol=p["wispTol"], arm=p["arm"], N=p["N"], Co=p["Co"], steps=f"{p['steps1']}/{p['steps8']}",
                  Eshape=g(p["rel_Eshape"]), L1x=g(p["rel_L1x"]), L1n=g(p["rel_L1n"]), L1af=g(p["rel_L1af"]), mass=g(p["rel_massDevPct"]),
-                 minAlpha=g(p["rel_minAlpha"]), bounds=g(p["boundsRel"]), worst=g(p["worstRel"]), verdict=p["verdict"]) for p in pairs]
-    table(prow, ["setting", "arm", "N", "Co", "steps", "Eshape", "L1x", "L1n", "L1af", "mass", "minAlpha", "bounds", "worst", "verdict"], "the plane identity np1 vs np8 (the errors relative above 1e-12, else absolute)")
-    write_csv(os.path.join(args.out, "kiss_plane_identity.csv"), prow)
+                 minAlpha=g(p["rel_minAlpha"]), bounds=g(p["boundsRel"]), worst=g(p["worstRel"]),
+                 verdict=("identical to %.0e" % identTol) if p["worstRel"] <= identTol else "DIFFERS") for p in pairs]
+    table(prow, ["setting", "surfCellTol", "wispTol", "arm", "N", "Co", "steps", "Eshape", "L1x", "L1n", "L1af", "mass", "minAlpha", "bounds", "worst", "verdict"], "the plane identity np1 vs np8 (the errors relative above 1e-12, else absolute)")
+    write_csv(os.path.join(args.out, "kiss_%s_identity.csv" % tag), prow)
     if pairs:
         w = max(p["worstRel"] for p in pairs)
-        print(f"identity (plane): {len(pairs)} pairs, worst difference {w:.3e}: " + ("HELD" if w <= IDENT_TOL else "FALSIFIED"))
+        print(f"identity ({tag}): {len(pairs)} pairs, worst difference {w:.3e} against {identTol:.0e}: " + ("HELD" if w <= identTol else "FALSIFIED"))
 
 
 def mode_identity(args):
@@ -369,12 +392,17 @@ def mode_standing(args):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("mode", choices=("plane", "identity", "rotation", "standing"))
+    ap.add_argument("mode", choices=("plane", "identity", "rotation", "standing", "scan", "gate3b"))
     ap.add_argument("--studies-dir", default=os.path.join(REPO, "studies", "davof"))
     ap.add_argument("--out", default=os.path.join(REPO, "studies", "davof", "kiss_tables"))
     ap.add_argument("--standing-tables", default=None, help="the directory of make_standing_tables.py's CSVs (mode standing)")
     a = ap.parse_args()
-    {"plane": mode_plane, "identity": mode_identity, "rotation": mode_rotation, "standing": mode_standing}[a.mode](a)
+    if a.mode == "scan":
+        mode_plane(a, "kiss_scan_*_np[18]", "scan", IDENT_TOL_3B)
+    elif a.mode == "gate3b":
+        mode_plane(a, "kiss_gate3b_*_np[18]", "gate3b", IDENT_TOL_3B)
+    else:
+        {"plane": mode_plane, "identity": mode_identity, "rotation": mode_rotation, "standing": mode_standing}[a.mode](a)
 
 
 if __name__ == "__main__":

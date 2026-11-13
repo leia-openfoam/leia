@@ -650,6 +650,7 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
     maxPlaneVolDefect_ = 0;
     maxPlaneAreaDefect_ = 0;
     nPosCells_ = nPosEvals_ = maxPosEvals_ = nPosFloor_ = nPosMaxIter_ = 0;
+    minInterfaceMagRel_ = GREAT;
     nPosEnd_ = nPosEndNoPlane_ = 0;
     maxPosRes_ = sumPosRes_ = 0;
     posEvalHist_ = Zero;
@@ -799,6 +800,7 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
     {
         const label celli = interfaceLabels_[i];
         const scalar mMag = mag(m[celli]);
+        minInterfaceMagRel_ = min(minInterfaceMagRel_, mMag/Foam::pow(V[celli], 2.0/3.0));
         const vector n = m[celli]/mMag;
 
         if (normalModel_->isSliver(celli, mMag))
@@ -952,6 +954,10 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
             reduce(nRc, sumOp<label>()); reduce(nRf, sumOp<label>());
             reduce(dMax, maxOp<scalar>());
         }
+        scalar mMin = minInterfaceMagRel_;
+        if (Pstream::parRun()) reduce(mMin, minOp<scalar>());
+        Info<< "; min |m_c|/V^(2/3) over the interface cells " << mMin
+            << "; surfCellTol " << surfCellTol_ << ", wispTol " << wispTol_;
         Info<< "; interface-cell rule " << interfaceCellRule_
             << ": cells with |m_c| above the threshold and alpha outside (tol, 1 - tol) "
             << nO << ", with a plane " << nOP;

@@ -281,6 +281,7 @@ Foam::davofSweptAdvection::davofSweptAdvection
     nOnePlaneDonorNearest_(0),
     nOnePlaneDonorRemote_(0),
     nOnePlaneNoPlane_(0),
+    nOnePlaneNoPlaneCut_(0),
     nOnePlaneNoPlaneDumped_(0),
     nOnePlaneOutOfRange_(0),
     nOnePlaneLimFaces_(0),

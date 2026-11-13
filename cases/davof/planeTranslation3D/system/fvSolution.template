@@ -30,9 +30,9 @@ solvers
         // davof: interface cell |m_c| > wispTol V^(2/3); the plane positioned
         // by alpha to isoFaceTol (1e-14 for the round-off test, as in the
         // fork's reconstruction/planeNormal3D)
-        wispTol         @!TPF_WISP_TOL!@;
+        wispTol         @!TPF_RECON_WISP_TOL!@;
         isoFaceTol      1e-14;
-        surfCellTol     1e-8;
+        surfCellTol     @!TPF_SURF_CELL_TOL!@;
         // the plane positioning of the reconstruction (fork davof-swept
         // 2026-11-04; builds before it ignore the keys): vofCutCell (the
         // fork's default, surfaceIteratorPLIC to isoFaceTol) | ccs (Consecutive

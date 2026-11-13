@@ -1,0 +1,47 @@
+# KISS round 3b (Tomislav, 2026-11-13): the scan of the one remaining tolerance of the one-plane
+# path, the interface-cell test of the reconstruction (surfCellTol: alpha in (tol, 1 - tol); the
+# threshold |m_c| > wispTol V^(2/3) is its second half), as a value change only: the eight failing
+# cells of round 3 (normal arm, OF Co 1 = TARGET_ADVECTIVE_CO 0.6202, N 20 / 40 / 80 / 160, np1) x
+# surfCellTol {1e-12, 1e-14, 0} x wispTol of the reconstruction {1e-3, 0}. The pre-registration is
+# docs/davof/REPORT-swept.md "KISS round 3b". sbatch -J kiss-scan-np1 --export=ALL,STUDY=davof/kiss_scan_np1 run-studies.sbatch
+study_name: kiss_scan_np1
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+solver: davofAdvectorFoam
+theme:  davof
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+axes_override:
+  TPF_SURF_CELL_TOL: ["1e-12", "1e-14", "0"]
+  TPF_RECON_WISP_TOL: ["1e-3", "0"]
+  TPF_ENRIGHT_SETTING: [onePlane]
+  TPF_GRAZING_CUT: [fork]
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.6202]
+  TPF_VELOCITY_ARM: [normal]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_AXIS_PLANES: ["true"]
+  TPF_SWEPT_TET_CACHE: ["true"]
+  TPF_SWEPT_POINT_VELOCITY_LAZY: ["true"]
+  TPF_SWEPT_PRE_TEST_COPLANAR_SIDE: ["true"]
+  TPF_WRITE_PRECISION: ["17"]
+  TPF_RECON_ERROR_EVERY_STEP: ["false"]
+  TPF_PROFILING: ["false"]
+collapse_other_axes: true
+solve_mem_mb: 8000
+solve_runtime: 240
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

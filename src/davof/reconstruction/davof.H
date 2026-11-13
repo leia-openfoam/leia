@@ -219,6 +219,11 @@ class davof
         //  the largest |dalphaf|.
         word interfaceCellRule_;
         label nRuleOutside_;
+
+        //- The smallest |m_c|/V_c^(2/3) over the interface cells of the step
+        //  (printed; round 3b of the KISS variant: is the ring normal defined
+        //  on the cells a smaller tolerance newly gives a plane)
+        scalar minInterfaceMagRel_ = GREAT;
         label nRuleOutsidePlane_;
         label nRuleResetCells_;
         label nRuleResetFaces_;

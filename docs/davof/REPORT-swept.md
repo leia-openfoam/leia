@@ -6307,3 +6307,55 @@ or branch was added in response, and no matrix was launched. Kept: the round-3 c
 (`studies/davof/kiss_plane_*_np?`), `kiss_tables/kiss_plane_table.csv` and
 `kiss_plane_identity.csv`, `csv/kiss3_noplane_tally.csv`; rounds 1 and 2 as `*_round1`,
 `*_round2`.
+
+## KISS round 3b (Tomislav, 2026-11-13): the scan of the one remaining tolerance
+
+Tomislav's question after round 3: "Can we reduce further the reconstruction tolerance? Or
+remove it and calculate everything?" Round 3 located the failure of the normal arm at OF Co 1
+in slivers (alpha between 1e-12 and 5e-9) that carry no plane in the vertex ring of their far
+faces, because the interface-cell test of the reconstruction excludes them. The test has two
+halves: alpha in (surfCellTol, 1 - surfCellTol), surfCellTol = 1e-8, and |m_c| > wispTol
+V^(2/3), wispTol = 1e-3 (the dictionary line "interface cells (wispTol 0.001)"). Read from the
+round-3 logs: the count of cells with |m_c| above the threshold and alpha outside (tol, 1 -
+tol) is 0 at every step of the N 80 case and 0 at 48 of 106 steps of the N 160 case (100 .. 130
+at the others), so the alpha half removes few cells while the normal half is the filter of the
+slivers (a sliver of volume fraction e has |m_c|/V^(2/3) of order e^(2/3), below 1e-3 for e <
+3e-5). The brief names surfCellTol as the one tolerance; the scan therefore runs it as asked
+(wispTol unchanged, 1e-3, the cells below the value of the second half stay without a plane)
+AND with the second half switched off as well (wispTol 0 in the reconstruction's dictionary
+only; the initialisation and the error function objects keep their 1e-3, so the measures stay
+those of rounds 1-3), both as value changes through two template tokens, TPF_SURF_CELL_TOL and
+TPF_RECON_WISP_TOL of cases/davof/planeTranslation3D (their defaults render the dictionary
+byte for byte as before). For surfCellTol 0 the test is strict on both sides (0 < alpha < 1,
+the mirrored test on 1 - alpha is the same strict test; cells at exactly 0 or 1 have none);
+no code changed for it. Code added for the report, prints and counters only: the smallest
+|m_c|/V^(2/3) over the interface cells per step, and the split of noPlaneFaces into uncut
+(the whole ring at 0 or 1 to 1e-12) and cut (any ring cell in between).
+
+### The runs
+
+1. The scan: the eight failing cells of round 3 (normal arm, OF Co 1, TARGET_ADVECTIVE_CO
+   0.6202, N 20 / 40 / 80 / 160, np1 and np8) for surfCellTol 1e-12, 1e-14, 0, each with
+   wispTol 1e-3 and 0 (the stored round-3 results are the surfCellTol 1e-8 row): configs
+   `kiss_scan_np1` and `kiss_scan_np8`.
+2. With the setting that passes (the smallest tolerance values that pass, else the best):
+   the complete plane gate again at that one setting, so that the result is a gate at one
+   setting and not a mix: both arms, N 20 / 40 / 80 / 160, OF Co 0.2 / 0.5 / 0.8 / 1 (the
+   normal arm's targets 0.124 / 0.3101 / 0.4961 / 0.6202), np1 and np8: configs
+   `kiss_gate3b_<arm>_np<k>`.
+
+### Pre-registered clauses (corrected from round 3)
+
+Per case: max L1(alpha_f) < 1e-12; max Linf(alpha_f) < 1e-10 (round 3 showed single faces at
+2.8e-11); E_shape < 1e-15; min alpha > -1e-12; the limiter's total moved volume over the run
+< 1e-12 of a cell volume (an upper bound for the per-step per-cell value); np8 = np1 to 1e-10
+(the error measures relatively above 1e-12, the round-off quantities absolutely); noPlaneFaces
+split: uncut (the whole ring at 0 or 1 to round-off: any number) and cut (must be 0); no
+abort. Prediction: the normal arm at OF Co 1 reaches round-off at surfCellTol 1e-14 or 0 (the
+eight cells pass the clauses). Falsifier: it does not at any value of the scan, with or
+without the second half; then one plane per face is the Co <= 0.5 scheme and the gate at
+OF Co 0.8 says whether Co 0.8 holds. Reported per value: the gate columns of round 3, the
+interface cells and the CCS positionings per step (the cost of the smaller tolerance), the CCS
+floor exits, maxIter exits (the non-convergence) and end-of-interval cells without a plane,
+the smallest |m_c|/V^(2/3) over the interface cells (is the ring normal defined on the
+round-off slivers), the wall clock np1 and np8 next to round 3 and the pieces row.

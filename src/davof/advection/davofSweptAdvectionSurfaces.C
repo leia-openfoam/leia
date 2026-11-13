@@ -1128,7 +1128,7 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
     // sweptClip onePlane (2026-11-09): the counters and the records of the step
     nOnePlaneFaces_ = nOnePlaneSwept_ = nOnePlaneClipTris_ = 0;
     nOnePlaneDonorCentroid_ = nOnePlaneDonorNearest_ = nOnePlaneDonorRemote_ = 0;
-    nOnePlaneNoPlane_ = nOnePlaneNoPlaneDumped_ = nOnePlaneOutOfRange_ = 0;
+    nOnePlaneNoPlane_ = nOnePlaneNoPlaneCut_ = nOnePlaneNoPlaneDumped_ = nOnePlaneOutOfRange_ = 0;
     sweptClosureMax_ = 0;
     sweptPyrDeltaMax_ = sweptVolDefectMax_ = sweptDispAxisMax_ = 0;
     nSweptTwisted_ = nSweptPyrSkipped_ = 0;
@@ -2475,16 +2475,16 @@ void Foam::davofSweptAdvection::reportCurved() const
     {
         label nF = nOnePlaneFaces_, nS = nOnePlaneSwept_, nT = nOnePlaneClipTris_;
         label nDc = nOnePlaneDonorCentroid_, nDn = nOnePlaneDonorNearest_, nDr = nOnePlaneDonorRemote_;
-        label nNo = nOnePlaneNoPlane_, nOr = nOnePlaneOutOfRange_;
+        label nNo = nOnePlaneNoPlane_, nNc = nOnePlaneNoPlaneCut_, nOr = nOnePlaneOutOfRange_;
         if (Pstream::parRun())
         {
             reduce(nF, sumOp<label>()); reduce(nS, sumOp<label>()); reduce(nT, sumOp<label>());
             reduce(nDc, sumOp<label>()); reduce(nDn, sumOp<label>()); reduce(nDr, sumOp<label>());
-            reduce(nNo, sumOp<label>()); reduce(nOr, sumOp<label>());
+            reduce(nNo, sumOp<label>()); reduce(nNc, sumOp<label>()); reduce(nOr, sumOp<label>());
         }
         Info<< "; one plane: faces " << nF << " (sweeping " << nS << "), clipped triangles " << nT
             << "; donor plane: centroid cell " << nDc << ", nearest interface cell " << nDn
-            << ", of another rank " << nDr << ", none (noPlaneFaces) " << nNo
+            << ", of another rank " << nDr << ", none (noPlaneFaces) " << nNo << ", of them cut " << nNc
             << "; wet volume out of range " << nOr;
     }
     if (sweptClassify_)
