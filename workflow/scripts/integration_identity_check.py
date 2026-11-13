@@ -59,7 +59,7 @@ def log_state(d):
     logs = [p for p in glob.glob(os.path.join(d, "log.solve")) + glob.glob(os.path.join(d, "log.leia*Foam"))]
     if not logs:
         return "NO_LOG"
-    r = subprocess.run(["bash", os.path.join(HERE, "foam_log_state.sh"), logs[0], "--stall", "1"],
+    r = subprocess.run(["bash", os.path.join(HERE, "foam_log_state.sh"), logs[0]],
                        capture_output=True, text=True)
     words = r.stdout.split()
     keep = [w for w in words if w.startswith(("steps=", "nprocs="))]
