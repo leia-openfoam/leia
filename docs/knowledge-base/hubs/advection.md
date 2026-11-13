@@ -35,6 +35,7 @@ The production transport is the quadratic semi-Lagrangian scheme: a constant-fre
 | concept | [[concepts/polyhedral-fit-amplification]] | settled | $\Lambda$ 1.26 on pMesh; not a time-step effect |
 | concept | [[concepts/sl-amplification-symbol]] | open | interior $\rho = 1$ on a perfect lattice; growth at boundaries (extrapolation) and on perturbed stencils |
 | concept | [[concepts/sl-point-schemes-literature]] | open | survey: 1D classical, node-based tensor quadratic computed stable, octree codes use vertices and ghost hanging nodes, nothing found on a cell-centred 2:1 transition |
+| concept | [[concepts/sl-ghost-cell-reconstruction]] | open | the original fit is destroyed at a hexRef8 2:1 transition; ghost cells pass the refined-box gate |
 | concept | [[concepts/idec-defect-correction-failure]] | retracted | iDEC diverges, $\rho > 1$ |
 | concept | [[concepts/trace-velocity-projected-flux]] | settled | the reconstruct operator carries 70 % of the projectedFlux win |
 | concept | [[concepts/psi-outer-correctors]] | settled | re-advect in every outer iteration; default yes |

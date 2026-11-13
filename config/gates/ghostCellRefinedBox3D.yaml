@@ -1,0 +1,103 @@
+# ============================================================================
+# GATE: the ghost-cell reconstruction C-Cp/L2+g against the original scheme C-Cp/L2, with the
+# interface crossing two static 2:1 refinement transitions (2026-11-12)
+#
+# WHY. The matrix symbol of the original scheme (docs/analysis-amplification-sl,
+# scheme_matrix_hex21.csv) gives growth factor - 1 = 9.6e-2 at Co 0.5 on a planar hexahedral
+# 2:1 transition, for flow normal to the transition. With ghost cells it is at most 4.4e-3
+# (scheme_matrix_hex21_ghost.csv). Supervisor's decision of 2026-11-12: try C-Cp/L2+g first.
+# This gate is the first test of that result in the solver. It is the gate
+# refinedBoxTranslation3D.yaml (2026-10-13, never run to a result) with a second arm.
+#
+# THE CASE. A sphere (R = 0.15) moves with U = (1 0 0) from x = 0.5 to x = 1.5 through a fixed
+# refined box, x in [0.8, 1.2], over the full cross-section. The flow is normal to both
+# transitions, which is the worst direction of the symbol. CFL 0.5 on the fine cells.
+#
+# THE NUMBER. The shape error and the volume error at T = 1 against the exact translated
+# sphere (L1, L2), and the band gradient error. Steps: 2 N = 64, 128, 256.
+#
+# PRE-REGISTERED READ-OUT (2026-11-12, before the build of the class).
+#   The symbol bounds the growth of the worst mode at the transition per step:
+#     original scheme   1.096^(2N) = 3.5e2, 1.2e5, 1.5e10   at N = 32, 64, 128
+#     ghost cells       1.0044^(2N) = 1.3, 1.8, 3.1
+#   G1 (original scheme, HYPOTHESIS from the symbol): the refined arm does not converge. Its
+#      band gradient error grows from N = 64 to N = 128, or the run diverges, and the largest
+#      psi error sits at a transition and not at the interface.
+#      IF INSTEAD it converges like the uniform controls, the worst mode of the symbol is not
+#      excited in this flow in 256 steps. That is a result about the symbol as a screen, and
+#      it goes into the knowledge base as such.
+#   G2 (ghost cells): the refined arm completes at the three rungs. Its L1 shape error and its
+#      volume error are at most 2 times those of the uniform COARSE control at the same rung
+#      (config ghostCellRefinedBoxUniform3D.yaml, N/2), and the L1 shape error converges with
+#      an observed order of at least 1.5. The order 3 of the uniform mesh is not expected:
+#      the restriction is the mean of the children, which is not exact for a quadratic.
+#   FALSIFIED IF the ghost arm diverges where the uniform controls complete, or its L1 shape
+#      error is larger than that of the original scheme on the same mesh at two of the three
+#      rungs. Then ghost cells do not help in the solver, and the next candidates are the
+#      tensor set with constrained hanging points and T-Cf/L2.
+#   No L_inf in any verdict.
+#
+# ADDED 2026-11-12 after the 4-rank smoke run at N = 32 (both arms complete, 111 steps; the
+# exact-solution gate E1 to E3 passes in serial and on 4 ranks), BEFORE any ladder result:
+# a fourth rung, N = 256. Reason: the sphere has R/h = 2.4, 4.8 and 9.6 on the COARSE cells
+# of the first three rungs, and only the fourth has R/h = 9.6 there and 19.2 in the box. The
+# criteria above are unchanged; the order is fitted over all four rungs. The coarse control
+# of N = 256 is the uniform N = 128; there is no uniform N = 256 control.
+#
+# BEFORE THIS STUDY. The exact-solution gate leiaTestGhostCellReconstruction (E1 to E3 in its
+# header) runs on the N = 32 mesh in serial and on 4 ranks, on Lichtenberg.
+#
+# CONTROLS. ghostCellRefinedBoxUniform3D.yaml: uniform meshes with N = 16 to 128 and the
+# original scheme, the same Courant number on their own cells. Both arms of this file share
+# the mesh generator but not the mesh (one mesh per arm); refineHexMesh on a blockMesh box is
+# deterministic.
+#
+# RUN IT (Lichtenberg, from the clone of the branch feature/sl-ghost-cells):
+#   make studies-one-file CFG=config/gates/ghostCellRefinedBox3D.yaml PROFILE=profiles/slurm
+# inside a one-core driver job, with every job id in .my_jobs.
+# ============================================================================
+study_name: ghostCellRefinedBox3D
+case: 3Dtranslation
+mesh: hexRefined
+mode: parallel
+np: 8
+solver: leiaSemiLagrangeLevelSetFoam
+theme: semi-lagrangian-level-set
+solve_runtime: 7200
+# cases/3Dtranslation names its volume fraction `alpha`, not `alpha.water`. The refinement
+# driver derives the field name from THIS string (leia_refine.alpha_name_from), and its
+# fallback is alpha.water, so band_check looks for a field that does not exist unless the
+# name is stated here.
+setfields_args: "-alphaName alpha"
+axes_override:
+  # The domain is [0,2] x [0,1] x [0,1]; the sphere starts at (0.5 0.5 0.5) with radius 0.15
+  # and travels to x = 1.5 at U = 1, T = 1. The box spans x in [0.8, 1.2] and the full cross
+  # section, so the sphere meets a coarse -> fine transition at x = 0.8 and a fine -> coarse
+  # one at x = 1.2, and starts and ends well clear of both.
+  REFINE_SOURCE: ["box"]
+  REFINE_LEVELS: ['1']
+  REFINE_BOX_MIN: ["(0.8 -0.1 -0.1)"]
+  REFINE_BOX_MAX: ["(1.2 1.1 1.1)"]
+  N_CELLS: ['32', '64', '128', '256']
+  CFL: ['0.5']
+  END_TIME: ['1.0']
+  OSCILLATION: ['off']
+  END_REFERENCE: ['translate']
+  ADVECTION: [semiLagrangian]
+  PHASE_INDICATOR: [detrixheAslam]
+  PROFILE: [signedDistance]
+  # The one variable: the reconstruction. Everything else is the production transport.
+  SL_SCHEME: [pointValue]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares, ghostCellQuadraticWeightedLeastSquares]
+  SL_VALUE_BOUND: ["none"]
+  SL_LIMITER: ["none"]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_STENCIL: ["point"]
+  SL_CLIP: ["false"]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_SOURCE: [none]
+  FLUX_PROJECTION: ["none"]
+  SDPLS_SOURCE: [noSource]
+  SOURCE_SCHEME: [explicit]
+collapse_other_axes: true
+export_slides: false
