@@ -6223,3 +6223,87 @@ N: max L1(alpha_f), max Linf(alpha_f), E_shape, min alpha, the three counters (n
 limiter cells, dry/full faces off 0/1), the donors per step (the centroid cell's plane, the
 nearest interface cell's, of another rank), the wall clock np1 and np8 next to the pieces
 row.
+
+### The plane gate, round 3 (2026-11-12, binary e21a5bf8, jobs 56250533-36): results
+
+The build jobs 56250532 / 56252025 waited in Priority for 50 min and 3.5 h (the deflt
+partition drained) and were cancelled by id; the clone was built incrementally on the login
+node (only src/davof had changed; 1.5 min, no error; logs/kiss-loginbuild-round3.log). The 48
+one-plane cases completed, no abort. Per arm x OF Co x N, np1 / np8 where they differ (L1 and
+Linf of alpha_f, E_shape, min alpha; the counters as sums over the run; wall clock of the
+solve in s, the pieces row of round 2 at the same N and ranks in brackets):
+
+| arm | OF Co | N | steps | L1(alpha_f) | Linf(alpha_f) | E_shape | min alpha | noPlaneFaces | limiter faces / cells / volume | faces of 0/1 cells off 0/1 | donors per step: centroid / nearest | wall np1 (pieces) | wall np8 (pieces) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| normal | 0.2 | 20 | 32 | 9.1e-15 / 1.2e-14 | 6.5e-14 / 7.3e-14 | 4.6e-24 | -1.0e-14 | 6841 | 0 / 0 / 0 | 0 | 297 / 550 | 1 (8) | 2 (8) |
+| normal | 0.2 | 40 | 65 | 1.8e-14 | 1.7e-13 | 2.7e-24 | -1.2e-14 | 50768 | 0 / 0 / 0 | 6 | 1153 / 2013 | 6 (77) | 3 (46) |
+| normal | 0.2 | 80 | 129 | 3.3e-14 | 3.2e-13 | 2.3e-24 | -1.3e-14 | 403063 | 0 / 0 / 0 | 0 | 4597 / 7890 | 93 (531) | 18 (374) |
+| normal | 0.2 | 160 | 258 | 9.4e-14 | 5.5e-13 / 6.2e-13 | 2.6e-24 | -1.5e-14 | 3243591 | 0 / 0 / 0 | 214 | 18311 / 31244 | 1276 (4051) | 139 (3523) |
+| normal | 0.5 | 20 | 13 | 3.8e-15 | 3.5e-14 | 3.9e-24 | -1.3e-14 | 2848 | 0 / 0 / 0 | 0 | 307 / 567 | 1 (4) | 2 (5) |
+| normal | 0.5 | 40 | 26 | 6.5e-15 | 1.3e-13 | 1.7e-24 | -1.3e-14 | 20748 | 0 / 0 / 0 | 6 | 1181 / 2057 | 4 (32) | 2 (29) |
+| normal | 0.5 | 80 | 52 | 1.5e-14 | 5.3e-13 | 1.1e-24 | -2.1e-14 | 163020 | 0 / 0 / 0 | 3 | 4623 / 7930 | 44 (211) | 40 (172) |
+| normal | 0.5 | 160 | 103 | 5.9e-14 | 6.5e-13 | 2.1e-24 | -4.7e-14 | 1303473 | 0 / 0 / 0 | 153 | 18442 / 31467 | 571 (1745) | 90 (1269) |
+| normal | 1 | 20 | 6 | 8.6e-13 | 1.3e-11 / 1.6e-11 | 2.6e-22 | -9.9e-14 | 1487 | 0 / 0 / 0 | 0 | 272 / 719 | 1 (2) | 2 (4) |
+| normal | 1 | 40 | 13 | 1.1e-9 / 8.0e-10 | 3.9e-8 / 2.2e-8 | 1.1e-19 | -5.5e-13 | 10759 | 780 / 860 / 1.1e-21 | 40 | 1074 / 2284 | 3 (17) | 2 (17) |
+| normal | 1 | 80 | 26 | 1.2e-4 / 1.0e-4 | 7.2e-3 / 6.1e-3 | 6.5e-15 | -4.6e-13 | 113203 | 9130 / 10348 / 1.1e-16 | 1060 | 4407 / 8383 | 27 (115) | 6 (110) |
+| normal | 1 | 160 | 52 | 6.5e-3 / 6.1e-3 | 1.6e-1 / 1.7e-1 | 1.7e-13 | -1.5e-7 / -9.7e-10 | 4728190 | 128829 / 133966 / 9.0e-13 | 21112 | 17645 / 32090 | 351 (1077) | 59 (842) |
+| oblique | 0.2 | 20 | 20 | 4.8e-15 | 7.9e-14 | 1.4e-23 | -8.7e-15 | 7035 | 0 / 0 / 0 | 0 | 506 / 907 | 1 (2) | 2 (4) |
+| oblique | 0.2 | 40 | 40 | 8.7e-15 | 8.7e-14 | 1.9e-23 | -1.1e-14 | 53891 | 0 / 0 / 0 | 0 | 2011 / 3476 | 6 (23) | 4 (13) |
+| oblique | 0.2 | 80 | 80 | 1.8e-14 | 3.4e-13 | 2.2e-23 | -2.2e-14 | 436374 | 0 / 0 / 0 | 0 | 7995 / 13685 | 59 (203) | 24 (124) |
+| oblique | 0.2 | 160 | 160 | 4.4e-14 | 1.6e-12 / 4.7e-12 | 2.2e-23 | -2.9e-14 | 3517571 | 0 / 0 / 0 | 0 | 31944 / 54442 | 752 (1582) | 171 (1247) |
+| oblique | 0.5 | 20 | 8 | 1.4e-14 | 9.6e-13 | 1.4e-23 | -1.0e-14 | 2771 | 0 / 0 / 0 | 0 | 475 / 964 | 1 (1) | 3 (2) |
+| oblique | 0.5 | 40 | 16 | 2.7e-14 | 3.0e-12 | 1.9e-23 | -1.4e-14 | 21631 | 0 / 0 / 0 | 0 | 1958 / 3579 | 4 (10) | 3 (8) |
+| oblique | 0.5 | 80 | 32 | 5.1e-14 | 8.9e-12 / 6.5e-12 | 2.1e-23 | -2.7e-14 | 174138 | 0 / 0 / 0 | 0 | 7917 / 13901 | 33 (72) | 7 (48) |
+| oblique | 0.5 | 160 | 64 | 7.1e-14 | 9.9e-12 | 2.1e-23 | -4.1e-14 | 1409124 | 0 / 0 / 0 | 0 | 31723 / 54874 | 412 (665) | 90 (355) |
+| oblique | 1 | 20 | 4 | 2.6e-14 | 7.2e-13 | 2.0e-23 | -7.8e-15 | 1436 | 0 / 0 / 0 | 0 | 491 / 988 | 1 (1) | 2 (2) |
+| oblique | 1 | 40 | 8 | 5.1e-14 | 5.2e-12 | 2.2e-23 | -1.6e-14 | 10854 | 0 / 0 / 0 | 0 | 1988 / 3619 | 2 (8) | 2 (6) |
+| oblique | 1 | 80 | 16 | 1.3e-13 | 1.2e-11 | 2.8e-23 | -4.7e-14 | 87312 | 0 / 0 / 0 | 0 | 7984 / 13987 | 23 (55) | 4 (39) |
+| oblique | 1 | 160 | 32 | 4.1e-13 | 2.8e-11 | 3.8e-23 | -2.4e-13 | 704800 | 0 / 0 / 0 | 0 | 31871 / 55041 | 252 (507) | 42 (285) |
+
+Verdict against the pre-registration: FALSIFIED as written, on three counts of different
+weight, each located, none repaired.
+
+1. noPlaneFaces is not zero in any case (400 .. 190 000 faces per step). Located by the
+   dumps (the first five per rank and step, tallied in csv/kiss3_noplane_tally.csv): every
+   dumped face at OF Co 0.2 and 0.5 on both arms and at OF Co 1 on the oblique arm has a
+   vertex ring whose cells are all at alpha = 0 or at round-off above it (the largest ring
+   alpha 2e-15 .. 2e-14), and a centroid cell at 0: they are uncut faces at the gas-side edge
+   of the candidate set (`sweptConsistent` extends the candidates to the vertex ring of every
+   cell with 0 < alpha < 1, round-off wisps included), for which all-or-nothing is the exact
+   answer. The pre-registered "a cut prism always has a plane in the vertex ring" is not
+   contradicted by them; "the count must be zero on the gate" is, because the count includes
+   uncut candidate faces. On the oblique arm the dumped faces are the zero-flux faces (the
+   y- and z-faces).
+2. Linf(alpha_f) exceeds 1e-12 on the oblique arm at OF Co 0.5 and 1 from N 40 (3e-12 ..
+   2.8e-11) and at N 160, OF Co 0.2 (1.6e-12), with L1 at 1e-14 .. 4e-13, E_shape 1e-23, no
+   limiter, np8 = np1: single faces at round-off amplification of a sliver's footprint (the
+   pieces row has L1 up to 1.8e-12 on the same cells; its Linf was not tabulated in round 2).
+3. OF Co 1 on the normal arm fails beyond round-off and grows with N and the step count:
+   L1(alpha_f) 8.6e-13 (N 20, 6 steps), 1.1e-9 (N 40, 13), 1.2e-4 (N 80, 26), 6.5e-3 (N 160,
+   52), Linf to 0.16, E_shape to 1.7e-13, min alpha -1.5e-7; the limiter fires there and only
+   there (N 40: 780 faces, 1e-21 moved; N 80: 9 130 faces, 1e-16; N 160: 128 829 faces, 9e-13
+   of volume in total, below 1e-12 of a cell per face but not zero), and the faces of 0/1
+   cells off 0/1 rise to 21 112. np8 differs from np1 there (0.03 .. 0.29 relative). Located
+   in the dumps of exactly these three cases: noPlane faces whose centroid cell holds a
+   partial alpha between 1e-12 and 5e-9 (2 at N 40, 49 at N 80, 43 at N 160 among the dumped;
+   the largest ring alpha 1.2e-11, 4.6e-9, 1.7e-9) and has no plane, because a cell below the
+   interface-cell tolerance surfCellTol 1e-8 is not an interface cell (the rule
+   normalAndAlpha): the plane-exists test is where the one remaining tolerance sits. Such a
+   sliver, produced at the leading edge when the displacement is 0.62 h along the tilted
+   normal, has no interface cell in the vertex ring of its far faces, its prism is cut, and
+   all-or-nothing by alpha >= 1/2 drops it; the error then feeds the ring normal (L1(n)
+   1.8e-4 at N 80, 7e-3 at N 160). At OF Co <= 0.5 on the normal arm and at every Co on the
+   oblique arm no such face occurs (the centroid cells of all dumped faces are at 0 to
+   round-off).
+
+What holds: at OF Co 0.2 and 0.5 on both arms and at OF Co 1 on the oblique arm (40 of 48
+cells) L1(alpha_f) < 5e-13, E_shape < 1e-21, min alpha > -3e-13, the limiter silent (0
+faces, 0 volume), np8 equal to np1 to round-off (the worst difference 1e-13 absolute), and
+the solve 2 .. 13 times faster than the pieces row serial and 2 .. 25 times on 8 ranks (N
+160, normal arm, OF Co 0.2: 1276 s against 4051 s serial, 139 s against 3523 s on 8 ranks).
+By the pre-registered falsifier the one-plane path is a Co <= 0.5 scheme on the tilted
+plane's normal arm and the pieces path stays the Co 1 scheme; no rule, tolerance, fallback
+or branch was added in response, and no matrix was launched. Kept: the round-3 cases
+(`studies/davof/kiss_plane_*_np?`), `kiss_tables/kiss_plane_table.csv` and
+`kiss_plane_identity.csv`, `csv/kiss3_noplane_tally.csv`; rounds 1 and 2 as `*_round1`,
+`*_round2`.
