@@ -14,6 +14,7 @@ a velocity extension (Bothe and Soga, J. Differential Equations 468, 2026) plus 
 | the progress deck for the supervisor (editable source) | `pde-level-set-presentation/pde-level-set.template.html` |
 | build the deck (self-contained HTML, git-ignored) | `python3 workflow/scripts/export_html.py docs/pde-level-set/pde-level-set-presentation pde-level-set.template.html` |
 | the record of results | `STATUS.md` from section 11.29 |
+| an email-level summary of everything tried with extension and source terms, and the roadmap | `summary-extension-and-source-terms.md` |
 | the knowledge-base note | `docs/knowledge-base/concepts/pde-level-set-verification.md` |
 
 The dossiers and D. Bothe's handwritten notes of 2026-10-29 stay outside git (`agent-input/`); the

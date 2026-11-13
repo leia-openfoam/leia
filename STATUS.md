@@ -7747,4 +7747,21 @@ built on the login node, CI PASS. Read-outs in `studies/pdeLevelSet/{step0,a0,aS
    face flux has the form phi_f + [u(Pi(x_f)) - u(x_f)] . S_f with both u from the same cell-velocity
    reconstruction: it keeps the Navier-Stokes flux exactly at the interface (Pi(x_f) = x_f) and adds
    only a difference of two samples of one field.
+8. **The seam test: solver noise, not a defect** (drivers 56259378 and 56259379, special00005,
+   clone `leia-pde-a0`). 2D vortex, N 64, 45 steps, serial against np 4, psi at t = 0.02, relative to
+   max|psi|: PSI_TOLERANCE 1e-10 gives L1 3.2e-10, L2 9.8e-10, max 1.5e-8; 1e-14 gives L1 1.6e-14,
+   L2 2.4e-13, max 9.5e-12. The L1 difference falls by a factor of 2.0e4 (pre-registered: >= 1e3 =
+   solver noise), the maximum by 1.6e3; the seam cells still carry 43 % and 56 % of it, which is
+   where a block preconditioner decoupled at the processor boundaries converges differently.
+   CONTROL PASS: the 1e-10 arm equals s0Seam2Dvortex (other clone, other binaries) at tolerance 0 in
+   both the serial and the np 4 run, so `PSI_TOLERANCE` is inert. The Eulerian baseline has no seam
+   defect; a seam gate on it needs the 1e-14 tolerance (as for the SDPLS R arm in September).
+9. **The fade ladder, aStatic2Dfade** (driver 56259754). P2 CONFIRMED: closestPoint's face-flux error
+   is second order in the shells |d| <= 1h, 2h, 3h (L1 orders 1.8 to 2.2; 4.1e-5 to 5.2e-5 at N 256)
+   and first order only in the 4h shell, which holds the band edge (order 1.2, 1.6e-3). So the first-
+   order flux of aStatic2D is the velocity jump at the band edge (plan A0 repair 2), not the
+   interpolation to the faces. P1 CONFIRMED: inside 2h the two band modes give identical errors for
+   every model (signed-distance input); they differ only in the outer shell, where the layer band
+   (a fixed 4 cells) puts the edge elsewhere: closestPoint 4h cell error 5.1e-4 (layer) against
+   9.2e-5 (levelSet), meshWave 3.6e-3 against 3.2e-3. steadyUpwind does not converge in either mode.
 

@@ -77,3 +77,6 @@ The supervisor's third round: forget interFoam; an accurate, resolved, adaptive 
 
 ### 2026-11-12 (results)
 Step 0.1 PASS (the transport keeps a distance to second order and better); the flux confound is real and small (volume 1 to 4 %); closestPoint is the only second-order extension against u(Pi(x)), but its face flux is first order; the seam difference of the baseline goes to a tolerance test (STATUS 11.30).
+
+### 2026-11-13
+The Eulerian baseline's serial/np 4 difference is solver noise (it falls by 2e4 from psi tolerance 1e-10 to 1e-14); closestPoint's first-order face flux is the band-edge jump, the flux is second order inside the band (STATUS 11.30 items 8 and 9).

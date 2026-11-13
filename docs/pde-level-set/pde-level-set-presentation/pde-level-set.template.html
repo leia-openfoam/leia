@@ -522,7 +522,8 @@
         (\(D_t q = -a q\)), so \(|\nabla\phi| - 1\) is not an error there. The transport is fine; the strain is the target.</li>
   </ul>
   <p><b>Serial against np 4</b> differs by about 1e-8 relative, 41 % of it in the 6.4 % of cells at the processor seams.
-     Solver noise or a seam defect? The tolerance test (1e-10 against 1e-14) is running.</p>
+     <b>Decided (2026-11-13):</b> with the \(\phi\) tolerance 1e-14 instead of 1e-10 the difference falls by 2·10⁴. It is solver
+     convergence noise, not a seam defect. <span class="tag m">MEASURED</span></p>
 </section>
 
 <section>
@@ -552,8 +553,8 @@
   <p><b>Open:</b> <code>closestPoint</code>'s <b>face flux</b>, which the transport actually uses, converges only at order 0.6 to 1.2,
      with an error 17× its cell error. <span class="tag m">MEASURED</span></p>
   <p class="warn" style="font-size:0.8em"><b>Withdrawn:</b> my first reading, "interpolating the cell field to the faces loses the
-     second order". The measurement does not separate interpolation from the velocity jump at the band edge. The next ladder writes the
-     flux error per shell and decides it.</p>
+     second order". <b>Decided by the next ladder (2026-11-13):</b> the face flux is second order in the shells 1h to 3h and first order
+     only in the shell that holds the band edge. The cause is the velocity jump at the band edge, a repairable defect (A0 repair 2).</p>
   <p class="footnote">Limitations: the circle centre sits on a mesh vertex; \(q \ne 1\) inputs and the off-lattice ellipse come next. STATUS 11.30.</p>
 </section>
 </section>
