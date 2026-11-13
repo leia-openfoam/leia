@@ -6501,3 +6501,108 @@ normal, exit code, plane found, evaluations, final residual) is printed for ever
 exits at maxIter or returns no plane, capped at 60 000 lines per run (davof.C, print only, no effect
 on the result); run on `kiss_ccsdiag_np1`: the normal arm at OF Co 1, N 80 / 160, np1,
 surfCellTol {1e-8, 0} x wispTol {1e-3, 1e-7, 0}. The method is not changed.
+
+### KISS round 3c, results (2026-11-13/14; binary 16b89149; jobs 56310832-36, 56311487)
+
+**The rung OF Co 0.95 (baseline setting surfCellTol 1e-8, wispTol 1e-3; open measurement).** All 16 cells
+(both arms, N 20 / 40 / 80 / 160, np1 and np8) pass every numerical clause of round 3b; the identity
+np8 = np1 holds to 1e-10 on all 8 pairs (worst 1.1e-13 absolute, the mass of the oblique arm at N 160).
+np1 / np8 where they differ; wall clock in s.
+
+| arm | N | steps | L1(alpha_f) | Linf(alpha_f) | E_shape | min alpha | limiter cells / volume | cut / noPlaneFaces | 0/1-cell faces off 0/1 | wall np1 | wall np8 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| normal (target 0.5892) | 20 | 7 | 9.7e-15 / 8.8e-15 | 1.2e-13 / 1.0e-13 | 3.7e-24 / 4.5e-24 | -1.4e-14 / -1.8e-14 | 0 / 0 | 51 / 1584 | 0 | 0 | 3 |
+| normal | 40 | 14 | 2.5e-14 / 2.7e-14 | 4.3e-13 / 3.0e-13 | 2.7e-24 / 2.8e-24 | -2.4e-14 / -2.3e-14 | 0 / 0 | 382 / 11374 | 12 | 1 | 3 |
+| normal | 80 | 27 | 4.9e-14 / 5.5e-14 | 1.6e-12 / 1.4e-12 | 3.7e-24 / 3.9e-24 | -6.1e-14 / -6.3e-14 | 0 / 0 | 2686 / 87264 | 0 | 16 | 67 |
+| normal | 160 | 54 | 1.7e-13 / 1.7e-13 | 1.1e-11 / 9.6e-12 | 5.4e-24 | -1.7e-13 / -1.5e-13 | 0 / 0 | 20061 / 691478 | 21 | 211 | 47 |
+| oblique (target 0.95) | 20 | 4 | 2.2e-14 / 2.1e-14 | 5.1e-13 / 4.4e-13 | 1.9e-23 / 1.8e-23 | -8.7e-15 / -8.8e-15 | 0 / 0 | 24 / 1432 | 0 | 0 | 3 |
+| oblique | 40 | 8 | 3.5e-14 / 3.4e-14 | 1.0e-12 / 8.4e-13 | 2.1e-23 | -1.4e-14 / -1.1e-14 | 0 / 0 | 361 / 11158 | 0 | 2 | 3 |
+| oblique | 80 | 17 | 7.4e-14 / 7.2e-14 | 2.4e-12 / 2.5e-12 | 2.5e-23 | -3.5e-14 | 0 / 0 | 2748 / 93461 | 0 | 13 | 7 |
+| oblique | 160 | 34 | 1.8e-13 | 3.7e-12 / 4.1e-12 | 3.0e-23 | -8.2e-14 / -8.5e-14 | 0 / 0 | 21853 / 749843 | 93 | 165 | 39 |
+
+(The wall clocks of the first rungs are the launcher's 1-s resolution; the pieces row was not run at
+OF Co 0.95.) Pass or fail per N: all eight N-rungs of both arms pass; the "cut = 0" clause of round 3b
+is not met (24 .. 21 853 faces) and does not discriminate (see round 3b). The limiter is silent (0
+faces, 0 volume). No location data is needed: nothing failed. For the failing neighbour OF Co 1 (normal
+arm) the planeless-centroid-cell alpha of round 3 stands (1e-12 .. 5e-9); at OF Co 0.95 the dumps hold
+no cut face with a partial centroid cell, and the largest alpha of a planeless ring cell in the dumps is
+2e-6 .. 5e-6 (harmless here).
+
+Displacements at this rung: normal arm |U| dt / h = 0.589 (OF Co = 0.5892 x 1.6124 = 0.950): per-axis
+displacement and per-face Co of the x / y / z faces 0.177 / 0.295 / 0.479 h; oblique arm 0.95 h along x
+(the east face's per-face Co 0.95, the y and z faces 0). At OF Co 1 (normal arm) the largest per-axis
+displacement is 0.504 h and the rung fails; at 0.95 it is 0.479 h and the rung passes. The two numbers
+bracket 0.5 h; the oblique arm passes with 0.95 .. 1.0 h along x, so 0.5 h is not by itself the
+mechanism, only the observation that the normal arm's pass/fail boundary lies between 0.479 h and 0.504 h
+of the largest face displacement (OF Co between 0.95 and 1).
+
+### The CCS positioning on slivers (read-only analysis plus the print-only ccsFail lines)
+
+Citation: T. Maric, Iterative Volume-of-Fluid interface positioning in general polyhedrons with
+Consecutive Cubic Spline interpolation, Journal of Computational Physics: X 11 (2021) 100093,
+doi:10.1016/j.jcpx.2021.100093; the arXiv version is arXiv:2012.02227 (v1 3 December 2020, v2 7 January
+2025; checked on arxiv.org: the same title, the journal reference above), cited together as one work.
+(The brief named Kromer and Bothe for the CCS; their paper, Highly accurate computation of volume
+fractions using differential geometry, is the volume rule `kromerBothe`, not the positioning; the
+positioning that the one-plane path uses is the code header's reference above.)
+
+**What leia's CCS does** (`Foam::davof::ccsPositionPlane`, with `hermiteRoot01` and `hermiteRootFrom`,
+inline in `src/davof/reconstruction/davofCcsPositioning.H`; called from `reconstruction::davof::positionPlane`,
+`davof.C` line 161; the cut is `cutCellPLIC::calcSubCell`):
+- It ITERATES; there is no closed-form cubic at the interval ends. The first cut is at the explicit
+  Gauss-theorem position p0 clamped into the vertex range (line 230); the bracket ends are the vertex
+  extrema pMin, pMax with V = V_c and 0 (lines 201 .. 208, 225). With both bracket ends evaluated the step
+  is the root of the cubic Hermite interpolant through them (`hermiteRoot01`, lines 259 .. 276), else the
+  cubic through the two consecutive iterates (`hermiteRootFrom`, lines 285 .. 299) or Newton's r/A (line
+  305), bisection where an iterate leaves the bracket or the bracket was not halved over two steps (lines
+  266, 306). By the header (lines 57 .. 59) the consecutive cubic is exact once both points lie in the
+  same vertex interval as the root, so in the outermost interval V = c t^3 it reaches the root in about
+  three cuts when p0 and the next iterate are already inside that interval, but it does not form
+  t = (alpha V / c)^(1/3) from one cut.
+- Convergence test: absolute in V relative to the CELL volume, |r| <= tolRel V_c with tolRel =
+  positioningTol = 1e-14 (line 243, exit 1), not relative to alpha V_c; exit 2: the residual stops
+  decreasing at a cubic step within 100 tolerances (lines 333 .. 343); exit 3: the bracket closed to 1e-15 h
+  (lines 250 .. 255); exit 4: maxIter, the key positioningMaxIter, default 30 (davof.C line 413). A target
+  alpha <= 0 or >= 1 takes the vertex extreme: no plane (lines 196, 230, 243).
+- Consequence of the absolute tolerance: for alpha <= 1e-14 the first cut already satisfies it (a cell
+  with alpha = 1e-16 is "positioned" by the empty cut: status +1, no plane); for alpha = 1e-10 the
+  accuracy 1e-14 V_c is 1e-4 of alpha V_c.
+
+**The "end-of-interval cells without a plane" and the "maxIter exits" of round 3b, separated by the
+`ccsFail` data** (`kiss_ccsdiag_np1`, normal arm at OF Co 1, np1; every line is a positioning that exits at
+maxIter or returns no plane):
+1. No plane, exit 1 (the tolerance met at the first cut, 1 evaluation): alpha 1e-28 .. 2e-16 (all <=
+   1e-14), 9 986 of the 11 136 lines at N 160 (surfCellTol 0, wispTol 1e-7), 59 891 of the 60 000 capped
+   lines at wispTol 0. These are the 1.2e5 "end-of-interval cells". The normal is NOT the problem where
+   wispTol >= 1e-7 admitted them by |m_c|: |m_c|/V^(2/3) median 0.07, 90th percentile 0.43, maximum 0.68
+   and |n| ~ 5e-9 .. 6e-9: these cells have a large face-fraction moment and a round-off alpha (a
+   wet face on a dry cell: the alpha-to-alpha_f inconsistency of the dual advection, exact "seeds"). At
+   wispTol 0 both are round-off: |m_c|/V^(2/3) median 4e-16, |n| ~ 1e-24 (8 118 of the 11 496 lines at
+   N 80 have |n| < 1e-10 and none is exactly 0): the direction is garbage and the alpha is below the
+   tolerance. Either way the CCS did what its tolerance says; no plane is the right answer for the cell's
+   alpha.
+2. maxIter (30 iterations, 31-32 evaluations), alpha 3.6e-12 .. 1.1e-8, |m_c|/V^(2/3) 1e-7 .. 4e-5, |n|
+   1.2e-8 .. 5.5e-9: the normal is well defined here (|m_c| is 8 orders above round-off 1e-16 of the
+   face-fraction sums; its direction is good to ~1e-8), and the final residual |r|/V_c equals alpha
+   (the returned cut holds V = 0): 2 + 50 lines at N 80 (wispTol 1e-7, surfCellTol 0), 244 + 906 at N 160;
+   a plane is found in 244 of the 1 150 at N 160. This is a positioning failure with a well-defined
+   normal. Located: the cell cut classifies a cut polygon of area below areaTol_ as no cut
+   (`davofCutCellPLIC.C` line 120, `mag(faceArea_) < areaTol_`), and the study setting grazingCut fork sets
+   areaTol_ = 10*SMALL = 1e-14 m^2 absolute (`davofCellCut.H` line 73), the TwoPhaseFlow threshold. A sliver of
+   volume fraction alpha has a cut area of order alpha^(2/3) h^2, so the threshold hides every sliver with
+   alpha below about (1e-14 / h^2)^(3/2): 8e-9 at N 80 (h = 5e-5 m) and 6e-8 at N 160, which is the range
+   of the maxIter alphas; V(p) is then identically 0 near the root and the bracket cannot find it.
+   Check by a value change (`kiss_ccsdiagG_np1`, grazingCut openfoam, ROOTVSMALL): maxIter exits 0 in all 18
+   cases and the class 2 lines vanish; class 1 (alpha <= 1e-14) remains (168 lines at N 80, 5 852 at N 160
+   for wispTol 1e-7). The failure of the normal arm at OF Co 1 does not change (L1(alpha_f) 1.1e-9 / 1.2e-4 /
+   6.5e-3 at N 40 / 80 / 160 at the baseline, identical to the fork threshold's; wispTol 1e-7 and 1e-9 still
+   worse or aborted): the CCS-on-slivers defect of the fork threshold is real but is not the cause of the
+   Co 1 failure.
+3. No lines with a zero normal; no maxIter at the baseline (wispTol 1e-3, surfCellTol 1e-8: 0 ccsFail
+   lines at N 80, 160).
+
+**Not changed, reported (as asked):** leia's CCS does not use the closed-form cubic at the interval ends
+(davofCcsPositioning.H lines 241 .. 323: iteration; 243: absolute tolerance relative to V_c); the study's
+`grazingCut fork` (the policy of 2026-11-07 for reproducing the fork track) makes the cell cut blind to
+slivers below an absolute area of 1e-14 m^2, i.e. alpha below 8e-9 .. 6e-8 at N 80 .. 160; both stand
+until Tomislav decides.
