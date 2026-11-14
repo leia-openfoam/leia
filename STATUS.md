@@ -8127,16 +8127,21 @@ the same counts: 36 of 36, 27 of 27, 27 of 27 (polyhedral, steps 967, 1989, 3945
 (`int.round2.compare.log` in the merged clone). The unit gate exits 0 in serial and on
 4 ranks with the numbers of round 1.
 
+**Round 3, the control after the move of `development` (MEASURED, 2026-11-14): PASS on all
+four items, for merged 31c4a032 against base 45fa83f2.** Both clones were built from an empty
+state (`platforms/`, `build/`, every `lnInclude` deleted; `Allwmake rc=0`,
+`leia-check-deps: PASS`; build jobs 56356578 and 56356579). The round-2 output was moved to
+`studies_round2_4e89b060` first. Counts as in rounds 1 and 2: 36 of 36, 27 of 27, 27 of 27,
+48 of 48, 6 of 6, 10 of 10; 154 of 154 CSV pairs in 50 case pairs, overall rc 0
+(`int.round3.compare.log` in the merged clone). All log states are COMPLETED. The unit gate
+exits 0 in serial and on 4 ranks with the numbers of round 1.
+
 **Limits of the check.**
 
-1. The hub moves during a check. Round 1 is for 0ba14c08 against 87a70b22. Round 2 (below)
-   is for d9b1e2c2 against 4e89b060. The hub then moved to 0e2caf53 (PDE level set A0.3 and
-   A0.4, new file `closestPointStrategies`, new tokens with defaults in `fvSolution` templates,
-   the rule "no free parameters"). The hub moved once more to 45fa83f2 (PDE step A proper). The branch contains
-   45fa83f2; the identity for this pair is NOT measured before the move of `development`; a
-   post-merge control runs on the new head. The files that the branch changes and the files that the hub changed
-   overlap only in `STATUS.md`, the guide twins, `cases/default.parameter` and two logs of the
-   knowledge base (DERIVED from `git diff --name-only`; not a replacement for a run).
+1. The hub moved during every round, so each round has its own pair: 0ba14c08 against
+   87a70b22, d9b1e2c2 against 4e89b060, and 31c4a032 against 45fa83f2 (round 3). `development`
+   was fast-forwarded to 31c4a032 before round 3 ran (supervisor's decision, 2026-11-14);
+   round 3 is the control after the move.
 2. `config/advConv3DshearHex.yaml` and `config/advConv3DshearPoly.yaml` had
    `solve_runtime: 14400` (minutes, 10 days); sbatch refused the jobs in both trees. This was
    a launch failure. The value is 1440 now. The time limit does not enter the solver.
