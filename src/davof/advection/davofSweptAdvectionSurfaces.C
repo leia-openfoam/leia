@@ -3043,7 +3043,7 @@ void Foam::davofSweptAdvection::exactFluxError(const scalar dt)
     scalarField alphaNei;
     scalarField cellNet;
     scalar sumFlow = 0, sumWet = 0, sumRawAbs = 0;
-    FixedList<scalar, 3> grpS(0), grpW(0);
+    FixedList<scalar, 3> grpS(scalar(0)), grpW(scalar(0));
     if (sweptFluxErrorDiag_)
     {
         const scalarField& a1 = alpha1_.primitiveField();
