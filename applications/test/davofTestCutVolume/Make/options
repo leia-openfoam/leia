@@ -1,0 +1,14 @@
+/* OpenFOAM v2606 only (the cell cut on warped faces, 2026-11-14). davofCutCellPLIC.C is compiled
+   into the application so that no leia library is needed; no production routine is changed. */
+EXE_INC = \
+    -std=c++17 \
+    -I../../../src/davof/reconstruction \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/surfMesh/lnInclude \
+    -I$(LIB_SRC)/transportModels/geometricVoF/lnInclude
+
+EXE_LIBS = \
+    -lfiniteVolume \
+    -lmeshTools \
+    -lgeometricVoF

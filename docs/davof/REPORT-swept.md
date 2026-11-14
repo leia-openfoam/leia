@@ -6792,3 +6792,79 @@ of tets per cell for V_ref.
 
 Rules: the test application runs on Lichtenberg through sbatch; no production routine changes (davofCutCellPLIC is not
 touched); the branch is pushed to origin only.
+
+### Q1 answered by reading the code (before any run; OpenFOAM v2606, `$WM_PROJECT_DIR/src`)
+
+The cut, `transportModels/geometricVoF/cellCuts/cutCell/cutCellPLIC.C` (`calcSubCell` 59-172) and leia's copy
+`src/davof/reconstruction/davofCutCellPLIC.C` (`calcSubCell` 57-172): the two bodies are identical except the grazing-cut
+test (OpenFOAM line 120 `mag(faceArea_) < ROOTVSMALL`; leia line 120 `< areaTol_`, 10*SMALL through
+`davofCellCut.H` 73-75). `davofCellCut` (82-86) routes to OpenFOAM's own `cutCellPLIC` unless `grazingCut fork`; the
+production default is OpenFOAM's class. The sub-volume:
+
+1. A face with all points on the wet side contributes the mesh's own face centre and area vector
+   (`cutFacePLIC.C` 86-92: `mesh_.faceCentres()`, `mesh_.faceAreas()`).
+2. A cut face: `cutFace::calcSubFace` (`cellCuts/cutFace/cutFace.C` 204-262) builds the sub-polygon (wet vertices and the
+   cut points on the crossed edges, 224-250); `calcSubFaceCentreAndArea` (265-335): three points direct (276-290), else a
+   fan around the ARITHMETIC AVERAGE of the sub-polygon points (298-305, the list contains a vertex that lies on the
+   plane once and the two cut points that coincide with a vertex once each), triangle areas weights, centre
+   (1/3) sum a c / sum a, area vector 0.5 sum n (308-333).
+3. The cut surface (`cutCell.C` `calcGeomDataCutFace` 94-161): per cut-face segment a fan around the average of all
+   edge points (103-116), area vector and centre, orientation fixed against `average(cutFaceCentres_)`.
+4. The volume (`cutCell.C` `calcCellData` 55-91): cEst = average of the sub-face centres INCLUDING the cut-surface centre
+   (70); for every sub-face (the wet part of each face and the cut surface) pyr3Vol = max(|S_i . (c_i - cEst)|, VSMALL)
+   (76-77, the absolute value), V = (1/3) sum pyr3Vol (90). Each face is a FLAT pyramid base with its area vector and
+   centre. When no vertex is on the dry side the cut returns `mesh_.V()` (`cutCellPLIC.C` 163-169).
+
+The mesh volume V_k (`meshes/primitiveMesh/primitiveMeshCellCentresAndVols.C` 38-79 calls
+`primitiveMeshTools::makeFaceCentresAndAreas`, `.../primitiveMeshCheck/primitiveMeshTools.C` 226-288, and
+`makeCellCentresAndVols` 303-396): per face (a triangle directly, 245-250) a fan around the AVERAGE OF THE FACE POINTS
+(`pointsAverage`, 258), face centre = area-weighted centroid of the triangle centroids (283), face area vector 0.5 sum n
+(284); cEst = average of the face centres (327-345); pyr3Vol = S_f . (c_f - cEst) with the owner/neighbour sign
+(353, 371), V_k = (1/3) sum (395). The pyramid base is the flat face (S_f, c_f), not the triangulated surface.
+
+Two consequences, read from the lines above and stated before the run:
+(a) On a warped face the mesh's V_k is the flat-pyramid sum, i.e. (1/3) sum_f S_f . c_f, which is not the volume of the
+    triangulated surface for any choice of the apex F: the triangulated surface has sum_T S_T . c_T instead of
+    S_f . c_f. The brief's V_ref (apex = face centre, tets to the cell centre) is exactly the volume of the polyhedron
+    bounded by the triangulated surface (the signed tets sum to the winding number of that closed surface, so V_ref(c)
+    is continuous and non-increasing, and independent of the cell-centre point). H-ref's second clause,
+    V_ref(past all vertices) = V_k to 1e-13 on every cell, is therefore expected to FAIL on warped cells by the
+    difference between sum_T S_T . c_T and sum_f S_f . c_f; it holds on planar faces. The first and the third clauses are
+    expected to hold.
+(b) Mechanism of the jump at a vertex level L (the fan apex of item 2): when the plane crosses a face vertex v, the
+    sub-polygon point list holds v once on the side where v is wet, and holds two cut points (which coincide with v in the
+    limit) once the plane is past v; the arithmetic average, hence the fan apex, jumps by about (P_v - mean)/n, and on a
+    warped sub-polygon the fan surface and its area vector and centroid jump with it. On a planar sub-polygon the apex
+    does not change the area vector or the centroid. The same holds for the three-point case switching to the fan.
+    H-cause as pre-registered names the sub-face centroid; the code names the average of the point list, with the
+    multiplicity of coincident points, as the apex.
+
+### Additions to the measurement, fixed before the first run
+
+- Methods: leia = `davofCutCellPLIC` (10*SMALL), of = `Foam::cutCellPLIC`, iso = `Foam::cutCellIso` (f = n.x at the points,
+  cutValue = n.C + c; `cutCellIso.C` 59-171 shares `calcCellData`), ref (apex = face centre of the mesh, the brief's
+  V_ref), refP0 (apex = average of the face points, the apex of `makeFaceCentresAndAreas`).
+- Convention: the cut's own: base = C + n c, wet side n.(x - base) > 0, so V(c) is non-increasing in c; "monotone" means
+  non-increasing; a non-monotone interval is a consecutive grid pair with V(i+1) - V(i) > 1e-13 V_k.
+- Jump at a level L: |V(L + d) - V(L - d)| / V_k, d = 1e-9 extent; two vertex levels within 1e-8 extent are one level; the
+  grid has 201 uniform points across [c_min, c_max] (points within 3d of a level removed) plus L -+ d. The floor of the
+  jump is the slope times 2d (about 1e-8 V_k at most); the jump of ref is printed as that floor.
+- "V(end)", the full-wet limit: V(c_min + d) + |A_cut| d (the extrapolation to the extreme level with the cut area
+  A_cut, exact for a plane-parallel extreme face; the value of the cut routine at c < c_min is V_k by construction,
+  cutCellPLIC.C 163-169) for leia, of, iso; Vtri = V_ref(c < c_min) for ref and refP0. The dry end V(c_max - d) is not
+  reported.
+- Root existence of alpha V_k on the grid: a crossing of alpha V_k in a continuous grid interval is a root; a pair
+  (cell, normal) has no root when no continuous interval crosses; it is classified as `end gap` (the crossing is only in
+  the jump at the lowest level c_min, between V_k and V(c_min + d), i.e. alpha V_k above the cut's own V(end)), `inner
+  jump` (a crossing only in a jump at another level), or `other`. A finite grid can miss a narrow excursion; the count is a
+  lower bound of the pairs without a root on the exact curve only in the sense of the grid.
+- Bisection of ref to |V - T| <= 1e-13 V_k (200 iterations at most) for T = alpha Vtri (always solvable) and for
+  T = alpha V_k (solvable when T <= Vtri).
+- Cost: seconds over all evaluations of one method (blocks over the whole grid of one cell and normal; the tetrahedra
+  of ref are built once per cell, outside the timing), per evaluation in ns; one job per mesh with nothing else running
+  on its node's allocation; the four meshes run as four processes of one job (3 cores), so the timing is of a loaded node.
+- A fourth mesh `box`: the unperturbed 16 x 16 x 32 hexahedra (planar faces) for the planar clauses.
+- The cells: the 20 dumped cells of each mesh (`FAILDUMP,<tag>,cell N` of `ccs_failures_20_per_mesh.txt`; the V_k of the
+  dump is compared with the V_k of the rebuilt mesh, `EXTRACHK`) plus evenly strided cells up to 200 in all.
+- Correlation: Pearson over the selected cells of the cell's largest jump (over normals and levels) against the warp
+  measure, linear and log10.
