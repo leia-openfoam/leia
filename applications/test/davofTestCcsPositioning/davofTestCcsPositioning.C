@@ -121,6 +121,9 @@ int main(int argc, char *argv[])
         for (const scalar alpha : alphas)
         {
             std::vector<double> errs, errsW, errs4;
+            // revision 2: the mixed bound |V - alpha V_k| <= max(1e-10 content, 5e-16 V_k)
+            // as a bound on the relative error err = |V - alpha V_k| / content
+            const double thr = std::max(1e-10, 5e-16/std::min(double(alpha), 1.0 - double(alpha)));
             label nDump = 0;
             label nFail = 0;
             label nExit[5] = {0, 0, 0, 0, 0};
@@ -244,7 +247,7 @@ int main(int argc, char *argv[])
                         }
                         Info<< nl;
                     }
-                    if (err > 1e-10 && nDump < 3 && nDumpAll < nDumpMax)
+                    if (err > thr && nDump < 3 && nDumpAll < nDumpMax)
                     {
                         ++nDump; ++nDumpAll;
                         Info<< "DUMP," << tag << "," << (arm ? "new" : "old") << ",alpha " << alpha
@@ -262,8 +265,8 @@ int main(int argc, char *argv[])
             const size_t m = errs.size();
             double sum = 0;
             size_t over = 0, overW = 0;
-            for (double e : errs) { sum += e; if (e > 1e-10) ++over; }
-            for (double e : errsW) { if (e > 1e-10) ++overW; }
+            for (double e : errs) { sum += e; if (e > thr) ++over; }
+            for (double e : errsW) { if (e > thr) ++overW; }
             size_t gross = 0;
             for (double e : errs) { if (e > 1e-3) ++gross; }
             if (!errs4.empty())

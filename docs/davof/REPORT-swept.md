@@ -6704,3 +6704,27 @@ The first clauses of this section failed, and the cause is an error of the brief
    160 cases are rerun with the corrected library (the plane cases have interface cells with alpha_k > 1/2 in
    their last interval).
 5. Stage B only if both revised gates pass.
+
+### POST HOC revision 2 (2026-11-14, after the second Gate A-unit; recorded as a revision, not as a prediction)
+
+The two failures of the revised Gate A-unit (revision 1; job 56329257) come from the brief's tolerance, not from the
+positioning: a purely relative tolerance 1e-12 min(alpha_k, 1 - alpha_k) V_k falls below the resolution of the cut volume
+in double precision (about 1e-16 V_k) for small contents. Measured: hex1 at 1 - alpha_k = 1e-6, error 1.1e-10 against
+1e-10 (the round-off of V in the original frame, 1e-16 V_k / 1e-6); on the perturbed and polyhedral cells the maxIter
+exits rose (pert alpha_k 1e-12: 4784 against 78 with the old setting), and 4467 of them end with an error below 1e-6
+(median 2.6e-12): the iteration was at the round-off of the cut and its floor test (|r| <= 100 tol) never fired. This
+is the brief's second error.
+
+1. A2 corrected: convergence |r| <= max(positioningTol min(alpha_k, 1 - alpha_k) V_k, ccsRoundoffFloor V_k), positioningTol 1e-12,
+   key `ccsRoundoffFloor` (default 1e-15, under ccsTolerance relative). The floor is the resolution of the cut volume in
+   double precision, not an accuracy target. The end-interval verification cut uses the same test. Nothing else changes.
+2. Gate A-unit, revision 2: (i) hex1, alpha_k and 1 - alpha_k in [1e-6, 1/2]: absolute volume error <= max(1e-10 content,
+   5e-16 V_k), content = min(alpha_k, 1 - alpha_k) V_k; zero no-plane returns for alpha_k >= 1e-14; floors and cuts per
+   positioning are reported for all alphas. (ii) pert and poly: the median error, the count above the same mixed bound,
+   the gross count (> 1e-3) and the maxIter count each not worse than the old setting (+1 % on counts), per alpha, in both
+   halves. The warped-face failures present in both settings stay unrepaired; the located result is the dump
+   (`ccs_failures_20_per_mesh.txt`): V(p) of cutCellPLIC jumps at a vertex level on warped faces by 2.7e-4 to 5.7e-3 V_k, and
+   the cut's full volume differs from V_k (median 6.8e-4 on the perturbed cells, 3.0e-5 on the polyhedral cells).
+3. Gate A-plane: the clauses of revision 1, rerun with the revision-2 library. Stage B starts when the unit gate (revision 2)
+   passes and the plane gate passes on all onePlane cases and the pieces cases at N <= 80; the pieces N 160 plane cases are
+   judged when they finish, and a later failure is reported prominently.

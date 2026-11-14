@@ -45,6 +45,7 @@ solvers
         // arXiv:2012.02227): ccsEndInterval none | cubic, ccsTolerance absolute | relative (leia 2026-11-14)
         ccsEndInterval  @!TPF_CCS_END_INTERVAL!@;
         ccsTolerance    @!TPF_CCS_TOLERANCE!@;
+        ccsRoundoffFloor @!TPF_CCS_ROUNDOFF_FLOOR!@;
         isoFaceTol      1e-8;
         surfCellTol     1e-8;
         // plicRDF: the initial guess from the previous normals (the library's

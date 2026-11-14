@@ -48,6 +48,7 @@ solvers
         // arXiv:2012.02227): ccsEndInterval none | cubic, ccsTolerance absolute | relative (leia 2026-11-14)
         ccsEndInterval  @!TPF_CCS_END_INTERVAL!@;
         ccsTolerance    @!TPF_CCS_TOLERANCE!@;
+        ccsRoundoffFloor @!TPF_CCS_ROUNDOFF_FLOOR!@;
         // plicRDF's initial guess (the helper inside davof and the comparator alike):
         // true = the previous normals shifted back by U dt (the library's default),
         // false = the alpha gradient every time (the hexInterp diagnostic)

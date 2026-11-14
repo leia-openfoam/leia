@@ -405,14 +405,25 @@ inline label ccsPositionPlane
     const label maxIter,
     ccsRecord& rec,
     const bool endInterval = false,   // ccsEndInterval cubic (T. Maric, J. Comput. Phys.: X 11 (2021) 100093, doi:10.1016/j.jcpx.2021.100093, arXiv:2012.02227)
-    const bool relativeTol = false    // ccsTolerance relative: |r| <= tolRel min(alpha, 1 - alpha) V_c
+    const bool relativeTol = false,   // ccsTolerance relative: |r| <= max(tolRel min(alpha, 1 - alpha) V_c, roundoffFloor V_c)
+    const scalar roundoffFloor = 1e-15
 )
 {
     const scalar Vc = mesh.V()[celli];
     // the target within [0, V_c]: a volume fraction outside it (a round-off
     // wisp of -3e-15, 2026-11-04) has no plane but the vertex extreme
     const scalar target = min(max(alpha, scalar(0)), scalar(1))*Vc;
-    const scalar tol = tolRel*(relativeTol ? min(target, Vc - target) : Vc);
+    // ccsTolerance relative (T. Maric, J. Comput. Phys.: X 11 (2021) 100093,
+    // doi:10.1016/j.jcpx.2021.100093, arXiv:2012.02227): the plane matches
+    // the content to tolRel; roundoffFloor V_c is the resolution of the cut
+    // volume in double precision (about 1e-16 V_c), NOT an accuracy target:
+    // a purely relative tolerance falls below it for small contents
+    // (POST HOC revision 2, 2026-11-14). The end-interval verification cut
+    // uses the same test.
+    const scalar tol =
+        relativeTol
+      ? max(tolRel*min(target, Vc - target), roundoffFloor*Vc)
+      : tolRel*Vc;
     const point& xc = mesh.C()[celli];
     const pointField& P = mesh.points();
 

@@ -262,6 +262,9 @@ class davof
         //  and absolute reproduce the positioning before 2026-11-14.
         word ccsEndInterval_;
         word ccsTolerance_;
+        //- ccsTolerance relative: the resolution of the cut volume in double
+        //  precision (key ccsRoundoffFloor, default 1e-15 V_k), NOT an accuracy target
+        scalar ccsRoundoffFloor_;
         label nPosEndOk_;
         label nPosEndRej_;
 

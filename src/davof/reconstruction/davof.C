@@ -162,7 +162,7 @@ bool Foam::reconstruction::davof::positionPlane
         (
             mesh_, cutCellPos_, celli, ac, n/nMag, pPlane_[celli],
             positioningTol_, positioningMaxIter_, rec,
-            ccsEndInterval_ == "cubic", ccsTolerance_ == "relative"
+            ccsEndInterval_ == "cubic", ccsTolerance_ == "relative", ccsRoundoffFloor_
         );
         if (rec.endState > 0) ++nPosEndOk_;
         if (rec.endState < 0) ++nPosEndRej_;
@@ -416,6 +416,7 @@ Foam::reconstruction::davof::davof
     positioningMaxIter_(modelDict().getOrDefault<label>("positioningMaxIter", 30)),
     ccsEndInterval_(modelDict().getOrDefault<word>("ccsEndInterval", "none")),
     ccsTolerance_(modelDict().getOrDefault<word>("ccsTolerance", "absolute")),
+    ccsRoundoffFloor_(modelDict().getOrDefault<scalar>("ccsRoundoffFloor", 1e-15)),
     nPosEndOk_(0),
     nPosEndRej_(0),
     grazingCut_(modelDict().getOrDefault<word>("grazingCut", "openfoam")),
@@ -587,7 +588,8 @@ Foam::reconstruction::davof::davof
     if (positioning_ == "ccs")
     {
         Info<< "davof: positioning ccs ccsEndInterval " << ccsEndInterval_
-            << ", ccsTolerance " << ccsTolerance_ << endl;
+            << ", ccsTolerance " << ccsTolerance_ << ", ccsRoundoffFloor "
+            << ccsRoundoffFloor_ << endl;
         Info<< "davof: positioning ccs (Consecutive Cubic Spline on the"
             << " cutCellPLIC cut from the explicit position, positioningTol "
             << positioningTol_ << " of V, positioningMaxIter "

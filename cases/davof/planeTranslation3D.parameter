@@ -69,6 +69,7 @@ values
     TPF_GRAZING_CUT ( openfoam );
     TPF_CCS_END_INTERVAL ( none );
     TPF_CCS_TOLERANCE ( absolute );
+    TPF_CCS_ROUNDOFF_FLOOR ( 1e-15 );
     TPF_ANCHOR_SKIP_CONVERGED ( true );
     // the pre-test and the state shortcut of sweptFaceCells (fork 3aaf49d):
     // none / false = the path of 720cfc6 (the fork's own defaults since
