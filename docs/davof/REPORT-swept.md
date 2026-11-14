@@ -6801,3 +6801,197 @@ efficiency, exchange count). Tables: time per step per phase (mean, share of the
 step, clips per swept face, pieces per face, tets per face; the same per-step totals for plicRDF and isoAlpha; the
 ratio pieces/plicRDF per phase where a phase corresponds; the dependence on N (per interface cell) and on Co.
 Reported: the three largest phases with the measured operation count behind each. No optimisation.
+
+
+### Pieces path: aborts and cost, results (diag2, 2026-11-14/15; leia branch `davof-ccs-pieces`)
+
+Code: print-only; commits 89b272c3 (phase timers `phaseProfile`, `alphaDump`, settings `recommendedProfile` / `recommendedDump`),
+eab09573 (operation counters of the signed-tet clips), 61b50da8 (rank minima and count maxima), ef4336cf (dump trigger, see POST HOC),
+31dcc938 (analysis scripts `workflow/scripts/davof_diag2/`). Pre-registration 6f277261.
+
+POST HOC notes (recorded as notes, not as predictions).
+1. The Stage B column "max alpha - 1" (kiss_an.read_case) is the maximum over EVERY line "max(alpha) = 1 + x" of the log, the lines
+   "before the bounding" included. The 1.84e+02 of shear2D N 256 is a value BEFORE the conservative bounding (step 5040); after the
+   bounding the maximum of that run is 2.0e-13. The pre-registered dump trigger (after the bounding) therefore printed nothing in the first
+   two dump runs (jobs 56360660 new keys, 56360665 old keys; both reproduce the Stage B end state); the trigger was moved to the maximum
+   before the bounding (ef4336cf) and the two dump runs repeated (jobs 56362807 new keys, 56362808 old keys). Nothing else changed.
+2. A second batch of the pieces profile and scaling studies was run with the library that also prints the minimum over the ranks of every
+   phase and the maximum over the ranks of every count; the first batch is kept as a repetition (noise).
+
+Identity of the print-only keys (verified): with the key off the rendered `system/` and `constant/` of shear2D N 64 pieces Co 0.5 are
+byte-identical to Stage B (`diff -r`, case 00003 of ccsB_shear2D_N64_davof against diag2_check2 00000); E_shape 1.46401538395666859e-04,
+min alpha -7.4593109471776664e-16 and 1 - max alpha -4.8849813083506888e-15 are identical to the digit with the key off, `phaseProfile`
+and `alphaDump` on (jobs 56359565, 56359563, 56359564 and 56360659, 56360662, 56360661); the log differs from Stage B only in the date line. Shear2D N 256 pieces Co 0.2
+with `alphaDump` on, new keys (56362807): E_shape 2.08169452631583292e-06 = Stage B; old keys (56362808): 2.14341906668537291e-06 = the
+standing KISS value. Wall clock of the check case: 80 s (Stage B), 78 to 81 s with the keys on.
+
+#### Part 1: are the pieces aborts caused by the CCS change?
+
+NEW keys = ccsEndInterval cubic, ccsTolerance relative (1e-12, floor 1e-15), grazingCut openfoam (Stage B); OLD keys = none, absolute 1e-14,
+fork. `recommended`, same ranks and Co. min alpha / max alpha - 1 are the run extremes before / after the conservative bounding [step].
+
+| case | keys | np | OF Co target | steps run | status | abort step (t) | min alpha before / after bounding | max alpha - 1 before / after bounding | E_shape | wall (s) | job |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| shear2D N 128 | new (Stage B) | 1 | 0.2 | 5062 | aborted | 5062 (6.08413) | -8.940 [4739] / -5.498e-01 [5062] | 8.207 [4739] / 1.263e-13 | - | 785 | Stage B |
+| shear2D N 128 | old | 1 | 0.2 | 5062 | aborted | 5062 (6.08413) | -5.511e-01 [5062] / -5.498e-01 [5062] | 9.480e-10 [4679] / 1.263e-13 | - | 739 | 56359457 |
+| shear2D N 128 | new (Stage B) | 1 | 0.5 | 1789 | aborted | 1789 (5.3756) | -2.402 [1789] / -1.129 [1789] | 1.403 [1789] / 9.082e-14 | - | 267 | Stage B |
+| shear2D N 128 | old | 1 | 0.5 | 2662 | completed | - | -15.02 [1660] / -2.621e-01 [1545] | 14.25 [1660] / 9.015e-14 | 1.90237e-05 | 347 | 56359456 |
+| deformation3D N 128 | new (Stage B) | 64 | 0.2 | 4150 | aborted | 4150 (2.59375) | -8.302e-01 [4150] / -8.302e-01 | 8.472e-06 / 3.975e-07 | - | 20367 | Stage B |
+| deformation3D N 128 | old | 64 | 0.2 | 4800 | completed | - | -5.515e-04 [3923] / -3.713e-08 [4362] | 8.472e-06 / 3.975e-07 | 7.52588e-04 | 14449 | 56359669 |
+| shear2D N 256 | new (Stage B, dump run) | 8 | 0.2 | 13312 | completed | - | -183.6 [5040] / -3.681e-03 [5040] | 183.6 [5040] / 2.045e-13 | 2.08169e-06 | 1103 | 56362807 |
+| shear2D N 256 | old (dump run) | 8 | 0.2 | 13312 | completed | - | -9.967e-10 [2911] / -8.928e-13 | 9.881e-10 [10954] / 2.045e-13 | 2.14342e-06 | 1353 | 56362808 |
+
+Stored standing results of the KISS workspace (`enright/kiss/leia/studies/davof/standing_*_variants`, read only, `recommended`, old keys,
+repetition 1; the three repetitions are identical):
+
+| cell | np | steps | status | abort step (t) | min alpha before / after bounding | max alpha - 1 before / after bounding | E_shape |
+|---|---|---|---|---|---|---|---|
+| shear2D N 128, Co 0.2 | 1 | 5062 | aborted | 5062 (6.08413) | -5.511e-01 / -5.498e-01 | 9.480e-10 / 1.263e-13 | - |
+| shear2D N 128, Co 0.5 | 1 | 2662 | completed | - | -15.02 / -2.621e-01 | 14.25 / 9.015e-14 | 1.90237e-05 |
+| deformation3D N 128, Co 0.2 | 64 | 4800 | completed | - | -5.515e-04 / -3.713e-08 | 8.472e-06 / 3.975e-07 | 7.52588e-04 |
+| deformation3D N 128, Co 0.5 | 64 | 1920 | completed | - | -1.382e-04 / -7.585e-08 | 3.191e-04 / 5.387e-04 | 7.35431e-04 |
+| shear2D N 256, Co 0.2 | 8 | 13312 | completed | - | -9.967e-10 / -8.928e-13 | 9.881e-10 / 2.045e-13 | 2.14342e-06 |
+| shear2D N 256, Co 0.5 | 8 | 3145 | aborted | 3145 (4.72506) | -1.123 / -1.065 | 1.226e-01 / 1.792e-13 | - |
+| shear2D N 64, Co 0.2 | 1 | 1926 | aborted | 1926 (4.62981) | -1.498 / -1.005 | 5.006e-01 / 2.229e-02 | - |
+| shear2D N 64, Co 0.5 | 1 | 1331 | completed | - | -8.901e-10 / -8.941e-13 | 4.120e-10 / 2.687e-14 | 1.47640e-04 |
+
+The old-key reruns reproduce the standing results to the digit (steps, abort step, extremes, E_shape, same sources). Verdict by the
+pre-registered rule:
+- shear2D N 128 Co 0.2: aborts with both key sets at the same step and time (5062, 6.084134615773781) with the same min alpha after the
+  bounding (-0.5498352395642504): NOT caused by the CCS change. (With the new keys a pre-bounding excursion of -8.94 / +8.21 occurs at
+  step 4739; with the old keys the pre-bounding extremes stay below 1e-9 until the abort.)
+- shear2D N 128 Co 0.5: completes with the old keys (2662 steps, E_shape 1.90237e-05), aborts with the new keys at step 1789: REGRESSION
+  of the CCS change.
+- deformation3D N 128 Co 0.2 (64 ranks): completes with the old keys (4800 steps, E_shape 7.52588e-04), aborts with the new keys at
+  step 4150: REGRESSION of the CCS change.
+- shear2D N 256 Co 0.2: completes with both; with the new keys one step (5040, t = 3.0288) has max alpha - 1 = 183.6 before the bounding,
+  the limiter removes it (after: -3.681e-03 / 2.0e-13); with the old keys no value above 1e-9 occurs in the run. Present only with the
+  new keys.
+Also in the standing table (old keys, reported only): shear2D N 256 Co 0.5 and N 64 Co 0.2 abort with the old keys and complete with the
+new keys in Stage B (3328 steps for N 64 Co 0.2, 5325 for N 256 Co 0.5).
+
+The 1.84e+02 case, dump (job 56362807, new keys, rank 7; full text in `/work/scratch/tm83tomy/davof/agents/diag2/dump_new_N256_step5040.txt`, the log `studies/davof/diag2_dump2_shear2D_N256_new/isoShear2D_00000/log.davofAdvectorFoam`):
+`step 5040 t 3.0288461540398934, local cell 1878 centre (0.513671875 0 0.115234375) V 5.96e-08, max(alpha) - 1 = 183.58046522491588;
+alpha^n 8.1987795302946423e-15 (surface no), alpha before bounding 184.58046522491588, after 0.99999999999997036; plane: none (unit
+normal 0), |m_k|/V^(2/3) 1.3065e-12`. Faces of the cell (all values over V_c): face 3601 (neighbour: alpha^n 0.99840421453993755,
+surface yes): phi dt out +5.9655e-04, V_swept 5.9655e-04, flux scale |phi| dt / V_swept 1, unscaled liquid out -184.58046522491588, dVf
+before -184.58046522491588, after -1.0378890948788921, bound ratio 5.6230e-03, alpha_f 0; face 3723 (neighbour alpha^n
+4.2693005733567327e-04, surface yes): phi dt out 3.7889e-02, dVf before 1.3794e-17, after 3.7889e-02, alpha_f 1; faces 3725 and 3726
+(no surface on either side): dVf -6.9e-18 and -8.2e-16, unchanged; two boundary faces without flux.
+What the numbers show: the maximum is an empty cell (alpha^n 8e-15, no plane) that receives, through the one face 3601, a liquid
+volume of 184.6 V_c from a swept volume of 5.97e-04 V_c; the flux scale is 1, so the face's liquid volume (the sum of the signed-tet
+pieces) is itself wrong by a factor 3.1e+05 of the swept volume and negative in sign. The limiter then reduces that flux to -1.04 V_c
+and passes the excess on through face 3723 (full flux 3.79e-02 V_c), ending at alpha 0.99999999999997.
+
+#### Part 2: cost profile of the pieces path
+
+Wall-clock timers (steady clock, per rank, mean / minimum / maximum over the ranks, one line per step, key `phaseProfile`) and counters
+(sums and maxima over ranks); steps >= 2 averaged. Jobs: pieces batch 2 (primary) 56362060/1 (deformation3D N 64, 8 ranks, Co 0.2 /
+0.95), 56362146/5 (N 128, 64 ranks), 56362069 (shear3D N 64, 8 ranks), scaling 56361981 / 56362058 / 56362059 (1 / 8 / 64 ranks);
+batch 1 (repetition) 56360858/9, 56361126/7, 56361040, 56360856 / 56360724 / 56360857; plicRDF 56360946/7, 56361042/110, 56361041;
+isoAlpha 56360950/49, 56361045/6, 56360959 (OpenFOAM `profiling` on in all rows). Limits: deformation3D N 128 (64 ranks) is limited to
+the first 20 % of the end time (END_TIME 0.6 of 3; 960 steps at Co 0.2, 200 steps at Co 0.95; four writes at 0.15, 0.3, 0.45, 0.6),
+because the full pieces run exceeds 2 h (Stage B 5101 s at Co 0.95, the standing 12381 to 24370 s at Co 0.2); plicRDF and isoAlpha use
+the same END_TIME. All other cases run to the full end time 3. The strong-scaling runs end at END_TIME 0.25 (200 steps), without writes.
+Decomposition scotch, partition of the cells only (no weighting by interface cells).
+
+Time per step, three rows, mean over ranks (s); OpenFOAM profiling for plicRDF and isoAlpha (advect() includes reconstruct()):
+
+| family N (ranks) | OF Co | steps | interface cells | pieces: step | pieces: reconstruction | pieces: advect minus reconstruction | pieces: between | plicRDF: step | plicRDF: reconstruct | plicRDF: advect minus reconstruct | isoAlpha: step | isoAlpha: reconstruct | isoAlpha: advect minus reconstruct | pieces / plicRDF: step, reconstruction, advection | pieces / isoAlpha: step |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| deformation3D N 64 (8) | 0.198 | 2400 | 4326 | 1.27 | 0.0121 | 1.23 | 0.0232 | 0.0511 | 0.0288 | 0.00567 | 0.0298 | 0.00339 | 0.00918 | 24.8, 0.4, 217 | 42.5 |
+| deformation3D N 64 (8) | 0.950 | 500 | 4250 | 1.23 | 0.0107 | 1.20 | 0.0241 | 0.0687 | 0.0415 | 0.00759 | 0.0364 | 0.00385 | 0.0119 | 17.9, 0.3, 158 | 33.9 |
+| deformation3D N 128 (64) | 0.198 | 960 | 8776 | 2.75 | 0.0262 | 2.69 | 0.0310 | 0.142 | 0.0928 | 0.0170 | 0.118 | 0.00625 | 0.0574 | 19.3, 0.3, 158 | 23.4 |
+| deformation3D N 128 (64) | 0.950 | 200 | 8735 | 3.11 | 0.0351 | 3.03 | 0.0427 | 0.233 | 0.153 | 0.0350 | 0.0807 | 0.00470 | 0.0374 | 13.3, 0.2, 87 | 38.5 |
+| shear3D N 64 (8) | 0.217 | 1440 | 2914 | 1.39 | 0.0138 | 1.37 | 0.00705 | 0.0484 | 0.0359 | 0.00826 | 0.0270 | 0.00405 | 0.0170 | 28.7, 0.4, 166 | 51.4 |
+
+Repetition (pieces step, batch 2 / batch 1): N 128 Co 0.2 1.016; N 128 Co 0.95 1.272; N 64 Co 0.2 1.049; N 64 Co 0.95 1.038; shear3D N 64
+0.763 (nodes shared with other jobs; the spread of a single run is +-25 %).
+
+Phase table of the pieces row (deformation3D N 64, 8 ranks, Co 0.2; step 1.266 s mean over ranks; by the maximum over ranks 1.267 s):
+
+| phase | s/step mean | share (%) | s/step max over ranks | share by the max (%) | s/step min | core-us per interface cell per step |
+|---|---|---|---|---|---|---|
+| between (velocity update, Courant number, function objects, IO) | 0.0232 | 1.8 | 0.0233 | 1.8 | 0.0231 | 43 |
+| reconstruction: m_k from alpha_f | 0.00103 | 0.1 | 0.00127 | 0.1 | 0.00086 | 1.9 |
+| reconstruction: interface-cell rule | 0.00101 | 0.1 | 0.00116 | 0.1 | 0.00089 | 1.9 |
+| reconstruction: face moment + explicit-plane cut | 0.000424 | 0.0 | 0.00107 | 0.1 | 7e-07 | 0.8 |
+| reconstruction: ring normal | 0.00410 | 0.3 | 0.00484 | 0.4 | 0.00311 | 7.6 |
+| reconstruction: CCS positioning (4.04 cuts per interface cell) | 0.00134 | 0.1 | 0.00348 | 0.3 | 2e-07 | 2.5 |
+| reconstruction: boundary updates, reductions, report | 0.00416 | 0.3 | 0.00552 | 0.4 | 0.00204 | 7.7 |
+| flux: buildCellSurfaces | 0.000169 | 0.0 | 0.000455 | 0.0 | 2e-06 | 0.3 |
+| flux: point velocities, tet cache, octree | 0.00256 | 0.2 | 0.00299 | 0.2 | 0.00182 | 4.7 |
+| flux: exchange 1 (cell surfaces) | 0.000755 | 0.1 | 0.000853 | 0.1 | 0.00063 | 1.4 |
+| flux: wisp surfaces | 0.00709 | 0.6 | 0.0202 | 1.6 | 0.00059 | 13.1 |
+| flux: candidate cells | 0.0140 | 1.1 | 0.0205 | 1.6 | 0.00085 | 25.8 |
+| flux: exchange 2 (second ring) | 0.00139 | 0.1 | 0.00152 | 0.1 | 0.00126 | 2.6 |
+| flux: swept exchange (remote ring cells) | 0.0121 | 1.0 | 0.0149 | 1.2 | 0.00873 | 22.4 |
+| face: trace to the pre-image | 0.0116 | 0.9 | 0.0276 | 2.2 | 0.00091 | 21.5 |
+| face: ring, planes, pre-test | 0.0144 | 1.1 | 0.0334 | 2.6 | 0.00099 | 26.7 |
+| face: signed-tet clips against the cell planes (volume) | 0.446 | 35.2 | 1.06 | 83.6 | 0.0298 | 824 |
+| face: clips of the pre-image (area) | 0.0101 | 0.8 | 0.0234 | 1.8 | 0.00065 | 18.6 |
+| face: remainder of sweptFaceCellsFlux (ring search, pre-image fan, flux scaling, piece sums, alpha_f) | 0.0130 | 1.0 | 0.0286 | 2.3 | 0.00095 | 24.0 |
+| face loop: surfaceOf, velocity interpolation, face set | 0.00355 | 0.3 | 0.00752 | 0.6 | 0.00058 | 6.6 |
+| flux: processor-patch sync (the wait for the slowest rank; the exchange itself is 1.0e-04 s) | 0.683 | 53.9 | 1.15 | 90.8 | 0.000104 | 1262 |
+| alpha update, limiter, brute-force bounding, default face fractions, reductions of the reports | 0.0107 | 0.8 | 0.0119 | 0.9 | 0.0095 | 20 |
+
+Same table, deformation3D N 128, 64 ranks, Co 0.2 (step 2.747 s): between 0.0310 s (1.1 %); reconstruction 0.0262 s in total (ring normal
+0.0118 s, boundary updates and reports 0.0116 s, CCS positioning 0.00035 s); fVol mean 0.101 s (3.7 %), maximum 2.32 s (84.6 % of the
+step), minimum 0; fPre mean 0.00358 s, max 0.0834 s (3.0 %); remainder of sweptFaceCellsFlux mean 0.00275 s, max 0.0613 s (2.2 %); trace
+mean 0.0026 s, max 0.0584 s; swept exchange mean 0.0256 s; exchange 1 + 2 mean 0.0088 s; processor-patch sync mean 2.50 s (91.2 %),
+minimum 3.0e-04 s; alpha update, limiter, bounding, default face fractions, reports 0.0141 s. Load imbalance of the face loop
+(maximum / mean over ranks) is 2.37 at 8 ranks and 23.1 at 64 ranks (the counts of faces through the flux give 2.43 and 22.8).
+
+Counts per swept face (second batch; sums over ranks per step divided by the faces through the flux):
+
+| case | ranks | steps | interface cells | CCS cuts per interface cell | faces per step | triangles per face | ring cells per face | cells kept by the pre-test per face | tets built per face | tet-plane clips per face | polygon clips per face | coverage clips per face | pre-image clips per face | pieces per face | step (s) | fVol share of the step on the most loaded rank |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| deformation3D N 64, Co 0.198 | 8 | 2400 | 4326 | 4.04 | 47062 | 16.00 | 18.00 | 4.40 | 52.60 | 296.46 | 1327.34 | 371.41 | 96.38 | 4.23 | 1.266 | 83.6 % |
+| deformation3D N 64, Co 0.950 | 8 | 500 | 4250 | 4.14 | 41775 | 16.00 | 18.00 | 4.39 | 52.50 | 295.27 | 1321.59 | 370.77 | 95.85 | 4.23 | 1.232 | 83.5 % |
+| deformation3D N 128, Co 0.198 | 64 | 960 | 8776 | 4.09 | 88819 | 16.00 | 18.00 | 4.19 | 50.26 | 280.88 | 1252.40 | 349.61 | 92.09 | 4.12 | 2.747 | 84.6 % |
+| deformation3D N 128, Co 0.950 | 64 | 200 | 8735 | 4.10 | 89305 | 16.00 | 18.00 | 4.19 | 50.25 | 279.69 | 1247.02 | 350.01 | 92.07 | 4.12 | 3.109 | 83.2 % |
+| shear3D N 64, Co 0.217 | 8 | 1440 | 2914 | 4.02 | 28027 | 16.00 | 18.00 | 4.08 | 49.00 | 280.90 | 1255.75 | 347.98 | 92.29 | 4.07 | 1.388 | 85.0 % |
+
+Per step at N 64 (8 ranks, Co 0.2): 2.476e+06 tets, 1.395e+07 tet-plane clips, 6.25e+07 polygon clips of the tet faces; N 128 (64 ranks): 4.464e+06 tets,
+2.495e+07 tet-plane clips, 1.112e+08 polygon clips. Time of the volume clips per operation (mean over ranks x ranks / count): 1.44 us per
+tet and 0.256 us per tet-plane clip at N 64, 1.45 us per tet, 0.259 us per tet-plane clip and 58 ns per polygon clip at N 128. Work
+of the volume clips per interface cell per step: 824 core-us at N 64 and 734 core-us at N 128 (constant within 11 %). Exchange rounds
+issued by the davof code: 17.6 per rank and step at 8 ranks, 17.5 at 64 ranks (collective reductions are not counted).
+
+Dependence on Co: the pieces step is 1.27 s at Co 0.198 and 1.23 s at Co 0.95 (N 64), 2.75 s and 3.11 s (N 128, within the 25 % spread
+of repeated runs); tets, clips and pieces per face are the same to 0.5 %. The work per step does not grow with Co, so the work per
+unit time falls as 1/Co. plicRDF grows from 0.0511 to 0.0687 s (N 64) and 0.142 to 0.233 s (N 128); isoAlpha 0.0298 to 0.0364 s (N 64)
+and 0.118 to 0.0807 s (N 128).
+
+Strong scaling, deformation3D N 64, pieces, first 200 steps (steps 2 to 200; 1801 interface cells, 18333 faces per step):
+
+| ranks | step (s), batch 2 | step (s), batch 1 | speedup (batch 2 / batch 1) | parallel efficiency (batch 2 / batch 1) | reconstruction | face loop | exchange phases, mean over ranks | wait for the slowest rank (mean - min of the sync) | exchange rounds per rank and step | load imbalance of the faces (max/mean) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 1.53 | 2.00 | 1.00 / 1.00 | 1.00 / 1.00 | 0.0195 | 1.34 | 0 | 0 | 0 | 1.00 |
+| 8 | 0.958 | 0.901 | 1.59 / 2.22 | 0.20 / 0.28 | 0.00724 | 0.169 | 0.753 | 0.747 (77.9 % of the step) | 17.6 | 5.41 |
+| 64 | 0.520 | 0.528 | 2.94 / 3.80 | 0.05 / 0.06 | 0.00602 | 0.0228 | 0.472 | 0.466 (89.6 % of the step) | 17.5 | 20.6 |
+
+(the 1-rank wall clock differs by 31 % between the two batches, the 8- and 64-rank times by 6 % and 2 %).
+
+The three largest phases (most loaded rank unless stated), with the measured operation counts:
+1. Volume clips of the signed tets against the cell planes (sweptPieceExactVolume): 83 to 85 % of the step on the most loaded rank
+   (1.06 s of 1.27 s at N 64 / 8 ranks; 2.32 s of 2.75 s at N 128 / 64 ranks; 1.21 s of 1.53 s on one rank); 52.6 (N 64) and 50.3 (N 128)
+   tets per face, 296 and 281 tet-plane clips per face, 1327 and 1252 polygon clips per face, i.e. 2.48e+06 tets, 1.40e+07 tet-plane
+   clips, 6.25e+07 polygon clips per step at N 64 (4.46e+06, 2.49e+07, 1.11e+08 at N 128).
+2. The wait of the average rank for the most loaded one in the processor-patch sync: 54 % (8 ranks) and 91 % (64 ranks) of the average
+   rank's step; the exchange itself costs 1.0e-04 s at the most loaded rank. Cause measured: the faces through the flux are distributed
+   2.4 (8 ranks) and 22.8 (64 ranks) times unevenly (maximum / mean) by the scotch decomposition, which does not know the interface.
+3. Ring and pre-test (face: ring, planes, pre-test) 2.6 to 3.0 % of the step; 18 ring cells per face (8.5e+05 per step at N 64), 4.4 of
+   them kept by the pre-test, each tested against 6 planes with the 10 vertices of the swept volume (up to 5.1e+07 plane-vertex distances
+   per step at N 64, derived from the hexahedral cell). The next: remainder of sweptFaceCellsFlux (2.2 to 2.3 %), trace of the face to
+   its pre-image (2.1 to 2.2 %, 16 triangles per face; up to 2.4e+05 point traces per step at N 64, derived as faces x (4 vertices + centre)).
+The reconstruction (CCS positioning with 4.0 cuts per interface cell, explicit plane cut, ring normal) is 1.0 % of the step; the ring
+normal and the boundary updates are 0.3 to 0.4 % each; the pieces reconstruction costs 0.2 to 0.4 of plicRDF's reconstruct() and 3.6 times
+isoAlpha's at N 64 Co 0.2 (0.0121 s against 0.0288 s and 0.00339 s).
+
+LIMITATIONS of the measurement: one repetition per case (a second batch for the pieces row; spread up to +-25 % on shared nodes); the
+other rows were run once; the N 128 cases cover the first 20 % of the end time (first half of the deformation, before the reversal);
+the strong-scaling runs cover the first 200 steps with 1801 interface cells; collective reductions are not counted, only their time
+inside the phases that contain them; the exchange-round count is the explicit calls of the davof code (patch-field updates counted by
+their number in the source); the per-face times are accumulated from steady-clock reads inside the face loop (about 6 reads per
+face); the operation times are means over the ranks of the time inside the phase divided by the counts.
