@@ -6868,3 +6868,122 @@ Two consequences, read from the lines above and stated before the run:
   dump is compared with the V_k of the rebuilt mesh, `EXTRACHK`) plus evenly strided cells up to 200 in all.
 - Correlation: Pearson over the selected cells of the cell's largest jump (over normals and levels) against the warp
   measure, linear and log10.
+### Results (jobs 56357107 build, 56357158 run 1, 56360478 run 2; logs, scatter CSVs and scripts in `docs/davof/cut-volume/`)
+
+Run 1 (job 56357158; application commit 796c1862) ran four meshes. Two things were amended after it, both recorded here and
+not hidden: (i) the poly mesh of run 1 is a fresh pMesh realisation and NOT the CCS gate's mesh (pMesh is not reproducible;
+`EXTRACHK`: the V_k of all 8 dumped polyhedral cells differ from the dump; the 12 dumped perturbed cells match, rel < 1e-8);
+(ii) the root classification counted a crossing inside a level pair as a jump even when V changes by 1e-8 V_k across the pair
+(2400 planar-box pairs at alpha 0.5, a grid artefact). Run 2 (job 56360478; application commit bef39eb0): a level pair is a
+jump only above 1e-6 V_k; inner-level and first-level jump rows; `poly` = the CCS gate's polyMesh copied read-only from
+`ccs/unit-56326260/poly` (the dumped V_k match, 0 of 8 differ); `polyNew` = the fresh pMesh realisation (same 7673 cells and
+43968 points, different geometry); five processes on 5 cores of one node (the pre-registration said 3 cores: the node was
+loaded by the number of meshes). Everything below is run 2 unless named. Cells: 200 per mesh (199 on `poly`: a dumped cell
+coincided with a strided one), 26 aligned + 100 random normals (fixed seed; the first 100 of the CCS gate's 1000), 201 grid
+points + L -+ 1e-9 extent; hex1 is one cell. The 20 dumps per mesh contain 12 (perturbed) and 8 (polyhedral) distinct cells.
+Meshes: hex1 and box planar; pert (16 x 16 x 32, warp measure median 0.041, max 0.090 sqrt(S_f)); poly 7673 cells (180
+prisms, 7493 polyhedra; warp median 0.014, max 0.18); the 200 sampled perturbed cells all have warp >= 0.012.
+
+Pre-run prediction (a) of the Q1 section FAILED: V_ref with the apex at the mesh face centre reproduces V_k to 1.5e-15
+(poly), 5.8e-16 (pert). Reason, found after the run: the vector area of a closed polygon loop does not depend on the apex F,
+so the tetrahedra (C, v_i, v_i+1, F) sum to (1/3) S_f . (F - C); with F = c_f this is the mesh's own pyramid (S_f, c_f) of
+`makeCellCentresAndVols`. The flat pyramid IS the volume of the triangulation around the face centre c_f (the area-weighted
+centroid, not the point average). With the apex at the point average (refP0) it is not: V_tri differs from V_k by
+(1/3) S_f . (P0 - c_f), 2.0e-3 max on the polyhedra (median 1.7e-7; 189 of 199 cells above 1e-13) and 4.2e-15 on the perturbed
+hexahedra (a quadrilateral's point average has no offset along the normal).
+
+T1 (per mesh and method; jumps |V(L + d) - V(L - d)| / V_k at the vertex levels L; the floor from the slope across 2d = 2e-9 extent
+is about 4e-9):
+
+| mesh | method | levels | jump max | jump median | jump p99 | levels above 1e-6 | non-monotone intervals (of all; at a level pair) | max, median of V(end)-V_k, /V_k |
+|---|---|---|---|---|---|---|---|---|
+| hex1 | leia, of, iso, ref | 880 | 4.2e-9 | 1.8e-9 | 4.1e-9 | 0 | 0 of 26696 | 4e-16, 0 |
+| box | leia, of, iso, ref | 176000 | 4.2e-9 | 1.8e-9 | 4.1e-9 | 0 | 0 of 5339200 | leia 2.4e-15, of 4.2e-15, iso 4.1e-15, ref 4.4e-16; medians 0 |
+| pert | leia | 199190 | 0.125 | 1.07e-4 | 1.94e-3 | 122143 | 116468 of 5387924; 56403 | 8.17e-3, 0 |
+| pert | of (= iso) | 199190 | 0.125 | 2.36e-4 | 2.35e-3 | 146975 | 126976; 70669 | 8.17e-3, 6.4e-4 |
+| pert | ref | 199190 | 4.8e-9 | 2.0e-9 | 4.2e-9 | 0 | 0 | 5.8e-16, 1.2e-16 |
+| pert | refP0 | 199190 | 4.8e-9 | 2.0e-9 | 4.2e-9 | 0 | 0 | 4.2e-15, 6.9e-16 |
+| poly | leia | 532870 | 0.102 | 5.4e-6 | 7.1e-4 | 349627 | 249292 of 6030161; 216602 | 7.29e-2, 0 |
+| poly | of (= iso) | 532870 | 0.102 | 7.4e-6 | 8.4e-4 | 371397 | 261527; 229259 | 7.29e-2, 5.4e-5 |
+| poly | ref | 532870 | 4.7e-9 | 2.2e-9 | 3.7e-9 | 0 | 0 | 1.5e-15, 2.0e-16 |
+| poly | refP0 | 532870 | 4.7e-9 | 2.2e-9 | 3.7e-9 | 0 | 0 | 2.0e-3, 1.7e-7 |
+| polyNew | leia | 548086 | 0.146 | 5.2e-6 | 6.9e-4 | 360615 | 255592 of 6085466; 225549 | 3.2e-3, 0 |
+| polyNew | of (= iso) | 548086 | 0.146 | 6.7e-6 | 8.0e-4 | 382231 | 267131; 238974 | 3.2e-3, 3.4e-5 |
+| polyNew | ref | 548086 | 4.8e-9 | 2.2e-9 | 3.7e-9 | 0 | 0 | 7.2e-16, 2.0e-16 |
+
+The `V(end)` column is |V_full - V_k| / V_k with V_full = V(c_min + d) + |A_cut| d for leia, of, iso, and V_tri for ref, refP0.
+`iso` equals `of` to 9 digits on pert and to 1e-9 relative on poly. Inner levels only (all except the lowest and the highest
+level; T1b; leia = of to every printed digit): pert max 0.125, median 2.70e-4, p99 2.31e-3, 121876 of 148790 above 1e-6;
+poly 0.102, 8.13e-6, 7.45e-4, 349204 of 482722; polyNew 0.146, 7.40e-6, 7.24e-4, 360235 of 497686. The lowest-level jump (V_k
+against the cut's own full-wet limit) for `of`: median 6.4e-4 (pert), 5.4e-5 (poly), 3.4e-5 (polyNew); max 8.17e-3, 7.29e-2,
+3.2e-3; for `leia` the median is 0, because with the grazing threshold 10*SMALL the cut at c_min + d (area about 1e-20) is
+declared fully wet (status 0 in 325 of 25200 pairs on pert, 933 of 25074 on poly, against 25200 and 25074 for `of`).
+The deviation of a cut method from ref over the grid, max over the grid per (cell, normal), then over pairs: hex1 6.7e-16;
+box 8.4e-15 (leia, of), 1.4e-14 (iso); pert max 0.128, median 5.0e-3, p99 0.085; poly max 0.175, median 1.1e-3, p99 0.053;
+polyNew max 0.236, median 8.2e-4, p99 0.049 (in units of V_k; leia = of = iso to the printed digits). Non-monotone
+intervals (V rises by more than 1e-13 V_k between consecutive grid points) lie both at the level pairs and away from them
+(pert leia: 56403 at a pair, 60065 elsewhere); the size of the rise away from the pairs was not measured.
+
+T2, no-root pairs of the target alpha V_k, per method (pairs: 25200 pert, 25074 poly, 25200 polyNew; box, hex1: 0 for every
+method and alpha; `end` = the crossing lies only in the lowest-level jump, i.e. alpha V_k above the cut's own V(end); `inner`
+= only in another level's jump):
+
+| mesh, method | alpha 1e-2 | 0.1 | 0.5 | 0.9 | 0.99 | 1 - 1e-4 |
+|---|---|---|---|---|---|---|
+| pert, of (= iso) | 118 inner | 14 | 45 | 48 | 258 | 6848 end + 239 inner |
+| pert, leia | 118 | 14 | 45 | 48 | 258 | 108 end + 412 inner |
+| poly, of (= iso) | 33 | 12 | 11 | 23 | 103 | 2132 end + 321 inner |
+| poly, leia | 33 | 12 | 11 | 23 | 103 | 35 end + 370 inner |
+| polyNew, of (= iso) | 21 | 7 | 19 | 18 | 102 | 1498 end + 318 inner |
+| polyNew, leia | 21 | 7 | 19 | 18 | 102 | 23 end + 356 inner |
+| ref (all five meshes) | 0 | 0 | 0 | 0 | 0 | 0 |
+| refP0, poly and polyNew | 0 | 0 | 0 | 0 | 0 | 1260 (alpha V_k above V_tri) |
+
+The leia `end` counts at 1 - 1e-4 understate the end gap: the grazing threshold makes V(c_min + d) = V_k, so the discontinuity
+sits at the plane where the cut area crosses 1e-14, which is not a grid point; `of` is the representative count. A narrow
+excursion between grid points can also be missed. Bisection of ref (apex face centre), T = alpha V_tri and T = alpha V_k, all
+six alphas, all pairs: every target solved, residual max 1.0e-13 (the stop test |V - T| <= 1e-13 V_k), at most 43
+iterations; alpha V_k above V_tri: 0 pairs (hex1, box, pert, poly, polyNew).
+
+T4, cost, mean ns per evaluation (grid blocks per cell and normal; the tetrahedra of ref are built once per cell outside the
+timing; five processes on 5 cores of one node, so a loaded node; run 1 with four processes in brackets for box, pert, poly):
+
+| mesh | leia | of | iso | ref | refP0 |
+|---|---|---|---|---|---|
+| hex1 | 483 | 486 | 423 | 335 | 332 |
+| box | 548 (446) | 551 (447) | 488 (396) | 379 (309) | 379 (308) |
+| pert | 549 (451) | 547 (452) | 482 (393) | 378 (311) | 377 (310) |
+| poly | 1015 (896) | 1010 (893) | 831 (737) | 882 (791) | 869 (779) |
+| polyNew | 1120 | 1018 | 836 | 903 | 890 |
+
+Tetrahedra per cell for ref: 24 on every hexahedron; poly 14 to 72, mean 63.3 (polyNew 65.5). Negative (signed) tetrahedra:
+0 on every mesh for both apex choices. The bisection of ref (all 6 alphas, both targets) took 3.7 s (pert) and 8.8 s (poly,
+run 1) for 25200 pairs.
+
+T7, Pearson coefficient of the cell's largest jump (over normals and levels) against the warp measure max |(x_i - c_f).n_f| /
+sqrt(|S_f|), 200 cells (scatter: `scatter-<mesh>.csv`): pert of 0.48 (log10 0.58), leia 0.48 (0.58); poly of 0.75 (0.74), leia
+0.75 (0.74); polyNew of 0.70 (0.75), leia 0.70 (0.75). For ref the "jump" is the 1e-9 floor and its coefficient (0.63 to 0.69)
+carries no information. The median of the cell's largest jump: pert 0.065 (lower half of the cells by warp) against 0.083
+(upper half); poly 3.4e-5 against 0.047; polyNew 3.1e-5 against 0.045. The correlation of the lowest-level deviation V(end)
+with warp has no consistent sign across the meshes (of, linear: 0.43, -0.03, 0.80; log10: 0.57, 0.78, 0.98).
+
+### Verdicts
+
+- H-cause: SUPPORTED as a description of what differs, NOT isolated as a mechanism. The cut's surface differs from the mesh's
+  where a face is warped: planar faces (hex1, box) give jumps at the 4e-9 floor, no non-monotone interval, and the cut equals
+  ref to 1.4e-14 V_k; warped faces give jumps up to 0.125 V_k (inner-level median 2.7e-4 on pert, 8e-6 on poly), correlated
+  with the warp (r 0.48 to 0.75). The brief's wording "triangulates the mesh face around the face centre" is correct only
+  in the sense that the mesh's flat pyramid (S_f, c_f) equals the triangulation around c_f (V_tri = V_k to 1.5e-15); the code
+  fans around the point average (`primitiveMeshTools.C` 258) and takes the area-weighted centroid as c_f. The mechanism named in
+  the Q1 section (the multiplicity of coincident points in the sub-polygon's point average as the fan apex) follows from the
+  lines read; no run isolated it.
+- H-OF: SUPPORTED. `cutCellPLIC` and `cutCellIso` of OpenFOAM v2606 show both properties on the same cells: same maximum jump
+  (0.125, 0.102, 0.146), identical inner-level jump statistics to leia (the median differs not at all), full-wet deviation
+  median 6.4e-4 (pert) and 5.4e-5 (poly) with the same maximum as leia (8.17e-3, 7.29e-2). The only difference is leia's
+  pooled median (1.1e-4 against 2.4e-4 on pert, a factor 2.2; 1.36 on poly) and its full-wet deviation median (0 against 6.4e-4),
+  both from the grazing threshold 10*SMALL at the lowest level.
+- H-ref: clause 1 HOLDS (ref continuous to the 4.8e-9 floor at every vertex level of every mesh, 0 non-monotone intervals of
+  5.4e6 pert, 6.0e6 poly, 6.1e6 polyNew); clause 2 HOLDS for the apex at the mesh face centre (max 5.8e-16 pert, 1.5e-15 poly,
+  7.2e-16 polyNew, all below 1e-13) and FAILS for the apex at the point average on polyhedra (max 2.0e-3, 189 of 199 cells
+  above 1e-13; pert 4.2e-15); clause 3 HOLDS (planar: hex1 6.7e-16, box 8.4e-15 leia and of, 1.4e-14 iso, below 1e-13).
+  Negative tetrahedra: none. The pre-run prediction that clause 2 fails on warped cells (Q1 section, (a)) was wrong.
