@@ -622,6 +622,9 @@ CP_STEP distance;
 CP_FILL steadyUpwind;
 // closestPoint path cap in cells of the band reach (code default 1.5; rendered by 2Dvortex only).
 CP_MAX_DIST 1.5;
+// leiaTestVelocityExtension input field: distance (default) | scaledDistance (d g, q in [0.8, 1.25])
+// | quadratic (d (d + 2R), q = 2r). Same zero set. Read by the test application only.
+VE_TEST_INPUT distance;
 
 // closestPoint descent psi operator: cellPoint (default) | taylor.
 CP_INTERP cellPoint;

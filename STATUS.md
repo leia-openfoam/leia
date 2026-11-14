@@ -7907,3 +7907,19 @@ first-order fade is accepted, and its derivation is tested; (3) repair 3 first.
    holds the full extension on l <= 4: one layer of transport margin for the face curvature with
    compact schemes, none with pointCellsLeastSquares. Step B's plateau test decides whether one layer
    is enough.
+
+### 11.34 PDE level set: step A proper, round 1 -- q != 1 inputs and the ellipse (2026-11-14)
+
+1. **The change (inert for every existing study).** `leiaTestVelocityExtension` gets
+   `velocityExtension.testInput` (token `VE_TEST_INPUT`, default `distance`): `scaledDistance`
+   (psi = d g, q between 0.8 and 1.25, smooth) and `quadratic` (psi = d (d + 2R) = r^2 - R^2, q = 2r);
+   all inputs have the same zero set, so u(Pi(x)) and alpha do not change. `cases/2Dvortex` renders its
+   interface from per-case problem data (`SURFACE_TYPE`, `SURFACE_X0/Y0`, `SURFACE_R`, `SURFACE_A/B` in
+   `cases/2Dvortex.parameter`; defaults = the historical circle), so the ellipse
+   (`signedDistanceEllipse`, exact distance and closest point) and an off-vertex centre are available.
+2. **Gates, pre-registered:** `aStatic2Dq` (off-vertex circle, three inputs, both closestPoint steps,
+   both bands, closestPoint and meshWave, N 64 to 512; Q1 to Q5, with the derivation that the distance
+   step leaves an O(h) foot point on the quadratic input), `aStatic2DqPar` (the Newton step at np 4),
+   `aStatic2Dellipse` (semi-axes 0.18 x 0.12, N 128 to 512; E1 to E3); inertness: aStatic2Dedge and
+   a0Identity2Dvortex re-run against clone `leia-pde-a3`. Read-out `pde_a5_analysis.py` and
+   `pde_a_static_analysis.py`. Clone `leia-pde-a5`. Laptop: compile check only.
