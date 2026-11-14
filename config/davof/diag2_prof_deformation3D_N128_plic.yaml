@@ -25,7 +25,7 @@ axes_override:
 collapse_other_axes: true
 
 solve_mem_mb: 4000
-solve_runtime: 1400
+solve_runtime: 29
 
 export_slides: false
 

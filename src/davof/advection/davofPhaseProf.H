@@ -90,13 +90,17 @@ enum Count : int
     cPieces,        // pieces produced
     cExch,          // exchange rounds issued by the davof code (explicit)
     cLimitCells,    // cells of the limiter's bounding set
+    cTetsBuilt,     // signed tets (x_ref, T) built and clipped by the pieces (one per triangle and ring cell)
+    cTetClips,      // tet-plane clips: one convex polyhedron clipped by one half-space
+    cPolyClips,     // polygon clips of the tets' faces (the Sutherland-Hodgman steps of the tet-plane clips)
+    cCovClips,      // clips of the triangle's own coverage polygon (the 2D clips of sweptPieceExactVolume)
     nCount
 };
 
 static const char* const countName[nCount] =
 {
     "interface", "explicitCuts", "ccsCuts", "faces", "facesFlux", "facesSweep", "tets", "ring", "touched",
-    "volClips", "areaClips", "pieces", "exch", "limitCells"
+    "volClips", "areaClips", "pieces", "exch", "limitCells", "tetsBuilt", "tetClips", "polyClips", "covClips"
 };
 
 inline bool on = false;                 // phaseProfile

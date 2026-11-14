@@ -117,6 +117,7 @@ SourceFiles
 #include "FixedList.H"
 #include "List.H"
 #include "davofSimplexGeometry.H"   // davof::triNegativePolygon (the wet polygon of a cut triangle)
+#include "davofPhaseProf.H"         // diag2 (print-only operation counters of sweptPieceExactVolume)
 
 namespace Foam
 {
@@ -416,6 +417,11 @@ inline scalar sweptPieceExactVolume
     };
     const label nc = cellPlanes.size();
     scalar vol = 0;
+    // diag2 (print only): the operations of this call, added to the step's
+    // counters at the end: tets built, tet-plane clips (clipAll), polygon
+    // clips of the tets' faces (clipOne in clipAll), clips of the triangle's
+    // own coverage polygon
+    label nTetL = 0, nTetClipL = 0, nPolyClipL = 0, nCovClipL = 0;
     // one polygon clipped by a half-space (Sutherland-Hodgman), the crossing
     // points collected for the cap; a vertex within tol of the plane is on
     // the plane: kept, and no crossing through it (the coplanar rule, as the
@@ -471,6 +477,7 @@ inline scalar sweptPieceExactVolume
             poly c; FixedList<point, 48> cr; label ncr = 0;
             for (label i = 0; i < nc && b.n >= 3; ++i)
             {
+                ++nCovClipL;
                 ncr = 0; clipOne(b, cellPlanes[i], c, cr, ncr, tolL); b = c;
             }
             if (b.n >= 3)
@@ -485,6 +492,7 @@ inline scalar sweptPieceExactVolume
         const scalar vs = ((t[0] - xRef) & aT)/3;
         if (mag(vs) <= 1e-30) continue;
         const scalar sgn = (vs > 0) ? 1 : -1;
+        ++nTetL;
         // the base (A, B, C) with the apex on its negative side, the four
         // faces outward
         point A = t[0], B = t[1], C = t[2];
@@ -505,10 +513,12 @@ inline scalar sweptPieceExactVolume
             FixedList<point, 48> cross;
             label nCross = 0;
             anyLeft = false;
+            ++nTetClipL;
             for (label i = 0; i < nP; ++i)
             {
                 poly& q = P[i];
                 if (q.n < 3) continue;
+                ++nPolyClipL;
                 poly out;
                 clipOne(q, hs, out, cross, nCross, tolL);
                 q = out;
@@ -589,6 +599,13 @@ inline scalar sweptPieceExactVolume
             v3 += (q.p[0] - xRef) & areaOf(q, xRef);
         }
         vol += sgn*v3/3;
+    }
+    if (davofProf::on)
+    {
+        davofProf::N[davofProf::cTetsBuilt] += nTetL;
+        davofProf::N[davofProf::cTetClips] += nTetClipL;
+        davofProf::N[davofProf::cPolyClips] += nPolyClipL;
+        davofProf::N[davofProf::cCovClips] += nCovClipL;
     }
     return vol;
 }
