@@ -7838,3 +7838,28 @@ first-order fade is accepted, and its derivation is tested; (3) repair 3 first.
    `a3Seam2Dvortex{,serial}`; `aStatic2DfixedWidth` (decision 2). Read-out `pde_a3_analysis.py` and
    `pde_a_static_analysis.py` (the model label now names every token that varies; a varying
    N_LAYERS reads as the fade width L).
+3. **Results** (jobs 56315215 to 56315224, special00005, clone `leia-pde-a3` at 425b47f3, all
+   COMPLETED; read-out `studies/pdeLevelSet/a3/a3_summary.txt` and the `aStatic_summary.txt` of
+   aStatic2Dfill, aStatic2DfillPar and aStatic2DfixedWidth in that clone). Orders L1.
+   **Inertness: PASS**, 116 of 116 CSVs identical to clone `leia-pde-a2`; the control (steadyUpwind,
+   distance, cap 1.5 against aStatic2Dedge) identical at every N.
+4. **The fixed-width fade (decision 2): the derivation is CONFIRMED.** With L fixed at 0.0625
+   (N_LAYERS 3, 7, 15, 31 at N 64 to 512), E_FADEFLUX_L1 converges at orders 1.85 / 1.87 / 1.84
+   (extendThroughFade; 3.0e-5 at N 512) and 1.89 / 1.92 / 1.92 (insideBand); L = 0.03125 gives 1.92.
+   With L = 4 h it was order 1.0 to 1.4 (11.31 item 6). So the first order of 11.31 item 6 is the
+   width of the fade, L ~ h, and nothing else; every shell 1h..8h inside a fixed L is second order.
+5. **footPointTaylor: no gain; the premise of repair 3 was wrong.** With the descent capped at 3.5 h
+   (serial, 520 to 2164 failed cells, 0 unreached, 6 to 7 sweeps): footPointTaylor E_EXT_L1_4H 1.22e-4
+   at N 256, orders 1.98 / 2.05 (F1 CONFIRMED); but the shipped steadyUpwind fill gives 9.31e-5, orders
+   1.97 / 2.04 (F2, predicted <= 1.2: FALSIFIED). F3, F4 CONFIRMED. At np 4 (the real failures, 11 to
+   74 cells): steadyUpwind equals serial to within 1.6 % at N 128 and 256 (P2 FALSIFIED: the defect is
+   not visible); footPointTaylor too, but 7.7 % and 4.8 % off at N 32 and 64 (P1 FAILS at the coarse
+   rungs). Advected seam check, psi at t = 0.02, serial against np 4: footPointTaylor 1.9e-7 (levelSet)
+   and 1.45e-7 (layer), 2.7 and 2.5 times LARGER than steadyUpwind (a2Seam2Dvortex): FAIL as
+   pre-registered. READING: pinned at every successful cell, the steadyUpwind fill is second order;
+   "the steadyUpwind fill does not converge" (11.31 item 8) took the standalone model's result (pinned
+   at the interface layer only, 11.30 item 6) for the fill's. RETRACTED (retraction log). The parallel
+   fallback of 7 % is therefore not an accuracy defect at N >= 128. `cpFill steadyUpwind` stays the
+   default; `footPointTaylor` stays available and is not used (negative log).
+6. **The Newton step (N1): CONFIRMED** on the signed-distance input: newton equals distance to three
+   digits in every shell. Its test on q != 1 belongs to step A.
