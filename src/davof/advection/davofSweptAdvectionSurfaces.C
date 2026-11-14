@@ -1129,6 +1129,27 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
     nOnePlaneFaces_ = nOnePlaneSwept_ = nOnePlaneClipTris_ = 0;
     nOnePlaneDonorCentroid_ = nOnePlaneDonorNearest_ = nOnePlaneDonorRemote_ = 0;
     nOnePlaneNoPlane_ = nOnePlaneNoPlaneCut_ = nOnePlaneNoPlaneDumped_ = nOnePlaneOutOfRange_ = 0;
+    // DIAGNOSTIC ONLY (sweptOnePlaneDiag): the per-face records of the step
+    onePlaneCompareNow_ = false;
+    if (onePlaneDiag_ && sweptOnePlane_)
+    {
+        const label nF = mesh_.nFaces();
+        dgState_.setSize(nF); dgState_ = 0;
+        dgDonor_.setSize(nF); dgDonor_ = -1;
+        dgCentroid_.setSize(nF); dgCentroid_ = char(0);
+        dgWet_.setSize(nF); dgWet_ = 0;
+        dgVtot_.setSize(nF); dgVtot_ = 0;
+        dgRingDepth_.setSize(nF); dgRingDepth_ = 0;
+        dgPieces_.setSize(nF); dgPieces_ = -1;
+        dgOne_.setSize(nF); dgOne_ = 0;
+        dgM_.setSize(mesh_.nCells()); dgM_ = Zero;
+        if (davofPtr_) dgM_ = davofPtr_->areaNormal().primitiveField();
+        const label ti = mesh_.time().timeIndex();
+        forAll(onePlaneCompareSteps_, k)
+        {
+            if (onePlaneCompareSteps_[k] == ti) onePlaneCompareNow_ = true;
+        }
+    }
     sweptClosureMax_ = 0;
     sweptPyrDeltaMax_ = sweptVolDefectMax_ = sweptDispAxisMax_ = 0;
     nSweptTwisted_ = nSweptPyrSkipped_ = 0;
@@ -1900,6 +1921,27 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
                 facei, local, up, other, dt, phiF, sweeps, boundary,
                 UInterp, *UpPtr, af, aWet, vSwept
             );
+            if (onePlaneDiag_)
+            {
+                dgOne_[facei] = vSwept;
+                if (onePlaneCompareNow_)
+                {
+                    // DIAGNOSTIC ONLY: the pieces path's flux of the same
+                    // state, evaluated and compared, never used; the two
+                    // flags it sets are restored
+                    const bool rem0 = sweptFaceRemote_, fb0 = sweptFaceFallback_;
+                    scalar afP = 0, vP = 0;
+                    vector aWetP(Zero);
+                    sweptFaceCellsFlux
+                    (
+                        facei, local, S, dt, phiF, sweeps, UInterp, *UpPtr,
+                        afP, aWetP, vP, nullptr, nullptr
+                    );
+                    sweptFaceRemote_ = rem0;
+                    sweptFaceFallback_ = fb0;
+                    dgPieces_[facei] = vP;
+                }
+            }
         }
         else if (fluxIntegration_ == "sweptFaceCells")
         {

@@ -330,6 +330,10 @@ ENRIGHT_SETTINGS = OrderedDict([
     # interface cells by normal and alpha, no bounded face fractions (rule 2 instead);
     # the sixth field, the clip, is "pieces" for every other setting and renders nothing
     ("onePlane",           ("signedTets",      "false", "none",    "normalAndAlpha",     "false", "onePlane")),
+    # the one-plane row with the print-only diagnostics (sweptOnePlaneDiag true; 2026-11-15,
+    # REPORT-swept.md "One plane per face on curved interfaces: first fault"); transport
+    # identical to onePlane
+    ("onePlaneDiag",       ("signedTets",      "false", "none",    "normalAndAlpha",     "false", "onePlane")),
 ])
 ENRIGHT_TOKENS = ("TPF_SWEPT_PIECE_VOLUME", "TPF_SWEPT_PIECE_VALIDATE",
                   "TPF_SWEPT_BOUNDED_FACE_FRACTION", "TPF_INTERFACE_CELL_RULE",
@@ -346,6 +350,7 @@ ENRIGHT_LABELS = OrderedDict([
     ("fragmentLog", "fragment log"),
     ("recommended", "signedTets + scale + normalAndAlpha"),
     ("onePlane", "one plane per face (KISS)"),
+    ("onePlaneDiag", "one plane per face (KISS), diagnostics"),
 ])
 
 
@@ -378,6 +383,8 @@ def enright_setting_tokens(name):
             out["TPF_ENRIGHT_KEYS"] += (
                 "\n        // the KISS variant (Tomislav, 2026-11-09; leia davof-kiss): one plane per face"
                 "\n        sweptClip onePlane;")
+        if name == "onePlaneDiag":
+            out["TPF_ENRIGHT_KEYS"] += "\n        sweptOnePlaneDiag true;"
     return out
 
 

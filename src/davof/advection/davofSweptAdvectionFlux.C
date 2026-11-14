@@ -202,6 +202,8 @@ SourceFiles
 #include "processorPolyPatch.H"
 #include "tetIndices.H"
 #include <chrono>
+#include <cmath>
+#include <sstream>
 
 // * * * * * * * * * * * * * * * Local Functions * * * * * * * * * * * * * * //
 
@@ -2415,6 +2417,47 @@ void Foam::davofSweptAdvection::sweptOnePlaneFlux
             Pout<< endl;
         }
     }
+    // DIAGNOSTIC ONLY (sweptOnePlaneDiag): the record of the face
+    if (onePlaneDiag_)
+    {
+        dgState_[facei] = hasPlane ? 1 : (ringPartial ? 3 : 2);
+        label donorId = -1;
+        bool isCentroid = false;
+        if (hasPlane)
+        {
+            if (cCentroid >= 0 && hasSurface_.test(cCentroid))
+            {
+                donorId = cCentroid; isCentroid = true;
+            }
+            else if (rcCentroid && rcCentroid->hasSurface)
+            {
+                donorId = -2; isCentroid = true;
+            }
+            else if (rcBest) donorId = -2;
+            else donorId = cBest;
+        }
+        else
+        {
+            donorId = (cCentroid >= 0) ? cCentroid : (rcCentroid ? label(-2) : label(-1));
+            isCentroid = true;
+        }
+        dgDonor_[facei] = donorId;
+        dgCentroid_[facei] = isCentroid ? char(1) : char(0);
+        dgWet_[facei] = (sweeps && vTotal > VSMALL) ? vLiq/vTotal : 0;
+        dgVtot_[facei] = sweeps ? vTotal : 0;
+        scalar depth = 0;
+        for (const label pi : f)
+        {
+            for (const label c : pointCells[pi])
+            {
+                if (a0[c] > 1e-12 && a0[c] < 1 - 1e-12)
+                {
+                    depth = max(depth, min(a0[c], 1 - a0[c]));
+                }
+            }
+        }
+        dgRingDepth_[facei] = depth;
+    }
     // the wet volume against the swept volume: counted, not clamped
     if (sweeps && (vLiq < -1e-12*vTotal || vLiq > (1 + 1e-12)*vTotal)) ++nOnePlaneOutOfRange_;
     // the kinematic consistency of the pieces path (sweptScaleToPhi): the
@@ -2469,6 +2512,211 @@ void Foam::davofSweptAdvection::onePlaneCountOffFaces()
     Info<< "davofSwept: one plane: limiter faces changed " << nLf << ", cells " << nLc
         << ", volume moved " << vL
         << "; faces of 0/1 cells with alphaf off 0/1 by more than 1e-12: " << nOff << endl;
+}
+
+
+// * * * * * * * * * * * * * * * Diagnostics  * * * * * * * * * * * * * * * //
+
+void Foam::davofSweptAdvection::onePlaneDiagStep()
+{
+    // DIAGNOSTIC ONLY (sweptOnePlaneDiag; 2026-11-15, "One plane per face on
+    // curved interfaces: first fault"): called after the unlimited update,
+    // before limitFluxes; prints, changes nothing
+    if (!(onePlaneDiag_ && sweptOnePlane_)) return;
+
+    const scalarField& a = alpha1_.primitiveField();
+    const scalarField& a0 = alpha1_.oldTime().primitiveField();
+    const scalarField& V = mesh_.V();
+    const labelList& own = mesh_.faceOwner();
+    const labelList& nei = mesh_.faceNeighbour();
+    const cellList& cells = mesh_.cells();
+    const label nInt = mesh_.nInternalFaces();
+    const polyBoundaryMesh& pbm = mesh_.boundaryMesh();
+    const label ti = mesh_.time().timeIndex();
+
+    auto faceOk = [&](const label facei) -> bool
+    {
+        if (facei < nInt) return true;
+        const label patchi = pbm.whichPatch(facei);
+        return dVf_.boundaryField()[patchi].size() == pbm[patchi].size();
+    };
+    dgDVfPre_.setSize(mesh_.nFaces());
+    dgDVfPre_ = 0;
+    forAll(dgDVfPre_, facei)
+    {
+        if (faceOk(facei)) dgDVfPre_[facei] = faceValue(dVf_, facei);
+    }
+
+    const scalar tolV = 1e-10;
+    label nViol = 0, nNonFinite = 0, nGt3 = 0;
+    scalar worstMin = 0, worstMax = 0, sumViol = 0;
+    label cNoPlaneCut = 0, cNoPlane = 0, cUnproc = 0, cAllPlanes = 0, cAllPlanesDiff = 0;
+    label cSmall = 0;
+    DynamicList<label> viol;
+    forAll(a, celli)
+    {
+        if (!std::isfinite(a[celli])) { ++nNonFinite; viol.append(celli); continue; }
+        const scalar e = max(-a[celli], a[celli] - 1);
+        if (e <= tolV) continue;
+        ++nViol;
+        worstMin = min(worstMin, a[celli]);
+        worstMax = max(worstMax, a[celli] - 1);
+        sumViol += e;
+        if (e > 1e-3) ++nGt3; else ++cSmall;
+        viol.append(celli);
+        bool hasCut = false, hasNo = false, hasUn = false, bigDiff = false;
+        for (const label facei : cells[celli])
+        {
+            const label s = dgState_[facei];
+            if (s == 3) { hasCut = true; hasNo = true; }
+            else if (s == 2) hasNo = true;
+            else if (s == 0) hasUn = true;
+            if (dgPieces_[facei] >= 0)
+            {
+                if (mag(dgOne_[facei] - dgPieces_[facei]) > 0.1*V[celli]) bigDiff = true;
+            }
+        }
+        if (hasCut) ++cNoPlaneCut;
+        if (hasNo) ++cNoPlane;
+        if (hasUn) ++cUnproc;
+        if (!hasNo && !hasUn)
+        {
+            ++cAllPlanes;
+            if (bigDiff) ++cAllPlanesDiff;
+        }
+    }
+    label nF2 = 0, nF3 = 0;
+    forAll(dgState_, facei)
+    {
+        if (dgState_[facei] == 2) ++nF2;
+        else if (dgState_[facei] == 3) ++nF3;
+    }
+    if (Pstream::parRun())
+    {
+        reduce(nViol, sumOp<label>()); reduce(nNonFinite, sumOp<label>());
+        reduce(nGt3, sumOp<label>()); reduce(cSmall, sumOp<label>());
+        reduce(worstMin, minOp<scalar>()); reduce(worstMax, maxOp<scalar>());
+        reduce(sumViol, sumOp<scalar>());
+        reduce(cNoPlaneCut, sumOp<label>()); reduce(cNoPlane, sumOp<label>());
+        reduce(cUnproc, sumOp<label>()); reduce(cAllPlanes, sumOp<label>());
+        reduce(cAllPlanesDiff, sumOp<label>());
+        reduce(nF2, sumOp<label>()); reduce(nF3, sumOp<label>());
+    }
+    Info<< "DIAG step " << ti << " t " << mesh_.time().value()
+        << " : unlimited update: cells outside [-1e-10, 1+1e-10] " << nViol
+        << ", non-finite " << nNonFinite << ", min alpha " << worstMin
+        << ", max alpha - 1 " << worstMax << ", summed violation (cell volumes) " << sumViol
+        << ", cells with violation > 1e-3 " << nGt3
+        << " | of the violating cells: with a no-plane cut face " << cNoPlaneCut
+        << ", with a no-plane face (cut or uncut) " << cNoPlane
+        << ", with an unprocessed face " << cUnproc
+        << ", all faces with planes " << cAllPlanes
+        << ", of those with a face |one - pieces| > 0.1 V_k " << cAllPlanesDiff
+        << " | no-plane faces uncut " << nF2 << ", cut " << nF3
+        << " | compare " << (onePlaneCompareNow_ ? "yes" : "no") << endl;
+    const bool any = (nViol + nNonFinite) > 0;
+    if (any) ++dgNViolSteps_;
+
+    // the comparison with the pieces path over the faces of interface cells
+    if (onePlaneCompareNow_)
+    {
+        label n = 0, n01 = 0, n001 = 0, bigPlane = 0, bigNoCut = 0, bigNoUncut = 0;
+        scalar sum = 0, mx = 0;
+        forAll(dgPieces_, facei)
+        {
+            if (dgPieces_[facei] < 0) continue;
+            const label o = own[facei];
+            const bool nb = (facei < nInt);
+            if (!(hasSurface_.test(o) || (nb && hasSurface_.test(nei[facei])))) continue;
+            const scalar Vk = nb ? min(V[o], V[nei[facei]]) : V[o];
+            const scalar d = mag(dgOne_[facei] - dgPieces_[facei])/Vk;
+            ++n; sum += d; mx = max(mx, d);
+            if (d > 0.01) ++n001;
+            if (d > 0.1)
+            {
+                ++n01;
+                if (dgState_[facei] == 1) ++bigPlane;
+                else if (dgState_[facei] == 3) ++bigNoCut;
+                else ++bigNoUncut;
+            }
+        }
+        if (Pstream::parRun())
+        {
+            reduce(n, sumOp<label>()); reduce(n01, sumOp<label>()); reduce(n001, sumOp<label>());
+            reduce(bigPlane, sumOp<label>()); reduce(bigNoCut, sumOp<label>());
+            reduce(bigNoUncut, sumOp<label>());
+            reduce(sum, sumOp<scalar>()); reduce(mx, maxOp<scalar>());
+        }
+        Info<< "DIAG compare step " << ti << " : |flux_onePlane - flux_pieces|/V_k over the "
+            << n << " faces of interface cells: L1 (mean) " << (n ? sum/n : 0)
+            << ", Linf " << mx << ", count > 0.01 " << n001 << ", count > 0.1 " << n01
+            << " (of those: donor plane " << bigPlane << ", no plane cut " << bigNoCut
+            << ", no plane uncut " << bigNoUncut << ")" << endl;
+    }
+
+    // the first onePlaneDiagCells_ violating cells (ascending id) with their faces
+    const bool printCells = any && (!Pstream::parRun() || dgNViolSteps_ <= 50);
+    if (printCells)
+    {
+        const vectorField& Cc = mesh_.cellCentres();
+        label nPrint = 0;
+        for (const label celli : viol)
+        {
+            if (nPrint++ >= onePlaneDiagCells_) break;
+            std::ostringstream os;
+            os.precision(8);
+            os << "DIAG step " << ti << " cell " << celli << " at (" << Cc[celli].x() << ' '
+               << Cc[celli].y() << ' ' << Cc[celli].z() << ") alpha^n " << a0[celli]
+               << " alpha after update " << a[celli] << " hasPlane " << (hasSurface_.test(celli) ? 1 : 0)
+               << " |m|/V^(2/3) " << mag(dgM_[celli])/Foam::pow(V[celli], 2.0/3.0) << '\n';
+            for (const label facei : cells[celli])
+            {
+                const scalar sgn = (own[facei] == celli) ? 1 : -1;
+                const label other =
+                    (facei < nInt) ? (own[facei] == celli ? nei[facei] : own[facei]) : label(-1);
+                const label d = dgDonor_[facei];
+                os << "    face " << facei << (facei < nInt ? "" : " (boundary)")
+                   << " flux out/V_k " << sgn*dgDVfPre_[facei]/V[celli]
+                   << " phi dt/V_k " << sgn*(faceOk(facei) ? faceValue(phi_, facei) : 0)
+                      *mesh_.time().deltaTValue()/V[celli]
+                   << " state " << (dgState_[facei] == 0 ? "unprocessed" : dgState_[facei] == 1 ? "plane"
+                        : dgState_[facei] == 2 ? "noPlane-uncut" : "noPlane-CUT")
+                   << " ringDepth " << dgRingDepth_[facei]
+                   << " donor " << d;
+                if (d >= 0)
+                {
+                    os << " alpha^n " << a0[d] << " |m|/V^(2/3) " << mag(dgM_[d])/Foam::pow(V[d], 2.0/3.0);
+                }
+                os << " donorIsCentroidCell " << int(dgCentroid_[facei])
+                   << " prismWet " << dgWet_[facei] << " prismV/V_k " << dgVtot_[facei]/V[celli];
+                if (dgPieces_[facei] >= 0)
+                {
+                    os << " |one-pieces|/V_k " << mag(dgOne_[facei] - dgPieces_[facei])/V[celli];
+                }
+                if (other >= 0) os << " other " << other << " alpha^n " << a0[other];
+                os << '\n';
+            }
+            Pout<< os.str().c_str() << flush;
+        }
+    }
+}
+
+
+void Foam::davofSweptAdvection::onePlaneDiagLimiter()
+{
+    // DIAGNOSTIC ONLY (sweptOnePlaneDiag): the limiter of the step
+    if (!(onePlaneDiag_ && sweptOnePlane_)) return;
+    label nF = nOnePlaneLimFaces_, nC = nOnePlaneLimCells_, passes = dgLimPasses_;
+    scalar vol = onePlaneLimVolume_;
+    scalar vSum = gSum(mesh_.V());
+    label nCells = returnReduce(mesh_.nCells(), sumOp<label>());
+    if (Pstream::parRun())
+    {
+        reduce(nF, sumOp<label>()); reduce(nC, sumOp<label>()); reduce(vol, sumOp<scalar>());
+    }
+    Info<< "DIAG step " << mesh_.time().timeIndex()
+        << " : limiter passes " << passes << ", faces changed " << nF << ", cells touched " << nC
+        << ", volume moved (cell volumes) " << vol/(vSum/max(nCells, label(1))) << endl;
 }
 
 

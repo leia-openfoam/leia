@@ -775,6 +775,37 @@ class davofSweptAdvection
             label nOnePlaneLimCells_;
             scalar onePlaneLimVolume_;
             label nOnePlaneOffFaces_;
+
+            //- DIAGNOSTIC ONLY (2026-11-15, "One plane per face on curved
+            //  interfaces: first fault"; docs/davof/REPORT-swept.md): the key
+            //  sweptOnePlaneDiag (default false) records, per face of the
+            //  one-plane path, the donor, the plane flag and the wet fraction
+            //  of the prism, and prints per step the cells that leave
+            //  [-1e-10, 1 + 1e-10] after the unlimited update, the operands
+            //  of boundFlux's divisions, the limiter's passes. Nothing here
+            //  enters the transport. sweptOnePlaneCompareSteps: at the listed
+            //  time indices the pieces path's flux of the same state is
+            //  evaluated for every one-plane face and only compared.
+            bool onePlaneDiag_;
+            label onePlaneDiagCells_;
+            labelList onePlaneCompareSteps_;
+            bool onePlaneCompareNow_;
+            //- per face: 0 not processed, 1 donor plane, 2 no plane and the
+            //  ring uncut, 3 no plane and the ring cut
+            labelList dgState_;
+            labelList dgDonor_;          // donor (or state) cell, -1 none, -2 remote
+            List<char> dgCentroid_;      // the donor is the cell holding the centroid
+            scalarField dgWet_;          // wet fraction of the prism
+            scalarField dgVtot_;         // prism volume
+            scalarField dgRingDepth_;    // max over the ring of min(a, 1 - a)
+            scalarField dgPieces_;       // pieces flux (magnitude), -1: not computed
+            scalarField dgOne_;          // one-plane flux (magnitude)
+            scalarField dgDVfPre_;       // dVf before the limiter
+            vectorField dgM_;            // m_k at t^n
+            label dgLimPasses_;
+            label dgNViolSteps_;
+            label dgNTrapPrints_;
+            label dgNNanPrints_;
             mutable vectorField upLazy_;
             mutable bitSet upDone_;
             mutable bitSet anyPatchPoint_;
@@ -1326,6 +1357,14 @@ public:
             //  more than 1e-12 (never reset), printed with the limiter's
             //  counters (davofSweptAdvectionFlux.C)
             void onePlaneCountOffFaces();
+
+            //- DIAGNOSTIC ONLY (sweptOnePlaneDiag): the report of the step
+            //  after the unlimited update, before limitFluxes
+            //  (davofSweptAdvectionFlux.C)
+            void onePlaneDiagStep();
+
+            //- DIAGNOSTIC ONLY: the line of the limiter after limitFluxes
+            void onePlaneDiagLimiter();
 
             //- fluxIntegration sweptFaceCells (davofSweptAdvectionFlux.C,
             //  davofSweptPieces.H): the same arguments and results as

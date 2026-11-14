@@ -33,6 +33,7 @@ License
 #include "upwind.H"
 #include "davof.H"
 #include <chrono>
+#include <cmath>
 
 // ************************************************************************* //
 
@@ -182,10 +183,12 @@ void Foam::davofSweptAdvection::limitFluxes
     }
 
     // Loop number of bounding steps
+    dgLimPasses_ = 0;
     for (label n = 0; n < nAlphaBounds_; n++)
     {
         if (maxAlphaMinus1 > aTol || minAlpha < -aTol) // Note: tolerances
         {
+            ++dgLimPasses_;   // DIAGNOSTIC ONLY: the passes of the step
             DebugInfo << "boundAlpha... " << endl;
 
             if (extendBounding)
@@ -373,6 +376,23 @@ void Foam::davofSweptAdvection::boundFlux
     // Loop through alpha cell centred field
     for(label celli: nextToInterface)
     {
+        // DIAGNOSTIC ONLY (sweptOnePlaneDiag): a non-finite alpha traps at
+        // the ordered comparison below; the cell volume divisor Vi
+        if (onePlaneDiag_ && sweptOnePlane_)
+        {
+            if (!std::isfinite(alpha1_[celli]) && dgNNanPrints_ < 20)
+            {
+                ++dgNNanPrints_;
+                Pout<< "DIAG boundFlux: non-finite alpha1 = " << alpha1_[celli]
+                    << " in cell " << celli << " entering the comparison (line alpha1_[celli] < -aTol)"
+                    << endl;
+            }
+            if (meshV[celli] < 1e-12 && dgNNanPrints_ < 20)
+            {
+                ++dgNNanPrints_;
+                Pout<< "DIAG boundFlux: division by Vi = " << meshV[celli] << " in cell " << celli << endl;
+            }
+        }
         if (alpha1_[celli] < -aTol || alpha1_[celli] > 1 + aTol)
         {
             const scalar Vi = meshV[celli];
@@ -449,6 +469,31 @@ void Foam::davofSweptAdvection::boundFlux
                     << dVftot << " m3 corresponding to dalpha = "
                     << dVftot/Vi << endl;
 
+                // DIAGNOSTIC ONLY (sweptOnePlaneDiag): the operands of the
+                // division by dVftot (the loop below) when it vanishes
+                if
+                (
+                    onePlaneDiag_ && sweptOnePlane_ && dgNTrapPrints_ < 200
+                 && facesToPassFluidThrough.size() > 0 && mag(dVftot) < 1e-12
+                )
+                {
+                    ++dgNTrapPrints_;
+                    Pout<< "DIAG boundFlux division by dVftot = " << dVftot
+                        << " (davofSweptAdvectionTemplates.C, fluidToPassThroughFace = mag(fluidToPassOn)*mag(phi[fi]*dt)/dVftot): cell "
+                        << celli << " iter " << iter << " alpha " << alpha1_[celli]
+                        << " alphaOvershoot " << alphaOvershoot << " fluidToPassOn " << fluidToPassOn
+                        << " Vi " << Vi << " dt " << dt << " faces to pass through "
+                        << facesToPassFluidThrough.size() << ":";
+                    forAll(facesToPassFluidThrough, fj)
+                    {
+                        const label fk = facesToPassFluidThrough[fj];
+                        Pout<< " [face " << fk << " phi " << phi[fj] << " phi*dt " << phi[fj]*dt
+                            << " dVfmax " << dVfmax[fj] << " dVf " << faceValue(dVf_, fk)
+                            << " numerator " << mag(fluidToPassOn)*mag(phi[fj]*dt) << "]";
+                    }
+                    Pout<< endl;
+                }
+
                 forAll(facesToPassFluidThrough, fi)
                 {
                     const label facei = facesToPassFluidThrough[fi];
@@ -476,6 +521,19 @@ void Foam::davofSweptAdvection::boundFlux
                 }
 
                 firstLoop = false;
+
+                // DIAGNOSTIC ONLY: the denominator rDeltaT - Sp
+                if
+                (
+                    onePlaneDiag_ && sweptOnePlane_ && dgNTrapPrints_ < 200
+                 && mag(rDeltaT - Sp[celli]) < 1e-12
+                )
+                {
+                    ++dgNTrapPrints_;
+                    Pout<< "DIAG boundFlux division by (rDeltaT - Sp) = " << (rDeltaT - Sp[celli])
+                        << ": cell " << celli << " rDeltaT " << rDeltaT << " Sp " << Sp[celli]
+                        << endl;
+                }
 
                 scalar alpha1New =
                 (
@@ -586,6 +644,11 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
     // the only limiter of the one-plane fluxes; the faces it changes, the
     // cells touched and the volume it moves are counted (a processor face
     // on the lower rank's side)
+    // DIAGNOSTIC ONLY (sweptOnePlaneDiag): the report of the unlimited update
+    if (onePlaneDiag_)
+    {
+        onePlaneDiagStep();
+    }
     scalarField dVf0;
     if (sweptOnePlane_)
     {
@@ -633,6 +696,10 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
             }
         }
         nOnePlaneLimCells_ = touched.count();
+        if (onePlaneDiag_)
+        {
+            onePlaneDiagLimiter();
+        }
     }
 
     scalar maxAlphaMinus1 = gMax(alpha1In_) - 1;
