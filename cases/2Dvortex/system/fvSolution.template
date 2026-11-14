@@ -139,9 +139,10 @@ levelSet
     // Bulk interface: circle of radius 0.15 centred at (0.5, 0.75).
     implicitSurface
     {
-        type implicitSphere;
-        center (0.5 0.75 0);
-        radius 0.15;
+        type @!SURFACE_TYPE!@;
+        center (@!SURFACE_X0!@ @!SURFACE_Y0!@ 0);
+        radius @!SURFACE_R!@;               // implicitSphere
+        axes   (@!SURFACE_A!@ @!SURFACE_B!@ 0);  // signedDistanceEllipse
     }
 
     phaseIndicator
@@ -315,6 +316,8 @@ levelSet
         fadePlacement @!VE_FADE_PLACEMENT!@;
         cpStep        @!CP_STEP!@;   // closestPoint: distance (default) | newton
         cpFill        @!CP_FILL!@;   // closestPoint: steadyUpwind (default) | footPointTaylor
+        // leiaTestVelocityExtension only: distance (default) | scaledDistance | quadratic
+        testInput     @!VE_TEST_INPUT!@;
         // projectionBlend (D. Bothe 2026-10; read only by that model): P(x) = x - dist n,
         // Uext = delta U + (1 - delta) U(P), delta from 0 (|dist| <= w1 h) to 1 (>= w2 h)
         distance    @!PB_DISTANCE!@;

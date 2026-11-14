@@ -7908,7 +7908,23 @@ first-order fade is accepted, and its derivation is tested; (3) repair 3 first.
    compact schemes, none with pointCellsLeastSquares. Step B's plateau test decides whether one layer
    is enough.
 
-### 11.34 Ghost cells for the semi-Lagrangian fit at a 2:1 transition: the refined-box gate (2026-11-13, Lichtenberg)
+### 11.34 PDE level set: step A proper, round 1 -- q != 1 inputs and the ellipse (2026-11-14)
+
+1. **The change (inert for every existing study).** `leiaTestVelocityExtension` gets
+   `velocityExtension.testInput` (token `VE_TEST_INPUT`, default `distance`): `scaledDistance`
+   (psi = d g, q between 0.8 and 1.25, smooth) and `quadratic` (psi = d (d + 2R) = r^2 - R^2, q = 2r);
+   all inputs have the same zero set, so u(Pi(x)) and alpha do not change. `cases/2Dvortex` renders its
+   interface from per-case problem data (`SURFACE_TYPE`, `SURFACE_X0/Y0`, `SURFACE_R`, `SURFACE_A/B` in
+   `cases/2Dvortex.parameter`; defaults = the historical circle), so the ellipse
+   (`signedDistanceEllipse`, exact distance and closest point) and an off-vertex centre are available.
+2. **Gates, pre-registered:** `aStatic2Dq` (off-vertex circle, three inputs, both closestPoint steps,
+   both bands, closestPoint and meshWave, N 64 to 512; Q1 to Q5, with the derivation that the distance
+   step leaves an O(h) foot point on the quadratic input), `aStatic2DqPar` (the Newton step at np 4),
+   `aStatic2Dellipse` (semi-axes 0.18 x 0.12, N 128 to 512; E1 to E3); inertness: aStatic2Dedge and
+   a0Identity2Dvortex re-run against clone `leia-pde-a3`. Read-out `pde_a5_analysis.py` and
+   `pde_a_static_analysis.py`. Clone `leia-pde-a5`. Laptop: compile check only.
+
+### 11.35 Ghost cells for the semi-Lagrangian fit at a 2:1 transition: the refined-box gate (2026-11-13, Lichtenberg)
 
 Branch `feature/sl-ghost-cells`, clone `/work/scratch/tm83tomy/leia-ghost` (own binaries,
 libraries `davof-v1.0-42-g5b853707`, OpenFOAM-v2606). Configs
@@ -7974,7 +7990,7 @@ four rungs 1.97; uniform control 1.21, 2.28, 2.06. Orders of the volume error: g
    class. (f) The symbol predicts the two arms in the right sense, but the measured growth of
    the original scheme was not compared with 1.096 per step.
 
-### 11.35 Ghost-cell class: HPCToolkit profile, serial and 4 ranks (2026-11-13, Lichtenberg, special00005)
+### 11.36 Ghost-cell class: HPCToolkit profile, serial and 4 ranks (2026-11-13, Lichtenberg, special00005)
 
 The full note with commands, jobs and the text reports of the databases is
 `docs/semi-lagrangian-level-set/ghost-cell-profile-2026-11-13.md`. Case: the N = 128 rung of
@@ -8027,7 +8043,7 @@ No source file was changed.
    class adds it" holds. The cause is not established. HYPOTHESIS: a ghost value or a
    restricted value at a processor boundary differs from its serial value (summation order,
    or a stencil entry that one side does not see). The unit gate
-   `leiaTestGhostCellReconstruction` gives equal numbers in serial and on 4 ranks (11.36), but
+   `leiaTestGhostCellReconstruction` gives equal numbers in serial and on 4 ranks (11.37), but
    it reads cell-centre fits of analytic fields and prints two error norms; it does not
    compare the field cell by cell. Until the cause is found and removed, a multi-rank result
    of the ghost class is not a reference value. A second, separate defect: the column
@@ -8039,7 +8055,7 @@ No source file was changed.
    (d) HYPOTHESIS: store the factorised fit per cell on a static mesh, for both classes.
    (e) Exclude the function objects from timing comparisons.
 
-### 11.36 Integration of the semi-Lagrangian and the PDE level-set lines: the identity check (2026-11-13, Lichtenberg, special00005)
+### 11.37 Integration of the semi-Lagrangian and the PDE level-set lines: the identity check (2026-11-13, Lichtenberg, special00005)
 
 Branch `integration/sl-pde` joins the hub's `development` (PDE level-set work), the laptop
 commits of the amplification analysis and `feature/sl-ghost-cells`. Scripts:
@@ -8088,8 +8104,9 @@ the same counts: 36 of 36, 27 of 27, 27 of 27 (polyhedral, steps 967, 1989, 3945
 1. The hub moves during a check. Round 1 is for 0ba14c08 against 87a70b22. Round 2 (below)
    is for d9b1e2c2 against 4e89b060. The hub then moved to 0e2caf53 (PDE level set A0.3 and
    A0.4, new file `closestPointStrategies`, new tokens with defaults in `fvSolution` templates,
-   the rule "no free parameters"). The branch contains 0e2caf53; the identity for this third
-   pair is NOT measured. The files that the branch changes and the files that the hub changed
+   the rule "no free parameters"). The hub moved once more to 45fa83f2 (PDE step A proper). The branch contains
+   45fa83f2; the identity for this pair is NOT measured before the move of `development`; a
+   post-merge control runs on the new head. The files that the branch changes and the files that the hub changed
    overlap only in `STATUS.md`, the guide twins, `cases/default.parameter` and two logs of the
    knowledge base (DERIVED from `git diff --name-only`; not a replacement for a run).
 2. `config/advConv3DshearHex.yaml` and `config/advConv3DshearPoly.yaml` had

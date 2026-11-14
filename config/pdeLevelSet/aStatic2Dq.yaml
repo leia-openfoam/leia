@@ -1,0 +1,51 @@
+# PDE LEVEL SET, STEP A proper (1): the extension against u(Pi(x)) on inputs with q != 1.
+# Plan docs/plan-velocity-extension-verification.md, section 5; supervisor's go 2026-11-14.
+# Circle R = 0.15, centre (0.5013, 0.7487) OFF the mesh vertices (the first ladders had the centre on
+# a vertex), shear2D at t = 0, serial, N 64 to 512, extendThroughFade, correction flux form.
+# Inputs (leiaTestVelocityExtension testInput, same zero set): distance (psi = d); scaledDistance
+# (psi = d g, q between 0.8 and 1.25, smooth); quadratic (psi = d (d + 2R) = r^2 - R^2, q = 2r, about
+# 0.3 at the interface). Steps of closestPoint: distance (dx = -psi n) and newton (dx = -psi n/q).
+# Bands: levelSet (|psi| <= (n+1) h: assumes a distance) and layer (topological).
+# DERIVATION of Q3 (before the run): on the quadratic input the distance step moves q d per step, so
+# the remaining distance shrinks by (1 - q) = 0.7 per step; after the 12 steps of the budget
+# (nDescent 3 + reach 7 + 2) a cell at 8 h keeps 0.7^12 x 8 h = 0.11 h, an O(h) foot-point error, and
+# |psi| = 0.03 h passes the acceptance test (0.1 h). The Newton step converges quadratically.
+# PRE-REGISTERED (2026-11-14, before any run). Orders over N 128-256-512, L1:
+#   Q1 distance input: closestPoint E_EXT_L1_2H, E_EXT_L1_4H and E_FLUX_L1_1H..4H order >= 1.8 with both
+#      steps and both bands; newton equals distance to 2 %.
+#   Q2 scaledDistance: closestPoint, layer band, both steps: the same columns order >= 1.8.
+#   Q3 quadratic, layer band: closestPoint/newton order >= 1.8; closestPoint/distance E_EXT_L1_4H
+#      order <= 1.5 (the O(h) foot point of the derivation).
+#   Q4 quadratic, levelSet band: the band reads |psi| as a distance and covers about 1/q = 3.3 times
+#      the layers; the foot-pointed cell count is > 2 times that of the layer band at every N.
+#   Q5 meshWave (control, a first-order extension): order 0.8 to 1.3 on every input.
+# FALSIFIED: closestPoint/newton with the layer band below order 1.5 on any input: the Newton step
+# does not make the extension independent of q, and the method still assumes a distance somewhere.
+# HOW IT COULD PASS FOR THE WRONG REASON: the input not applied (check: the log line "testInput ...
+# psi replaced", and E_RAW equal across inputs while E_EXT of the distance step differs).
+study_name: aStatic2Dq
+case: 2Dvortex
+mesh: hex
+mode: serial
+np: 1
+solver: leiaTestVelocityExtension
+solve_runtime: 60
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [64, 128, 256, 512]
+  SURFACE_X0: [0.5013]
+  SURFACE_Y0: [0.7487]
+  VE_TEST_INPUT: [distance, scaledDistance, quadratic]
+  VELOCITY_EXTENSION: [closestPoint, meshWave]
+  CP_STEP: [distance, newton]
+  FADE_MODE: [levelSet, layer]
+  END_TIME: [1]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  PHASE_INDICATOR: [detrixheAslam]

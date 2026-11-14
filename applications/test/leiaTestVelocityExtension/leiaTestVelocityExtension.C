@@ -106,6 +106,77 @@ int main(int argc, char *argv[])
         dimensionedVector("U", dimVelocity, vector(0, 0, 0))
     );
 
+    // ------------------------------------------------------------------ //
+    // The input field (step A proper, 2026-11-14). velocityExtension.testInput:
+    //   distance        psi = d (as written by leiaSetFields; the default)
+    //   scaledDistance  psi = d g(x), g = exp(ln(1.25) sin(2 pi x/L) sin(2 pi y/L)),
+    //                   L = testInputWavelength (default 0.5): q = |grad psi|
+    //                   between 0.8 and 1.25 near the interface, smooth
+    //   quadratic       psi = d (d + 2R) (= r^2 - R^2 for implicitSphere only):
+    //                   q = 2r, about 2R at the interface
+    // All inputs have the SAME zero set, so the exact extension u(Pi(x)) and
+    // alpha are unchanged; only what an operator that reads psi as a distance
+    // sees changes. d is the analytic signed distance of levelSet.implicitSurface.
+    // ------------------------------------------------------------------ //
+    {
+        const fvSolution& fvSolIn(mesh);
+        const dictionary& lsIn = fvSolIn.subDict("levelSet");
+        const dictionary veIn(lsIn.subOrEmptyDict("velocityExtension"));
+        const word input = veIn.getOrDefault<word>("testInput", "distance");
+        if (input != "distance")
+        {
+            const dictionary& sIn = lsIn.subDict("implicitSurface");
+            autoPtr<implicitSurface> surfIn =
+                implicitSurface::New(sIn.get<word>("type"), sIn);
+            const scalar lam = veIn.getOrDefault<scalar>("testInputWavelength", 0.5);
+            scalar R = 0;
+            if (input == "quadratic")
+            {
+                if (sIn.get<word>("type") != "implicitSphere")
+                {
+                    FatalErrorInFunction
+                        << "testInput quadratic needs implicitSphere" << exit(FatalError);
+                }
+                R = sIn.get<scalar>("radius");
+            }
+            else if (input != "scaledDistance")
+            {
+                FatalErrorInFunction
+                    << "testInput " << input << " is not one of"
+                    << " (distance scaledDistance quadratic)" << exit(FatalError);
+            }
+            auto transform = [&](const point& x) -> scalar
+            {
+                const scalar d = surfIn->value(x);
+                if (input == "quadratic")
+                {
+                    return d*(d + 2*R);
+                }
+                const scalar w = constant::mathematical::twoPi/lam;
+                return d*Foam::exp
+                (
+                    Foam::log(1.25)*Foam::sin(w*x.x())*Foam::sin(w*x.y())
+                );
+            };
+            forAll(psi, c)
+            {
+                psi[c] = transform(mesh.C()[c]);
+            }
+            forAll(psi.boundaryField(), patchI)
+            {
+                fvPatchScalarField& pf = psi.boundaryFieldRef()[patchI];
+                if (pf.coupled()) continue;
+                const vectorField& Cf = mesh.boundary()[patchI].Cf();
+                forAll(pf, i)
+                {
+                    pf[i] = transform(Cf[i]);
+                }
+            }
+            psi.correctBoundaryConditions();
+            Info<< "testInput " << input << ": psi replaced (same zero set)" << endl;
+        }
+    }
+
     autoPtr<narrowBand> nband = narrowBand::New(mesh, psi);
     nband->calc();
 

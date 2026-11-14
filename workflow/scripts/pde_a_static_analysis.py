@@ -22,7 +22,7 @@ def main():
     # The model label: the extension, then every listed token that varies in this study. A
     # varying N_LAYERS is replaced by the physical fade width L = (N_LAYERS + 1)/N_CELLS, so a
     # fixed-width ladder (N_LAYERS proportional to N) reads as one series.
-    KEYS = ("FADE_MODE", "VE_FADE_PLACEMENT", "CP_FILL", "CP_STEP", "CP_MAX_DIST", "N_LAYERS")
+    KEYS = ("VE_TEST_INPUT", "FADE_MODE", "VE_FADE_PLACEMENT", "CP_FILL", "CP_STEP", "CP_MAX_DIST", "N_LAYERS")
     vary = [k for k in KEYS if len({str(t.get(k)) for _, t in cases}) > 1]
     for case, t in cases:
         f = os.path.join(case, "leiaTestVelocityExtensionExact.csv")

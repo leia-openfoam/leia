@@ -1,0 +1,30 @@
+# PDE LEVEL SET, STEP A proper (1), the 4-rank twin of aStatic2Dq for the new code path (the Newton
+# step reads |grad psi| locally and from the halo). closestPoint, layer band, newton, the q != 1 inputs.
+# PRE-REGISTERED (2026-11-14, before any run): E_EXT_L1_2H, E_EXT_L1_4H and E_FLUX_L1_4H within 5 % of
+# the serial arm of aStatic2Dq at N 128, 256, 512, and the same order (>= 1.8). FAIL otherwise.
+study_name: aStatic2DqPar
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaTestVelocityExtension
+solve_runtime: 60
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [128, 256, 512]
+  SURFACE_X0: [0.5013]
+  SURFACE_Y0: [0.7487]
+  VE_TEST_INPUT: [scaledDistance, quadratic]
+  VELOCITY_EXTENSION: [closestPoint]
+  CP_STEP: [newton]
+  FADE_MODE: [layer]
+  END_TIME: [1]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  PHASE_INDICATOR: [detrixheAslam]

@@ -64,4 +64,13 @@ values
         signedDistance
         tanh
     );
+
+    // The interface (problem data, 2026-11-14): implicitSphere (radius SURFACE_R) or
+    // signedDistanceEllipse (semi-axes SURFACE_A, SURFACE_B). Default = the historical circle.
+    SURFACE_TYPE ( implicitSphere );
+    SURFACE_X0 ( 0.5 );
+    SURFACE_Y0 ( 0.75 );
+    SURFACE_R ( 0.15 );
+    SURFACE_A ( 0.15 );
+    SURFACE_B ( 0.15 );
 }
