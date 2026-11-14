@@ -622,6 +622,31 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
             dVf0[facei] = faceValue(dVf_, facei);
         }
     }
+    // diag2 (alphaDump, print only): the cell of the global maximum of alpha
+    // before the bounding, at every step whose max(alpha) - 1 exceeds the
+    // largest dumped so far (and 1e-8); the owner rank prints after the limiter
+    bool dumpDecided = false;
+    label cDump = -1;
+    scalar aMaxPreG = 0;
+    if (davofProf::dump)
+    {
+        scalar aMaxLoc = -GREAT;
+        label cMaxLoc = -1;
+        forAll(alpha1In_, cc)
+        {
+            if (alpha1In_[cc] > aMaxLoc) { aMaxLoc = alpha1In_[cc]; cMaxLoc = cc; }
+        }
+        aMaxPreG = returnReduce(aMaxLoc, maxOp<scalar>());
+        if (aMaxPreG - 1 > davofProf::dumpRecord)
+        {
+            davofProf::dumpRecord = aMaxPreG - 1;
+            if (aMaxLoc == aMaxPreG && cMaxLoc >= 0)
+            {
+                dumpDecided = true;
+                cDump = cMaxLoc;
+            }
+        }
+    }
     limitFluxes
     (
         Sp,
@@ -676,17 +701,13 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
     // scaling and the cell's plane
     if (davofProf::dump)
     {
-        scalar aMaxLoc = -GREAT;
-        label cMaxLoc = -1;
-        forAll(alpha1In_, cc)
+        // the trigger (decided before the limiter, above): the maximum of alpha
+        // BEFORE the conservative bounding (POST HOC, 2026-11-14: the 1.84e+02
+        // of Stage B is the maximum of the "before the bounding" lines)
+        const scalar aMaxG = aMaxPreG;
+        const label cMaxLoc = cDump;
+        if (dumpDecided)
         {
-            if (alpha1In_[cc] > aMaxLoc) { aMaxLoc = alpha1In_[cc]; cMaxLoc = cc; }
-        }
-        const scalar aMaxG = returnReduce(aMaxLoc, maxOp<scalar>());
-        if (aMaxG - 1 > davofProf::dumpRecord)
-        {
-            davofProf::dumpRecord = aMaxG - 1;
-            if (aMaxLoc == aMaxG && cMaxLoc >= 0)
             {
                 const label c = cMaxLoc;
                 const scalar dtD = mesh_.time().deltaTValue();
