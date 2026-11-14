@@ -41,6 +41,7 @@ License
 #include "syncTools.H"
 #include "profiling.H"
 #include "davof.H"
+#include "davofPhaseProf.H"
 #include <cstring>
 
 #include "addToRunTimeSelectionTable.H"
@@ -717,6 +718,13 @@ Foam::davofSweptAdvection::davofSweptAdvection
                         << ", sweptTraceCache " << sweptTraceCache_;
                     if (sweptPreTestCheck_) Info<< ", sweptPreTestCheck true";
                     if (sweptClassStats_) Info<< ", sweptClassStats true";
+                    // diag2 (2026-11-14): print-only diagnostics, default off
+                    davofProf::on = modelDict().getOrDefault<bool>("phaseProfile", false);
+                    davofProf::dump = modelDict().getOrDefault<bool>("alphaDump", false);
+                    davofProf::lastEnd = -1;
+                    davofProf::reset();
+                    if (davofProf::on) Info<< ", phaseProfile true";
+                    if (davofProf::dump) Info<< ", alphaDump true";
                     Info<< ", sweptDonorFastPath " << sweptDonorFastPath_
                         << ", sweptFaceUpdateFromVolume " << sweptFaceUpdateFromVolume_
                         << ", sweptPreTestCoplanarSide " << sweptPreTestCoplanarSide_

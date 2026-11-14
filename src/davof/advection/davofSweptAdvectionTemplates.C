@@ -32,6 +32,7 @@ License
 #include "fvcSurfaceIntegrate.H"
 #include "upwind.H"
 #include "davof.H"
+#include "davofPhaseProf.H"
 #include <chrono>
 
 // ************************************************************************* //
@@ -180,6 +181,7 @@ void Foam::davofSweptAdvection::limitFluxes
         firstLayer = needBounding;
         extendMarkedCells(needBounding);
     }
+    davofProf::count(davofProf::cLimitCells, needBounding.count());
 
     // Loop number of bounding steps
     for (label n = 0; n < nAlphaBounds_; n++)
@@ -258,6 +260,7 @@ void Foam::davofSweptAdvection::limitFluxes
                 }
             }
             syncProcPatches(dVf_, phi_);
+            if (Pstream::parRun()) davofProf::count(davofProf::cExch, 2);
         }
         else
         {
@@ -517,6 +520,23 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
     scalar advectionStartTime = mesh_.time().elapsedCpuTime();
     const auto advectWall0 = std::chrono::steady_clock::now();
 
+    // diag2 phase timers (phaseProfile, print only): the time since the end
+    // of the previous advect() is the rest of the step (function objects, IO)
+    const double profA0 = davofProf::start();
+    double profT = profA0;
+    if (davofProf::on)
+    {
+        davofProf::reset();
+        if (davofProf::lastEnd >= 0) davofProf::T[davofProf::pBetween] = profA0 - davofProf::lastEnd;
+    }
+    // the face records of the dump (alphaDump)
+    if (davofProf::dump)
+    {
+        davofProf::faceVSwept.assign(mesh_.nFaces(), -1.0);
+        davofProf::faceScale.assign(mesh_.nFaces(), -1.0);
+        davofProf::faceVLiq0.assign(mesh_.nFaces(), -1.0);
+    }
+
     scalar rDeltaT = 1/mesh_.time().deltaTValue();
 
     // the deformation diagnosis (2026-11-06): the face fractions from the
@@ -526,9 +546,11 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
     {
         reinitFaceFractions();
     }
+    davofProf::lap(profT, davofProf::pReinit);
 
     // reconstruct the interface
     surf_->reconstruct();
+    davofProf::lap(profT, davofProf::pRecon);
 
     if (sweptFragmentLog_ && davofPtr_)
     {
@@ -548,8 +570,12 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
 
     // The dual advection: the volume flux and the face fraction of every
     // face from one surface per cell (davofSweptAdvectionSurfaces.C)
+    davofProf::lap(profT, davofProf::pCurved);   // the remainder before curvedFlux: fragment log, upwind dVf
+    const double profCf0 = davofProf::start();
     curvedFlux(mesh_.time().deltaTValue());
+    if (davofProf::on) { davofProf::T[davofProf::pCurved] += davofProf::now() - profCf0; profT = davofProf::now(); }
     reportCurved();
+    davofProf::lap(profT, davofProf::pReport);
 
     // Adjust alpha for mesh motion
     if (mesh_.moving())
@@ -576,10 +602,11 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
         massOld = gSum(alpha1_.oldTime().primitiveField()*mesh_.V());
         massAdv = gSum(alpha1In_*mesh_.V());
     }
-    if (sweptClassify_)
+    if (sweptClassify_ || davofProf::dump)
     {
         dVfBeforeBound_ = dVf_.primitiveField();
     }
+    davofProf::lap(profT, davofProf::pAlphaUpdate);
 
     // Adjust dVf for unbounded cells. sweptClip onePlane (round 3,
     // 2026-11-12): this per-cell net-balance redistribution, as it is, is
@@ -600,6 +627,7 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
         Sp,
         Su
     );
+    davofProf::lap(profT, davofProf::pLimit);
     if (sweptOnePlane_)
     {
         const polyBoundaryMesh& pbm = mesh_.boundaryMesh();
@@ -640,6 +668,80 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
 
     Info<< "davofSwept: After conservative bounding: min(alpha) = "
         << minAlpha << ", max(alpha) = 1 + " << maxAlphaMinus1 << endl;
+
+    // diag2 (alphaDump, print only): the cell of the global maximum of alpha
+    // after the conservative bounding, at every step whose max(alpha) - 1 is
+    // the largest so far (and above 1e-8): the owner rank prints the state of
+    // the cell, its faces' fluxes before and after the bounding, the flux
+    // scaling and the cell's plane
+    if (davofProf::dump)
+    {
+        scalar aMaxLoc = -GREAT;
+        label cMaxLoc = -1;
+        forAll(alpha1In_, cc)
+        {
+            if (alpha1In_[cc] > aMaxLoc) { aMaxLoc = alpha1In_[cc]; cMaxLoc = cc; }
+        }
+        const scalar aMaxG = returnReduce(aMaxLoc, maxOp<scalar>());
+        if (aMaxG - 1 > davofProf::dumpRecord)
+        {
+            davofProf::dumpRecord = aMaxG - 1;
+            if (aMaxLoc == aMaxG && cMaxLoc >= 0)
+            {
+                const label c = cMaxLoc;
+                const scalar dtD = mesh_.time().deltaTValue();
+                const scalar Vc = mesh_.V()[c];
+                const labelList& ownD = mesh_.faceOwner();
+                const labelList& neiD = mesh_.faceNeighbour();
+                const scalarField& a0D = alpha1_.oldTime().primitiveField();
+                scalar netBefore = 0;
+                for (const label facei : mesh_.cells()[c])
+                {
+                    const scalar sgn = (ownD[facei] == c) ? 1 : -1;
+                    netBefore += sgn*(mesh_.isInternalFace(facei) ? dVfBeforeBound_[facei] : faceValue(dVf_, facei));
+                }
+                Pout<< "davofAlphaDump: step " << mesh_.time().timeIndex()
+                    << " t " << mesh_.time().value() << " rank " << Pstream::myProcNo()
+                    << " local cell " << c << " centre " << mesh_.cellCentres()[c]
+                    << " V " << Vc << " max(alpha) - 1 = " << aMaxG - 1 << nl
+                    << "    alpha^n " << a0D[c]
+                    << " alpha before bounding " << a0D[c] - netBefore/Vc
+                    << " alpha after bounding " << alpha1In_[c]
+                    << " surface " << (hasSurface_.test(c) ? "yes" : "no") << nl;
+                if (davofPtr_)
+                {
+                    const vector& mk = davofPtr_->areaNormal()[c];
+                    Pout<< "    plane: unit normal " << surf_->normal()[c] << " centre " << surf_->centre()[c]
+                        << " |n| " << mag(surf_->normal()[c])
+                        << " |m_k|/V^(2/3) " << mag(mk)/Foam::pow(Vc, 2.0/3.0)
+                        << " m_k " << mk << nl;
+                }
+                for (const label facei : mesh_.cells()[c])
+                {
+                    const bool internal = mesh_.isInternalFace(facei);
+                    const label other = internal ? (ownD[facei] == c ? neiD[facei] : ownD[facei]) : -1;
+                    const scalar sgn = (ownD[facei] == c) ? 1 : -1;   // out of the cell
+                    const scalar before = sgn*(internal ? dVfBeforeBound_[facei] : faceValue(dVf_, facei));
+                    const scalar after = sgn*faceValue(dVf_, facei);
+                    const scalar sBound = (before != 0) ? after/before : (after == 0 ? 1.0 : GREAT);
+                    Pout<< "    face " << facei << (internal ? "" : " (boundary, before = after)")
+                        << " phi dt out " << sgn*faceValue(phi_, facei)*dtD/Vc
+                        << " V_swept " << davofProf::faceVSwept[facei]/Vc
+                        << " flux scale |phi|dt/V_swept " << davofProf::faceScale[facei]
+                        << " unscaled liquid out " << sgn*(faceValue(phi_, facei) >= 0 ? 1.0 : -1.0)*davofProf::faceVLiq0[facei]/Vc
+                        << " dVf out before " << before/Vc << " after " << after/Vc
+                        << " (all /V_c) bound ratio " << sBound
+                        << " alpha_f " << (alphafPtr_ ? faceValue(*alphafPtr_, facei) : scalar(-1));
+                    if (other >= 0)
+                    {
+                        Pout<< " other cell alpha^n " << a0D[other] << " surface " << (hasSurface_.test(other) ? "yes" : "no");
+                    }
+                    Pout<< nl;
+                }
+                Pout<< endl;
+            }
+        }
+    }
 
     // The first cell that leaves [0, 1] by more than 1e-10 after the
     // conservative bounding (sweptClassify): the cell, its alpha before
@@ -693,7 +795,9 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
 
     // Apply non-conservative bounding mechanisms (clipping and snapping)
     // Note: We should be able to write out alpha before this is done!
+    davofProf::lap(profT, davofProf::pLimit);   // the reductions of the report above belong to the limiter's step
     applyBruteForceBounding();
+    davofProf::lap(profT, davofProf::pBrute);
 
     if (massReport)
     {
@@ -717,6 +821,8 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
             << ", boundary outflow " << bnd/ref << endl;
     }
 
+    davofProf::lap(profT, davofProf::pAlphaUpdate);   // the mass report's reductions
+
     // DAVOF: the faces no plane has set carry the upwind cell's new alpha
     if (storeAreaFractions_ && alphafPtr_)
     {
@@ -737,6 +843,8 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
         // scheme's area sums
         publishWetFaces();
     }
+
+    davofProf::lap(profT, davofProf::pDefaultAf);
 
     // The swept fluxes: the remote cells of the parallel path and the wall
     // times of the step's advection (2026-10-30; the maxima over the ranks,
@@ -773,6 +881,39 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
         << "%" << endl;
 
     alphaPhi_ = dVf_/mesh_.time().deltaT();
+
+    // diag2 (phaseProfile, print only): one line per step on the master, the
+    // phase times (mean and maximum over the ranks, seconds) and the counts
+    // (sums over the ranks) of the step
+    if (davofProf::on)
+    {
+        davofProf::lap(profT, davofProf::pReport);   // the parallel report block above
+        davofProf::T[davofProf::pAdvect] = davofProf::now() - profA0;
+        davofProf::count(davofProf::cExch, Pstream::parRun() ? 3 : 0);   // alpha1_ boundary updates
+        List<scalar> tSum(davofProf::nPhase), tMax(davofProf::nPhase), nSum(davofProf::nCount);
+        forAll(tSum, k) { tSum[k] = tMax[k] = davofProf::T[k]; }
+        forAll(nSum, k) { nSum[k] = davofProf::N[k]; }
+        if (Pstream::parRun())
+        {
+            Pstream::listReduce(tSum, sumOp<scalar>());
+            Pstream::listReduce(tMax, maxOp<scalar>());
+            Pstream::listReduce(nSum, sumOp<scalar>());
+        }
+        const scalar nProcs = Pstream::nProcs();
+        Info<< "davofProf: step " << mesh_.time().timeIndex() << " ranks " << Pstream::nProcs();
+        for (int k = 0; k < davofProf::nPhase; ++k)
+        {
+            Info<< " T_" << davofProf::phaseName[k] << " " << tSum[k]/nProcs << " " << tMax[k];
+        }
+        for (int k = 0; k < davofProf::nCount; ++k)
+        {
+            Info<< " N_" << davofProf::countName[k] << " " << nSum[k];
+        }
+        Info<< " X_swept " << sweptExchangeParts_[0] << " " << sweptExchangeParts_[1] << " " << sweptExchangeParts_[2]
+            << " " << sweptExchangeParts_[3] << " " << sweptExchangeParts_[4] << " " << sweptExchangeParts_[5]
+            << endl;
+        davofProf::lastEnd = davofProf::now();
+    }
 }
 
 

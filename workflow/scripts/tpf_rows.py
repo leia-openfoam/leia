@@ -330,7 +330,14 @@ ENRIGHT_SETTINGS = OrderedDict([
     # interface cells by normal and alpha, no bounded face fractions (rule 2 instead);
     # the sixth field, the clip, is "pieces" for every other setting and renders nothing
     ("onePlane",           ("signedTets",      "false", "none",    "normalAndAlpha",     "false", "onePlane")),
+    # diag2 (2026-11-14, leia davof-ccs-pieces): `recommended` plus ONE print-only key
+    # (phaseProfile: per-step phase timers and counts; alphaDump: the cell of the largest
+    # max(alpha) after the bounding); no result changes, every other setting renders as before
+    ("recommendedProfile", ("signedTets",      "false", "scale",   "normalAndAlpha",     "false")),
+    ("recommendedDump",    ("signedTets",      "false", "scale",   "normalAndAlpha",     "false")),
 ])
+# the print-only key each diag2 setting appends to TPF_ENRIGHT_KEYS
+DIAG_KEYS = {"recommendedProfile": "phaseProfile", "recommendedDump": "alphaDump"}
 ENRIGHT_TOKENS = ("TPF_SWEPT_PIECE_VOLUME", "TPF_SWEPT_PIECE_VALIDATE",
                   "TPF_SWEPT_BOUNDED_FACE_FRACTION", "TPF_INTERFACE_CELL_RULE",
                   "TPF_SWEPT_FRAGMENT_LOG", "TPF_SWEPT_CLIP")
@@ -346,6 +353,8 @@ ENRIGHT_LABELS = OrderedDict([
     ("fragmentLog", "fragment log"),
     ("recommended", "signedTets + scale + normalAndAlpha"),
     ("onePlane", "one plane per face (KISS)"),
+    ("recommendedProfile", "signedTets + scale + normalAndAlpha, phase timers"),
+    ("recommendedDump", "signedTets + scale + normalAndAlpha, alpha dump"),
 ])
 
 
@@ -378,6 +387,10 @@ def enright_setting_tokens(name):
             out["TPF_ENRIGHT_KEYS"] += (
                 "\n        // the KISS variant (Tomislav, 2026-11-09; leia davof-kiss): one plane per face"
                 "\n        sweptClip onePlane;")
+        if name in DIAG_KEYS:
+            out["TPF_ENRIGHT_KEYS"] += (
+                "\n        // diag2 (2026-11-14; leia davof-ccs-pieces): print-only diagnostic key"
+                "\n        " + DIAG_KEYS[name] + " true;")
     return out
 
 

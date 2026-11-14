@@ -188,6 +188,7 @@ SourceFiles
 #include "davofSimplexGeometry.H"
 #include "davofSweptPieces.H"
 #include "davofVelocityAt.H"
+#include "davofPhaseProf.H"
 #include "interpolationCellPoint.H"
 #include "pointFields.H"
 #include "FixedList.H"
@@ -707,7 +708,7 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
 
     // the per-class statistics (sweptClassStats, 2026-11-05): the wall
     // clock around the calls, read only when the key is on
-    const bool stats = sweptClassStats_;
+    const bool stats = sweptClassStats_ || davofProf::on;
     auto tick = [&]() -> double
     {
         return stats ? std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count() : 0.0;
@@ -1395,6 +1396,22 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
         ++nClsFaces_[k]; nClsTouched_[k] += nTouched; nClsPieces_[k] += nStatPieces;
         nClsVolClips_[k] += nStatVolClips; nClsAreaClips_[k] += nStatAreaClips; nClsTris_[k] += nStatTris;
         tClsVol_[k] += tStatVol; tClsArea_[k] += tStatArea; tClsTrace_[k] += tStatTrace; tClsPre_[k] += tStatPre;
+        // diag2 (phaseProfile, print only): the per-step phase times and counts of the faces
+        if (davofProf::on)
+        {
+            davofProf::T[davofProf::pFTrace] += tStatTrace;
+            davofProf::T[davofProf::pFPre] += tStatPre;
+            davofProf::T[davofProf::pFVol] += tStatVol;
+            davofProf::T[davofProf::pFArea] += tStatArea;
+            davofProf::N[davofProf::cFacesFlux] += 1;
+            if (sweeps) davofProf::N[davofProf::cFacesSweep] += 1;
+            davofProf::N[davofProf::cTets] += T.size();
+            davofProf::N[davofProf::cRing] += ring.size();
+            davofProf::N[davofProf::cTouched] += nTouched;
+            davofProf::N[davofProf::cVolClips] += nStatVolClips;
+            davofProf::N[davofProf::cAreaClips] += nStatAreaClips;
+            davofProf::N[davofProf::cPieces] += nStatPieces;
+        }
     }
 
     // the shortcut against the pieces (sweptPreTestCheck)
@@ -1542,6 +1559,14 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
     }
 
     vLiq = sweeps ? threeV/3 : 0;
+    if (davofProf::dump && facei < static_cast<label>(davofProf::faceScale.size()))
+    {
+        // alphaDump (print only): the swept volume, the unscaled liquid volume and the flux scale
+        davofProf::faceVSwept[facei] = vTotal;
+        davofProf::faceVLiq0[facei] = vLiq;
+        davofProf::faceScale[facei] =
+            (sweptScaleToPhi_ && sweeps && vTotal > VSMALL) ? mag(phiF)*dt/vTotal : 1.0;
+    }
     // the kinematic consistency: the liquid share of the swept volume
     // times the flux phi_f dt (sweptScaleToPhi)
     if (sweptScaleToPhi_ && sweeps && vTotal > VSMALL)
@@ -1966,6 +1991,7 @@ void Foam::davofSweptAdvection::sweptExchange
     sweptExchangeTime_ = 0;
     sweptExchangeParts_ = Zero;
     if (!Pstream::parRun()) return;
+    davofProf::count(davofProf::cExch, 1);
     auto now = []() { return std::chrono::steady_clock::now(); };
     auto secs = [](const auto& a, const auto& b)
     {

@@ -29,6 +29,7 @@ License
 #include "emptyPolyPatch.H"
 #include "davofInit.H"
 #include "davofCcsPositioning.H"
+#include "davofPhaseProf.H"
 #include "zoneDistribute.H"
 #include "syncTools.H"
 #include "addToRunTimeSelectionTable.H"
@@ -630,6 +631,7 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
     {
         return;
     }
+    double profR = davofProf::start();   // diag2 phase timers (phaseProfile)
 
     if (mesh_.topoChanging())
     {
@@ -662,6 +664,7 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
     // wet faces (the list isoAdvection keeps) or over every face
     formAreaNormal();
     vectorField& m = areaNormal_.primitiveFieldRef();
+    davofProf::lap(profR, davofProf::pRcAreaNormal);
 
     for (const label celli : prevLabels)
     {
@@ -813,6 +816,7 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
     // the selected normal once gives the plane the former two passes
     // ended with (the second pass re-positioned along that normal, the
     // first pass's plane along m_c was only overwritten).
+    davofProf::lap(profR, davofProf::pRcCells);
     const bool twoPass = normalModel_->needsPositionedPlanes();
 
     // The curvature tensor's per-cell records (requested by the face
@@ -897,6 +901,9 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
         maxPlaneAreaDefect_ = max(maxPlaneAreaDefect_, planeAreaDefect_[celli]);
     }
 
+    davofProf::lap(profR, davofProf::pRcExplicit);
+    davofProf::count(davofProf::cInterface, interfaceLabels_.size());
+    davofProf::count(davofProf::cExplicitCuts, interfaceLabels_.size());
     if (twoPass)
     {
         // The boundary values of the planes for the ring models' exchange
@@ -911,6 +918,7 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
     vectorField nUse;
     boolList changed;
     normalModel_->select(tState, m, nUse, changed);
+    davofProf::lap(profR, davofProf::pRcSelect);
 
     forAll(interfaceLabels_, i)
     {
@@ -938,6 +946,8 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
         usedNormal_[i] = (nMag > 0) ? nUse[i]/nMag : vector(Zero);
     }
 
+    davofProf::lap(profR, davofProf::pRcPositioning);
+    davofProf::count(davofProf::cCcsCuts, nPosEvals_);
     maxPlaneVolDefect_ = returnReduce(maxPlaneVolDefect_, maxOp<scalar>());
     maxPlaneAreaDefect_ = returnReduce(maxPlaneAreaDefect_, maxOp<scalar>());
     const label nInterface = returnReduce(interfaceLabels_.size(), sumOp<label>());
@@ -1010,6 +1020,9 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
         }
     }
     Info<< endl;
+    davofProf::lap(profR, davofProf::pRcTail);
+    // the field boundary updates of this function: one exchange round each
+    if (Pstream::parRun()) davofProf::count(davofProf::cExch, twoPass ? 9 : 7);
 }
 
 

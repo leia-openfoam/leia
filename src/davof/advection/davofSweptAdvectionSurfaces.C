@@ -74,6 +74,7 @@ SourceFiles
 #include "interpolationCellPoint.H"
 #include "volPointInterpolation.H"
 #include "davofVelocityAt.H"
+#include "davofPhaseProf.H"
 #include "indexedOctree.H"
 #include "treeDataCell.H"
 #include "volFields.H"
@@ -1102,6 +1103,8 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
 {
     addProfilingInFunction(geometricVoF);
 
+    double profT = davofProf::start();   // diag2 phase timers (phaseProfile)
+
     // The records of the face fractions, as timeIntegratedFlux() keeps them
     clearIsoFaceData();
     alphafSetFace_.reset();
@@ -1222,7 +1225,9 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
     // The surfaces of the state at t^n: the time has been advanced to
     // t^{n+1} when the advection runs (the scheme's stateTime() counts its
     // calls and cannot be asked again here)
+    davofProf::lap(profT, davofProf::pCfInit);
     buildCellSurfaces(mesh_.time().value() - dt);
+    davofProf::lap(profT, davofProf::pCfSurfaces);
 
     // fluxIntegration sweptFace: the velocity at the mesh points (the
     // volPointInterpolation of U) for the backward trace of the face
@@ -1285,6 +1290,7 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
     (
         mesh_, U_.primitiveField(), *UpPtr, icpPtr.get(), &cellTets_, ensureUp
     );
+    davofProf::lap(profT, davofProf::pCfVelSetup);
 
     const labelList& own = mesh_.faceOwner();
     const labelList& nei = mesh_.faceNeighbour();
@@ -1346,6 +1352,9 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
             }
         }
     }
+
+    davofProf::lap(profT, davofProf::pCfExch1);
+    if (Pstream::parRun()) davofProf::count(davofProf::cExch, 1);
 
     // sweptWispSurface neighbour (2026-11-02): the surface of every wisp (no
     // surface, 1e-8 < alpha^n < 1 - 1e-8, the thresholds of the wisp class
@@ -1481,6 +1490,8 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
         }
     }
 
+    davofProf::lap(profT, davofProf::pCfWisp);
+
     // The candidate cells: the interface cells and their face neighbours
     // (the surface moves less than one cell per step), the face neighbours
     // across the processor patches included; the interface cells are the
@@ -1550,6 +1561,8 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
             }
         }
     }
+
+    davofProf::lap(profT, davofProf::pCfCand);
 
     // The second exchange: per processor face the candidate flag of the
     // cell across and the closest surface among that cell's face
@@ -1651,6 +1664,9 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
         }
     }
 
+    davofProf::lap(profT, davofProf::pCfExch2);
+    if (Pstream::parRun()) davofProf::count(davofProf::cExch, 1);
+
     // The swept fluxes in parallel (2026-10-30): the donors of the faces
     // this rank computes (the upwind cell of an internal face with a
     // candidate cell, the local cell of a boundary face, the local cell of
@@ -1687,6 +1703,8 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
         }
         sweptExchange(donors, *UpPtr);
     }
+
+    davofProf::lap(profT, davofProf::pCfSweptExch);
 
     // The per-face log of the swept fluxes (sweptFaceLog): one file per step
     // and rank
@@ -1862,6 +1880,7 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
             }
         }
         const davof::cellSurface& S = *Sp;
+        davofProf::count(davofProf::cFaces, 1);
 
         // The displacement of the step at the face
         const vector d = UInterp.interpolate(Cf[facei], local)*dt;
@@ -1903,6 +1922,7 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
         }
         else if (fluxIntegration_ == "sweptFaceCells")
         {
+            const double profF = davofProf::start();
             sweptFaceCellsFlux
             (
                 facei, local, S, dt, phiF, sweeps, UInterp, *UpPtr,
@@ -1910,6 +1930,7 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
                 sweptClassify_ ? &qSw : nullptr,
                 sweptClassify_ ? &xqSw : nullptr
             );
+            if (davofProf::on) davofProf::add(davofProf::pFFlux, davofProf::now() - profF);
         }
         else if (wetVecPtr_)
         {
@@ -2111,12 +2132,15 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
     {
         sweptConsistencyProbe(dt, UInterp, *UpPtr);
     }
+    davofProf::lap(profT, davofProf::pCfFaceLoop);
     if (Pstream::parRun())
     {
         // the computed processor faces to the other side (the flux with the
         // opposite sign, the face fraction as it is)
         syncProcPatches(dVf_, phi_, false, alphafPtr_, wetVecPtr_);
+        davofProf::count(davofProf::cExch, 1);
     }
+    davofProf::lap(profT, davofProf::pCfProcSync);
     sweptFaceLogFile_.reset(nullptr);
     sweptCurvedTime_ =
         std::chrono::duration<scalar>(std::chrono::steady_clock::now() - tCurved0).count();
@@ -2174,6 +2198,7 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
             }
         }
     }
+    davofProf::lap(profT, davofProf::pCfTail);
 }
 
 
