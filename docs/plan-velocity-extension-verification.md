@@ -250,7 +250,7 @@ is the measurement or derivation that fixes the value; "open" means it still nee
 | `PSI_TOLERANCE` | 1e-10 | i | MEASURED: binds only for the seam comparison (11.30 item 8, 1e-14 there); keep, with the iteration counter |
 | `CFL` | 0.3 (0.5 in the PDE configs) | i | time-step law, matched across rungs; problem data of the study |
 | `grad(psi)` of the transport (`DIV_GRAD`) | cellLimited leastSquares 1 | i | a limiter is a switch; open: does it act inside the curvature stencil? a4 measures the limited gradient as a curvature gradient |
-| extension band `nLayers` (`N_LAYERS`) | 3 | i -> ii | DERIVED from the curvature stencil plus the transport margin (this section, items 1-2); open until a4 and the plateau test of step B |
+| extension band `nLayers` (`N_LAYERS`) | 3 | i -> ii | the curvature depth is MEASURED (a4CurvStencil2D, STATUS 11.33 item 4): l <= 3 for the face curvature with compact schemes, l <= 4 with pointCellsLeastSquares; nLayers 3 in layer mode holds l <= 4, so the transport margin is 1 layer (compact) or 0; the plateau test of step B fixes the value |
 | `fadeMode` | levelSet | i | must become `layer` (no distance assumed; the stencil depth is a number of layers) |
 | `fadePlacement` | legacy (B: extendThroughFade) | i | MEASURED (11.31) |
 | `maxScale` | 5 | i (cap) | open: a counter must show that it never binds |

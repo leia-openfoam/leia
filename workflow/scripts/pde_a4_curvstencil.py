@@ -20,14 +20,24 @@ def main():
     ap.add_argument("--study", default="studies/pdeLevelSet/a4CurvStencil2D")
     a = ap.parse_args()
     rows = []
+    L = []
+    say = lambda s="": (L.append(s), print(s))
+    # The case may sweep an axis the test does not read (2DstaticCircle: PHASE_INDICATOR); the
+    # test reads psi only, so every case of one N must give the same CSV. Keep the first, check
+    # the others byte for byte.
+    first = {}
     for case in sorted(glob.glob(os.path.join(a.study, "*_[0-9]*"))):
         N = int(json.load(open(os.path.join(case, "case_params.json")))["tokens"]["N_CELLS"])
         f = os.path.join(case, "leiaTestCurvatureStencil.csv")
-        if os.path.isfile(f) and os.path.getsize(f):
-            for r in csv.DictReader(open(f)):
-                r["N"] = N; rows.append(r)
-    L = []
-    say = lambda s="": (L.append(s), print(s))
+        if not (os.path.isfile(f) and os.path.getsize(f)):
+            say(f"MISSING {f}"); continue
+        if N in first:
+            same = open(f, "rb").read() == open(first[N], "rb").read()
+            say(f"N {N}: {os.path.basename(case)} {'identical to' if same else 'DIFFERS from'} {os.path.basename(os.path.dirname(first[N]))}")
+            continue
+        first[N] = f
+        for r in csv.DictReader(open(f)):
+            r["N"] = N; rows.append(r)
     Ns = sorted({r["N"] for r in rows})
     say(f"{len(rows)} rows, N = {Ns}")
     for sch in sorted({r["GRAD_SCHEME"] for r in rows}):

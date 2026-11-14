@@ -7888,3 +7888,22 @@ first-order fade is accepted, and its derivation is tested; (3) repair 3 first.
    `levelSet.curvatureStencil` dictionary in `cases/2DstaticCircle`). Pre-registered S1 to S4: compact
    schemes read l <= 2 (cell) and l <= 3 (face); pointCellsLeastSquares one layer more. Read-out
    `workflow/scripts/pde_a4_curvstencil.py`. Laptop: compile check only.
+4. **Result of a4CurvStencil2D: S1 to S4 CONFIRMED** (driver 56327220, analysis 56327221,
+   special00005, clone `leia-pde-a4` at 20b5e442; the case sweeps PHASE_INDICATOR, which the test
+   does not read: the two cases of each N are byte-identical; read-out fixed for that). Circle R = 0.25,
+   N 64 to 512, an O(h) perturbation on the layers l >= k:
+   - Gauss linear, leastSquares, cellLimited leastSquares 1: the cell curvature at l = 0 is bit-
+     identical to the unperturbed one for k >= 3 (0 changed cells), the face curvature for k >= 4;
+     pointCellsLeastSquares one layer deeper (k >= 4 and k >= 5). The derived depths hold exactly.
+   - A perturbation inside that depth: E_KAPPA order -0.8 to -1.2 at every rung (the error grows as
+     1/h; at N 512 it is 8 to 170 against 1.7e-4 unperturbed). A perturbation one layer outside
+     the depth has no effect at all.
+   - Unperturbed: cell and face curvature second order (orders 1.98 to 2.00); E_KAPPA_CELL_L1 at
+     N 512: 1.7e-4 (Gauss linear = leastSquares = cellLimited on this distance field) and 5.9e-5
+     (pointCellsLeastSquares, 3 times smaller).
+   CONSEQUENCE: with compact schemes, psi must be second order and smooth on the layers l <= 2 (cell
+   curvature) and l <= 3 (face curvature, where snGrad(alpha) is nonzero); with
+   pointCellsLeastSquares l <= 3 and l <= 4. The default extension band (fadeMode layer, nLayers 3)
+   holds the full extension on l <= 4: one layer of transport margin for the face curvature with
+   compact schemes, none with pointCellsLeastSquares. Step B's plateau test decides whether one layer
+   is enough.
