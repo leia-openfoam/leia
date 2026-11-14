@@ -338,7 +338,29 @@ in transport until the cause is known.
 
 ---
 
+**The model's own extension (supervisor, 2026-11-15; from the manuscript of D. Bothe, T. Maric and
+K. Soga, "Gradient-Stabilized Velocity Extension Level Set Method", draft of 2026-11-15).** The
+theorems hold for the Newton point Y = x - phi grad(phi)/|grad(phi)|^2, not for the nearest point
+Pi(x); the two differ by O(d^2). u_e = v(Y) is a pointwise formula: u_e = v + grad(v).(Y - x) is a
+compact, second-order evaluation in a band of fixed cell count, with no search, no halo beyond one
+layer and no failed cells. Step A therefore adds (1) the reference u(Y_exact) in the test application,
+next to u(Pi(x)); (2) the arm `projectionBlend` with `distance first` and its blend outside the band
+(w1 = 4, w2 = 8 cells), the model's own extension. closestPoint STAYS a candidate and the reference
+operator for the nearest point (supervisor: "do not drop closest point just yet").
+
 ## 6. Sub-problem B: transport with the exact extension (oracle)
+
+**The marker test (2026-11-15, from the same manuscript, section 5).** Initial data
+phi0 = g(z)(|z| - R), g = 1 + 0.3 (z1^2 - z2^2)/(|z|^2 + 0.01^2): q0 varies from 0.70 to 1.30 along
+the interface, known pointwise. Without feedback, q is constant along the material markers for ANY
+flow (compressible included); with the rational law f = kappa (1 - q^2)/(1 + q^2), Z = q - 1/q decays
+as exp(-kappa t). Flows: translation, pure strain (circle to ellipse, closed form), the compressible
+oscillatory flow (div v != 0: tests the Sp(div phiExt) term), the reduced 3D LeVeque flow (read at
+T/2 and T). Metric: the L1 and L2 mean over the markers of |q_h(Y_l(t)) - q_l(t)|, with q_h by
+cell-point interpolation of the cell gradient (unstructured); this replaces "|grad psi| - 1" as the
+target of B, because it does not assume a distance. The plateau test runs with and without feedback:
+with a stabilizing f the characteristics leave the interface (the source carries the velocity
+-Phi f'(q) n, DERIVED from eq. 3.2 of the manuscript), so the band edge becomes an outflow boundary.
 
 **The plateau test (2026-11-14).** Every B and C arm reports the curvature at the interface layer
 (cell and face, by the operator of a4CurvStencil2D) and runs the band width in layers over the
@@ -395,6 +417,18 @@ beta dt = c (a relaxation per step, which changes the discrete problem with dt a
 converge); beta = c |u|/h. The gate: the interface metrics converge at the same order for c over one
 decade, and c is then fixed once for every case. The band where the source acts is in cells or
 topological, never the physical mollifier widths of the SDPLS line.
+
+**From the manuscript (2026-11-15).** (1) The source phi f(|grad phi|) is a Hamilton-Jacobi term: its
+momentum derivative gives the characteristic velocity -Phi f'(q) n, away from the interface for a
+stabilizing f. A centred q discretises that transport centred (consistent with the measured growth,
+STATUS 11.27); the first-order one-sided q is stable but its fixed point is first order (negative log,
+2026-10-13). D1 adds a second-order upwind q (interface side) as the open arm. (2) Laws: nondegenerate
+(f'(beta) < 0, exponential rate) and bounded (the rational law); the degenerate cubic laws decay only
+algebraically. (3) The rate: a local rule evaluated at Y keeps the theory (manuscript section 6.2,
+item 4); candidate kappa = c |grad v(Y)|; the rule kappa dt = c is DERIVED to cost one order
+(phi kappa (q_h - 1) = O(h^(p-1))) and must be measured before use. (4) Exact field for D2: from
+phi0 = b0 d, phi(t, x) = b(t) d_t(x) with db/dt = b f(b) (Corollary 2.7), on translation, rotation
+and the linear flows.
 
 **D2, the source with the oracle extension**, on the cases of B with $\phi_0 = c\,d$ or $d\,g$: the
 source must bring $q$ to 1 at the rate of the law without moving the zero set beyond the transport
