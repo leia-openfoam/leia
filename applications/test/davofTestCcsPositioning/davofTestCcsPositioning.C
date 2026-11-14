@@ -44,6 +44,8 @@ Description
 #include "fvCFD.H"
 #include "cutCellPLIC.H"
 #include "davofCcsPositioning.H"
+#include <iomanip>
+#include <vector>
 #include <random>
 #include <algorithm>
 
@@ -99,12 +101,15 @@ int main(int argc, char *argv[])
         alphas.append(1.0 - e);
     }
 
+    label nDumpAll = 0;
+    const label nDumpMax = 400;
     cutCellPLIC cutPos(mesh);
     cutCellPLIC cutChk(mesh);
     const scalarField& V = mesh.V();
     const pointField& P = mesh.points();
 
-    Info<< "RESULT,header,tag,arm,alpha,nCases,errMax,errMedian,errMean,nOver1e-10,"
+    Info.stream().precision(10);
+    Info<< "RESULT,header,tag,arm,alpha,nCases,errMax,errMedian,errMean,nOver1e-10,errWMax,errWMedian,nOverW,nGross1e-3,errP99,"
         << "exit1,exit2,exit3,exit4,nNoPlane,cutsMean,cutsMax,endOk,endRej" << nl;
 
     for (label arm = 0; arm < 2; ++arm)
@@ -114,7 +119,8 @@ int main(int argc, char *argv[])
         const scalar tolRel = (arm == 1) ? 1e-12 : 1e-14;
         for (const scalar alpha : alphas)
         {
-            std::vector<double> errs;
+            std::vector<double> errs, errsW;
+            label nDump = 0;
             label nExit[5] = {0, 0, 0, 0, 0};
             label nNoPlane = 0, cutsMax = 0, endOk = 0, endRej = 0;
             double cutsSum = 0;
@@ -147,31 +153,55 @@ int main(int argc, char *argv[])
                     if (rec.endState > 0) ++endOk;
                     if (rec.endState < 0) ++endRej;
 
-                    // the independent volume error
-                    double err;
-                    if (alpha <= 0.5)
+                    // the independent volume error, as the gate states it:
+                    // the cut volume V_cut on the liquid side of the returned
+                    // plane (original frame) against alpha V_k; for alpha > 1/2
+                    // also the volume W of the complementary cut (normal and
+                    // position mirrored) against (1 - alpha) V_k. On a cell
+                    // with planar faces V + W = V_k to round-off; on a warped
+                    // face the two cuts differ by the fan triangulation.
+                    double err, errW;
                     {
                         const label st = cutChk.calcSubCell(celli, p, n);
                         const scalar Vcut = (st == 0) ? cutChk.subCellVolume() : ((st < 0) ? Vc : 0);
-                        err = mag(Vcut - alpha*Vc)/(alpha*Vc);
+                        err = mag(Vcut - alpha*Vc)/(min(alpha, 1 - alpha)*Vc);
+                        errW = err;
                     }
-                    else
+                    if (alpha > 0.5)
                     {
                         const label st = cutChk.calcSubCell(celli, -p, -n);
                         const scalar W = (st == 0) ? cutChk.subCellVolume() : ((st < 0) ? Vc : 0);
-                        err = mag(W - (1 - alpha)*Vc)/((1 - alpha)*Vc);
+                        errW = mag(W - (1 - alpha)*Vc)/((1 - alpha)*Vc);
                     }
                     errs.push_back(err);
+                    errsW.push_back(errW);
+                    if (err > 1e-10 && nDump < 3 && nDumpAll < nDumpMax)
+                    {
+                        ++nDump; ++nDumpAll;
+                        Info<< "DUMP," << tag << "," << (arm ? "new" : "old") << ",alpha " << alpha
+                            << ",cell " << celli << ",normal " << n << ",aligned "
+                            << (label(&n - &normals[0]) < 26) << ",exit " << rec.exitCode
+                            << ",cuts " << rec.nEvals << ",status " << status
+                            << ",endState " << rec.endState << ",pMin " << pMin << ",pMax " << pMax
+                            << ",pFinal " << p << ",rFinal " << rec.rFinal << ",err " << err
+                            << ",errW " << errW << nl;
+                    }
                 }
             }
             std::sort(errs.begin(), errs.end());
+            std::sort(errsW.begin(), errsW.end());
             const size_t m = errs.size();
             double sum = 0;
-            size_t over = 0;
+            size_t over = 0, overW = 0;
             for (double e : errs) { sum += e; if (e > 1e-10) ++over; }
+            for (double e : errsW) { if (e > 1e-10) ++overW; }
+            size_t gross = 0;
+            for (double e : errs) { if (e > 1e-3) ++gross; }
             Info<< "RESULT," << tag << "," << (arm ? "new" : "old") << ","
                 << alpha << "," << m << "," << errs.back() << ","
                 << errs[m/2] << "," << sum/m << "," << over << ","
+                << errsW.back() << "," << errsW[m/2] << "," << overW << "," << gross << ","
+                << errs[size_t(0.99*(m - 1))] << ","
                 << nExit[1] << "," << nExit[2] << "," << nExit[3] << "," << nExit[4] << ","
                 << nNoPlane << "," << cutsSum/m << "," << cutsMax << ","
                 << endOk << "," << endRej << nl;

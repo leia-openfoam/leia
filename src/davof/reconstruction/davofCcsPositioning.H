@@ -240,7 +240,8 @@ inline bool ccsEndIntervalSolve
         {
             if (((P[pi] - xc) & nn) < t0 - lvlTol) { onLevel = false; break; }
         }
-        if (onLevel) A0 += mesh.magSf()[fi];
+        // faceAreas() holds every face, the boundary faces included
+        if (onLevel) A0 += mag(mesh.faceAreas()[fi]);
     }
 
     label status = cut.calcSubCell(celli, t1, nn);
