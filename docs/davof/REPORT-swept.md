@@ -6745,3 +6745,52 @@ plicRDF cases' ratio of max OF Co to target; the standing ranks per resolution (
 deformation3D); rows DAVOF onePlane and DAVOF pieces (the `recommended` setting), both with ccsEndInterval cubic, ccsTolerance
 relative (1e-12, floor 1e-15), grazingCut openfoam; plicRDF (the stored standing results at 0.2 and 0.5, the third target
 run) and isoAlpha (all three targets run); one repetition per new cell.
+
+## One plane per face on curved interfaces: first fault (2026-11-15; leia branch `davof-ccs-oneplane` off `davof-ccs` 59a54c3a)
+
+PRE-REGISTERED before any run. Print-only diagnostics, no method change, no new rule, tolerance or fallback.
+
+The failure (Stage B, measured): the onePlane row is exact on a translating plane up to OF Co 0.95 but completes 2
+of the 27 curved-interface cells. 10 cells crash with SIGFPE in `Foam::davofSweptAdvection::boundFlux` (called from
+`limitFluxes`); 15 are stopped by the abort guard (min alpha below `abortMinAlpha`). The limiter moves 1e1 to 7e4
+cell volumes. The logs show "one plane: NO PLANE in the vertex ring of face ..." before the crashes.
+
+Question: what is the FIRST fault, in time, on a curved interface.
+
+Hypotheses (verbatim):
+
+- H1 (missing plane): the first deviation is a face whose prism is cut by the interface but whose vertex ring holds
+  no plane (cells below the |m_k| threshold or below surfCellTol), taken all-or-nothing; the O(1) flux error then
+  drives the limiter. Prediction: the first step at which any cell's alpha leaves [-1e-10, 1+1e-10] BEFORE limiting
+  has a no-plane cut face among that cell's faces.
+- H2 (wrong donor on a curved interface): the first deviation is a face that HAS a donor plane, but the donor's
+  plane extended over the prism misrepresents the interface (prism overlaps cells whose own planes differ: thin
+  filament, two interfaces within the ring, high curvature). Prediction: the first out-of-bounds cell has all faces
+  with planes, and the flux of one face differs from the pieces path's flux for the same state by more than 10 % of
+  V_k.
+- H3 (limiter defect): the fluxes before limiting are within O(h) of the pieces path's, and boundFlux itself
+  produces the blow-up (division by a vanishing denominator). Prediction: at the SIGFPE step the pre-limiter alpha
+  violations are small (< 1e-3) and the trap is a division by ~0 in boundFlux; name the line and the operands.
+
+The three are not exclusive; report which occurs first and how often each occurs in the first 50 steps with
+violations.
+
+State: (alpha_k, alpha_f); m_k = -sum_f alpha_f S_f; interface cell test alpha_k in (1e-8, 1-1e-8) and
+|m_k| > 1e-3 V_k^(2/3).
+
+Cases (hexahedral, the Stage B configs at the smallest failing resolution, serial): shear2D N 64 at OF Co 0.2
+(crashed at t = 1.80), shear3D N 32 at Co 0.2 (crashed at t = 0.98), deformation3D N 32 at Co 0.2 (abort at step
+236); and shear3D N 128 at Co 0.2 on 64 ranks (the case that completes) for the first 300 steps.
+
+Diagnostics (key `sweptOnePlaneDiag`, default false; the setting `onePlaneDiag` of tpf_rows.ENRIGHT_SETTINGS renders
+it; `sweptOnePlaneCompareSteps` lists the time indices at which the pieces path's flux of the same state is
+evaluated and only compared): per step, the cells outside [-1e-10, 1+1e-10] after the unlimited update and before
+`limitFluxes` (count, worst value, summed violation in cell volumes); for the first 20 such cells their faces (flux,
+donor and its alpha and |m|/V^(2/3), no-plane cut/uncut, donor is the centroid cell, prism wet fraction); the
+no-plane cut faces; in `boundFlux` the operands before each division whose denominator is below 1e-12; the limiter's
+passes, cells touched and volume moved. The comparison with the pieces path is evaluated in the one-plane face loop
+on the same state and printed as |flux_onePlane - flux_pieces|/V_k (L1, Linf, count > 0.1) over the faces of
+interface cells; the transport path is not touched (identity of the fields with the key on and off is checked
+before the runs are read).
+
+Verdicts H1/H2/H3 by the numbers only.
