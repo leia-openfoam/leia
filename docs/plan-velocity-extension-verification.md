@@ -476,6 +476,29 @@ error.
 
 ---
 
+### 10a. The AMR route (supervisor, 2026-11-15: "with velocity extension working and local AMR, a
+workable level-set code?"; E-A1 runs after step A)
+
+Why it can work (from the manuscript of Bothe, Maric and Soga, Corollary 2.9 with f = 0): with the
+exact extension q is constant along characteristics, so a signed distance stays one without
+redistancing. The risks are the 2:1 transition (the SL line lost the field there until ghost cells,
+STATUS 11.35), the refined band (DERIVED, no free parameter: the fine region holds the full extension,
+the fade, the curvature stencil and the distance the interface moves between two refinements), the
+field mapping of `hexRef8` (piecewise constant: an O(h) error that the extension without feedback
+never removes; HYPOTHESIS: the feedback heals it at the rate lambda), the volume, and the OpenFOAM
+limits (hexRef8 refines hexahedra only; BDF2 needs two old levels mapped).
+
+1. **E-A1, the fixed 2:1 transition.** A sphere moves through a fixed refined box (the pattern of
+   `config/gates/ghostCellRefinedBox3D.yaml`), on the Eulerian FV line with the extension selected in
+   step A; shape, volume, band gradient and the curvature at the interface, three rungs, against the
+   uniform mesh of the coarse and of the fine spacing. No dynamic mesh.
+2. **E-A2, the mapping unit gate.** Refine and unrefine around a static exact phi; the error of phi
+   and of the curvature on the layers 0 to 4; the default mapping against a gradient-based mapping.
+3. **E-A3, dynamic refinement, kinematic.** The marker test of section 6 with refinement that follows
+   the interface, with and without feedback.
+4. **E-A4, coupled.** The well-balanced stationary drop (exact curvature) first, then the computed
+   curvature, then the translating and oscillating drops.
+
 ## 11. The deck
 
 `docs/pde-level-set/pde-level-set-presentation/pde-level-set.template.html` (a theme folder of its own
