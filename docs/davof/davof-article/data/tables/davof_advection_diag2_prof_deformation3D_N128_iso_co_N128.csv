@@ -1,0 +1,9 @@
+row,metric,Co=0.2,Co=0.95834
+isoAlpha,L1_alphaf_end,--,--
+isoAlpha,L1_alphaf_max,--,--
+isoAlpha,L1_n_end,1.22e+00,1.22e+00
+isoAlpha,L1_x_end,2.43e-01,2.43e-01
+isoAlpha,Eshape_end,2.83e-02,2.83e-02
+isoAlpha,Ebound_end,9.54e-09,2.44e-06
+isoAlpha,minAlpha_run,-2.3e-05,-3.0e-04
+isoAlpha,status,ok,ok
