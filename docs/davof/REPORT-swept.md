@@ -6745,3 +6745,50 @@ plicRDF cases' ratio of max OF Co to target; the standing ranks per resolution (
 deformation3D); rows DAVOF onePlane and DAVOF pieces (the `recommended` setting), both with ccsEndInterval cubic, ccsTolerance
 relative (1e-12, floor 1e-15), grazingCut openfoam; plicRDF (the stored standing results at 0.2 and 0.5, the third target
 run) and isoAlpha (all three targets run); one repetition per new cell.
+
+
+## The cell cut on warped faces (2026-11-14; leia branch `davof-ccs-cut` off `davof-ccs` 59a54c3a)
+
+PRE-REGISTERED before the first run of this section.
+
+Observation (from the dump `ccs_failures_20_per_mesh.txt` of the CCS round). leia's cell cut (src/davof/reconstruction:
+davofCutCellPLIC.C, davofCellCut.H; the class is modelled on OpenFOAM's cutCellPLIC / cutFacePLIC) returns the wet volume
+V(p) of a cell under a plane n.x = p. On cells with warped (non-planar) faces (perturbed hexahedra from leiaPerturbMesh;
+polyhedra from pMesh) V(p) jumps by 2.7e-4 to 5.7e-3 V_k when p crosses a vertex level; the full cut volume V(p past the
+last vertex) differs from the mesh cell volume V_k (perturbed: median 6.8e-4, max 8.2e-3; polyhedra: median 3.0e-5, max
+2.1e-3); on planar hexahedra both agree to 4e-16. Consequence: positioning (find p with V(p) = alpha_k V_k) has no root
+for some targets.
+
+Questions, in this order, with the hypotheses (verbatim from the brief):
+
+- Q1 (cause, from the code): how does leia's cut compute the sub-volume: which decomposition (sub-face polygons
+  triangulated around their own centroids? pyramids to which apex: cell centre, sub-cell centroid, an arbitrary point?), and
+  how does OpenFOAM's primitiveMesh compute V_k (pyramids from the cell-centre estimate to face triangles around the face
+  centre). State both with file and line.
+  H-cause: the cut triangulates each cut sub-face around its own centroid, the mesh triangulates each face around the face
+  centre; for a warped face the two surfaces differ, and the cut's surface changes discontinuously when the plane passes a
+  face vertex.
+- Q2 (is it leia or OpenFOAM): does OpenFOAM's own Foam::cutCellPLIC (src/transportModels/geometricVoF/cellCuts in v2606)
+  show the same two properties on the same cells? Also check Foam::cutCellIso if cheap.
+  H-OF: yes, same jump sizes within a factor 2, because leia's routine is modelled on it.
+- Q3 (a consistent definition, test only): implement IN THE TEST APPLICATION ONLY a reference volume V_ref(p): each face
+  split once into triangles (face centre, v_i, v_{i+1}), each triangle with the cell centre (mesh.C()) forms a
+  tetrahedron, each tetrahedron clipped by the half-space n.x <= p (closed-form tet clip), signed volumes summed.
+  H-ref: V_ref(p) is continuous and monotone in p, V_ref(past all vertices) = V_k to 1e-13 relative on every cell, and on
+  planar hexahedra V_ref(p) = V_cut(p) to 1e-13 V_k. Note: for non-convex decompositions signed tets are required; report
+  whether any tet has negative volume on these meshes and how many.
+
+Steps: (1) Q1 by reading. (2) test application `applications/test/davofTestCutVolume`: for a list of cells and normals,
+on a fine grid of p (201 points across the cell's extent plus points at each vertex level +- 1e-9 of the extent), V_leia(p),
+V_OpenFOAM(p) (cutCellPLIC as OpenFOAM's plicRDF calls it), V_ref(p); meshes: the three of the unit gate (unit hex; the
+perturbed 16x16x32 box; the pMesh polyhedral mesh), 200 cells each (the 20 dumped failing cells per mesh included), 100
+random normals and the 26 aligned; output per mesh and method: max and median jump at vertex levels relative to V_k,
+count of non-monotone grid intervals, max and median |V(end) - V_k| / V_k, max |V_method(p) - V_ref(p)| / V_k over the
+grid; per cell the face warp measure max |(x_i - c_f).n_f| / sqrt(|S_f|), with the correlation of the jump size against it
+(scatter as CSV, Pearson coefficient). (3) Root existence for alpha in {1e-2, 0.1, 0.5, 0.9, 0.99, 1 - 1e-4}: per mesh and
+method the count of (cell, normal) pairs for which alpha V_k lies inside a jump or above V(end) (no root); for V_ref the
+positioning error of a plain bisection to 1e-13. (4) Cost: time per evaluation of each method on each mesh, and the number
+of tets per cell for V_ref.
+
+Rules: the test application runs on Lichtenberg through sbatch; no production routine changes (davofCutCellPLIC is not
+touched); the branch is pushed to origin only.
