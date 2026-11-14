@@ -1,0 +1,31 @@
+# CCS aligned with the published method, Stage B (2026-11-14; docs/davof/REPORT-swept.md): deformation3D N 128, hex, iso rows.
+# TARGET_ADVECTIVE_CO 0.2 and 0.5 as the standing studies; 0.95834 = OF Co 0.95 (the stored plicRDF case at target 1 reaches max Co 0.9913).
+# sbatch -J ccsB-deformation3D-N128-iso --export=ALL,STUDY=davof/ccsB_deformation3D_N128_iso run-studies.sbatch
+study_name: ccsB_deformation3D_N128_iso
+studies_dir: studies/davof
+case: davof/isoDeformation3D
+mesh: hex
+mode: parallel
+np: 64
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: "initDavofFields"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [128]
+  TPF_ROW: [isoAlpha]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5, 0.95834]
+  TPF_REPETITION: [1]
+  TPF_GRAZING_CUT: [fork]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 900
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

@@ -1,0 +1,31 @@
+# CCS aligned with the published method, Stage B (2026-11-14; docs/davof/REPORT-swept.md): shear3D N 64, hex, plic rows.
+# TARGET_ADVECTIVE_CO 0.2 and 0.5 as the standing studies; 0.87544 = OF Co 0.95 (the stored plicRDF case at target 1 reaches max Co 1.0852).
+# sbatch -J ccsB-shear3D-N64-plic --export=ALL,STUDY=davof/ccsB_shear3D_N64_plic run-studies.sbatch
+study_name: ccsB_shear3D_N64_plic
+studies_dir: studies/davof
+case: davof/isoShear3D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: "initDavofFields && initShearFlow3D"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [64]
+  TPF_ROW: [plicRDF]
+  TARGET_ADVECTIVE_CO: [0.87544]
+  TPF_REPETITION: [1]
+  TPF_GRAZING_CUT: [fork]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 600
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

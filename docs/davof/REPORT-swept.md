@@ -6728,3 +6728,20 @@ is the brief's second error.
 3. Gate A-plane: the clauses of revision 1, rerun with the revision-2 library. Stage B starts when the unit gate (revision 2)
    passes and the plane gate passes on all onePlane cases and the pieces cases at N <= 80; the pieces N 160 plane cases are
    judged when they finish, and a later failure is reported prominently.
+
+### Revision 2, verdict (2026-11-14, Tomislav's judgement after interim report 3)
+
+Revision 2, verdict: accepted for planar-face meshes; perturbed and polyhedral meshes remain blocked on the cut's volume
+definition. Clause (i) passes; the only miss of clause (ii) is the maxIter count inside the located warped-face no-root
+class (the old setting ended those cases by chance on the absolute tolerance with the same gross error), a property of
+cutCellPLIC, not of the CCS change, and it does not occur on planar faces. The cut routine is not touched.
+
+### Stage B: an open statement (pre-registered 2026-11-14 before the first Stage B run)
+
+Measurement, no prediction; the comparison is error against wall clock at equal ranks and Co. Hexahedral meshes only;
+the three standing families at the three standing resolutions; the targets 0.2 and 0.5 are the standing
+TARGET_ADVECTIVE_CO values (OF Co as measured, printed per case), the third target gives OF Co 0.95 from the stored
+plicRDF cases' ratio of max OF Co to target; the standing ranks per resolution (1/1/8 shear2D, 1/8/64 shear3D and
+deformation3D); rows DAVOF onePlane and DAVOF pieces (the `recommended` setting), both with ccsEndInterval cubic, ccsTolerance
+relative (1e-12, floor 1e-15), grazingCut openfoam; plicRDF (the stored standing results at 0.2 and 0.5, the third target
+run) and isoAlpha (all three targets run); one repetition per new cell.

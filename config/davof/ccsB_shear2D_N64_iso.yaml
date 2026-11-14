@@ -1,0 +1,31 @@
+# CCS aligned with the published method, Stage B (2026-11-14; docs/davof/REPORT-swept.md): shear2D N 64, hex, iso rows.
+# TARGET_ADVECTIVE_CO 0.2 and 0.5 as the standing studies; 0.95173 = OF Co 0.95 (the stored plicRDF case at target 1 reaches max Co 0.9982).
+# sbatch -J ccsB-shear2D-N64-iso --export=ALL,STUDY=davof/ccsB_shear2D_N64_iso run-studies.sbatch
+study_name: ccsB_shear2D_N64_iso
+studies_dir: studies/davof
+case: davof/isoShear2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: "initDavofFields && initVortex2D"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [64]
+  TPF_ROW: [isoAlpha]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5, 0.95173]
+  TPF_REPETITION: [1]
+  TPF_GRAZING_CUT: [fork]
+collapse_other_axes: true
+
+solve_mem_mb: 3000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
