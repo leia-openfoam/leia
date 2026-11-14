@@ -6995,3 +6995,27 @@ the strong-scaling runs cover the first 200 steps with 1801 interface cells; col
 inside the phases that contain them; the exchange-round count is the explicit calls of the davof code (patch-field updates counted by
 their number in the source); the per-face times are accumulated from steady-clock reads inside the face loop (about 6 reads per
 face); the operation times are means over the ranks of the time inside the phase divided by the counts.
+
+
+### Pieces path: the wrong piece (diag2, follow-up, 2026-11-15)
+
+PRE-REGISTERED before the first run of this section. Print-only; no fix, no new rule, tolerance or fallback. Goal: name the quantity that
+first exceeds the swept volume in magnitude in the flux of face 3601 (rank 7, local cell 1878, step 5040, shear2D N 256 Co 0.2, 8 ranks,
+`recommended`, NEW keys, job 56362807), and say whether the same happens with the OLD keys in shear2D N 128 Co 0.5 (1 rank) at step
+1660 (-15.02 / +14.25 before the bounding).
+
+- P1: every clipped signed-tet volume satisfies |V_clip| <= |V_tet| (1 + 1e-12). Falsifier: one clip that exceeds its tet.
+- P2: the sum of |V_tet| over the tets of the face is of the order of the swept volume (below 100 times it). Falsifier: tets that are
+  orders of magnitude larger than the swept volume (a far apex), so that the result relies on cancellation.
+- P3: the excess enters through a ratio with a small denominator (a scale, a coverage or a normalisation), not through a clip.
+  Falsifier: all ratios applied to the face are within [0, 1 + 1e-12] and the excess is already in the raw piece sum.
+- P4: the fault at N 128 Co 0.5 step 1660 with the old keys is of the same kind (same quantity named). Falsifier: a different quantity.
+
+These are guesses; the verdicts are reported by the numbers. Instrument: print-only key `sweptPieceDump` (with `sweptPieceDumpStep`),
+trigger "|unscaled liquid of the face| > 10 x swept volume and > 1e-3 V_donor" at or after the step, the first three faces per rank;
+the face is evaluated a second time with the print on (deterministic). It prints with 17 digits the face points and displacements, the
+swept volume, phi dt, the ring cells with the pre-test result, alpha^n and plane, for every tet its vertices, signed volume, cell, number
+of plane clips, volume after the cell clip and after the PLIC clip, the sum per piece, every scale or normalisation with numerator and
+denominator, the unscaled and scaled liquid volume and alpha_f. Runs: shear2D N 256 Co 0.2 new keys to END_TIME 3.03 (step 5040 at
+t = 3.0288); shear2D N 128 Co 0.5 old keys to END_TIME 5.0 (step 1660 at t = 4.989); key-off identity on shear2D N 64 Co 0.5. Budget: 2 builds,
+6 solve jobs.
