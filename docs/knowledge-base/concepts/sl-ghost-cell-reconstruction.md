@@ -9,7 +9,7 @@ tags: [concept, part/advection]
 date: 2026-11-13
 decided_by: [config/gates/ghostCellRefinedBox3D.yaml, config/gates/ghostCellRefinedBoxUniform3D.yaml, config/gates/ghostCellRefinedBoxN256Ghost3D.yaml, applications/test/leiaTestGhostCellReconstruction]
 code: [src/leiaLevelSet/semiLagrangian/ghostCellQuadraticWeightedLeastSquaresReconstruction.C, src/leiaLevelSet/semiLagrangian/ghostCellQuadraticWeightedLeastSquaresReconstruction.H]
-sources: ["STATUS 11.32"]
+sources: ["STATUS 11.34"]
 ---
 # Ghost cells for the semi-Lagrangian fit at a 2:1 transition
 
@@ -25,7 +25,7 @@ The goal is an adaptive solver. The matrix symbol of the original scheme predict
 
 ## The numbers
 
-All numbers and the limits of the gate are in [STATUS 11.32](https://github.com/leia-openfoam/leia/blob/feature/sl-ghost-cells/STATUS.md). Shape error (L1) at T = 1 over N = 32, 64, 128, 256: original 5.588e-3, 3.736e-2, 2.512e-1, 5.059e-1; ghost cells 5.695e-3, 2.287e-3, 3.488e-4, 1.122e-4; uniform coarse control 6.403e-3, 2.766e-3, 5.687e-4, 1.361e-4. At N = 64 and T = 1, 71 % of the summed level-set error of the original scheme lies within 3 coarse cells of a transition. Cost of the class: 1.4 to 1.7 times the solve wall clock, and more than 4.9 GB per rank at 10.2e6 cells on 8 ranks against 2.7 GB.
+All numbers and the limits of the gate are in [STATUS 11.34](https://github.com/leia-openfoam/leia/blob/feature/sl-ghost-cells/STATUS.md). Shape error (L1) at T = 1 over N = 32, 64, 128, 256: original 5.588e-3, 3.736e-2, 2.512e-1, 5.059e-1; ghost cells 5.695e-3, 2.287e-3, 3.488e-4, 1.122e-4; uniform coarse control 6.403e-3, 2.766e-3, 5.687e-4, 1.361e-4. At N = 64 and T = 1, 71 % of the summed level-set error of the original scheme lies within 3 coarse cells of a transition. Cost of the class: 1.4 to 1.7 times the solve wall clock, and more than 4.9 GB per rank at 10.2e6 cells on 8 ranks against 2.7 GB.
 
 ## Open
 
@@ -37,8 +37,9 @@ All numbers and the limits of the gate are in [STATUS 11.32](https://github.com/
 
 ## Log
 
-- 2026-11-13 · gate `ghostCellRefinedBox3D` on Lichtenberg: G1 holds, G2 passes, the falsification condition is not met (STATUS 11.32).
+- 2026-11-13 · gate `ghostCellRefinedBox3D` on Lichtenberg: G1 holds, G2 passes, the falsification condition is not met (STATUS 11.34).
 
 [[hubs/advection]] - [[models/sl-reconstruction]] - [[concepts/sl-amplification-symbol]] - [[concepts/polyhedral-fit-amplification]] - [[concepts/advection-regression-set]]
-- 2026-11-13 · HPCToolkit profile at N = 128 (STATUS 11.33): the fit per cell is 60 % of the serial time and costs the same in the original class; on 4 ranks 622 of 2405 rank-seconds are a wait caused by the level-by-level exchange with a decomposition that does not balance levels. OPEN DEFECT: serial and 4 ranks differ (volume error up to 6.1e-5 relative); the cause is not established and the original class has no control run.
-- 2026-11-13 · the class is on `integration/sl-pde`; the N = 64 rung reproduces the feature-branch result at tolerance 0 and the unit gate passes in serial and on 4 ranks (STATUS 11.34). The gate section is STATUS 11.32 after the merge of the hub's 11.31.
+- 2026-11-13 · HPCToolkit profile at N = 128 (STATUS 11.35): the fit per cell is 60 % of the serial time and costs the same in the original class; on 4 ranks 622 of 2405 rank-seconds are a wait caused by the level-by-level exchange with a decomposition that does not balance levels. OPEN DEFECT: serial and 4 ranks differ (volume error up to 6.1e-5 relative); the cause is not established and the original class has no control run.
+- 2026-11-13 · the class is on `integration/sl-pde`; the N = 64 rung reproduces the feature-branch result at tolerance 0 and the unit gate passes in serial and on 4 ranks (STATUS 11.36). The gate section is STATUS 11.34 after the merges of the hub's sections 11.31 to 11.33.
+- 2026-11-14 · control for the decomposition dependence at N = 64 (STATUS 11.35 item 6): serial against 4 ranks, the original class differs by at most 1.4e-10 relative (volume error), the ghost class by 5.2e-5 (volume) and 1.4e-5 (L1 shape), and its gradient error differs from step 1. The ghost class adds the dependence; the cause is open. Round 2 of the identity check passes for d9b1e2c2 against 4e89b060 (STATUS 11.36).

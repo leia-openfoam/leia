@@ -1,0 +1,37 @@
+# PDE LEVEL SET, STEP A0.2b: is a fade whose width scales with h first order by itself?
+# (supervisor 2026-11-14: accept the first-order fade for step B, and test the derivation.)
+# DERIVATION (STATUS 11.31 item 6, DERIVED): the fade weight w over [L, 2L], L = (nLayers+1) h, has
+# w'' ~ 1/L^2; the face interpolation of w (u_e - u), with u_e - u ~ L |grad u|, errs by
+# h^2 w'' L |grad u| ~ h^2/L. With nLayers fixed, L ~ h and the error is O(h); with L FIXED, O(h^2).
+# THIS STUDY: N_LAYERS proportional to N, so L = (N_LAYERS+1)/N = 4/64 = 0.0625 on the diagonal
+# (N, N_LAYERS) = (64, 3), (128, 7), (256, 15), (512, 31); 2L = 0.125 < R = 0.15. The full
+# product N x N_LAYERS runs (collapse); the analysis groups by L, so the diagonal is the series
+# L=0.0625. closestPoint, levelSet band, signed-distance input, correction flux, serial.
+# PRE-REGISTERED (2026-11-14, before any run): on the series L = 0.0625, E_FADEFLUX_L1 order >= 1.8
+# over N 128-256-512 for extendThroughFade and for insideBand. The control: the series with
+# N_LAYERS 3 (L = 4 h) reproduces the first order of aStatic2Dedge.
+# FALSIFIED: an order below 1.5 on the fixed-L series -- the derivation is wrong and another first-
+# order source sits in the fade.
+study_name: aStatic2DfixedWidth
+case: 2Dvortex
+mesh: hex
+mode: serial
+np: 1
+solver: leiaTestVelocityExtension
+solve_runtime: 120
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  END_TIME: [1]
+  N_CELLS: [64, 128, 256, 512]
+  N_LAYERS: [3, 7, 15, 31]
+  VELOCITY_EXTENSION: [closestPoint]
+  FADE_MODE: [levelSet]
+  VE_FADE_PLACEMENT: [extendThroughFade, insideBand]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  PHASE_INDICATOR: [detrixheAslam]

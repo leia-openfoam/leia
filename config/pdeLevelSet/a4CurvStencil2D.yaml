@@ -1,0 +1,44 @@
+# PDE LEVEL SET, STEP A0.4: which cell layers of psi does the UFVM curvature read?
+# Supervisor 2026-11-14: the curvature will be computed with UFVM operators, e.g.
+# kappa = div(grad(psi)/|grad(psi)|); the stencil of that operator sets how many layers around the
+# interface the extension and the transport must keep second order. A first-order value in an outer
+# layer that the stencil reads enters kappa at the interface. The band width is then DERIVED from the
+# schemes, not a free parameter.
+# leiaTestCurvatureStencil: psi = the exact signed distance of the circle (R = 0.25, centre off the
+# lattice); psi + eps h r on every cell of topological layer l >= k (r random per cell, or r = 1, a
+# step); kappa by the gradient scheme, n = g/|g|, Gauss linear divergence; errors against the exact
+# level-set curvature at the l = 0 cells and on the faces with an l = 0 cell (where snGrad(alpha) is
+# nonzero). Serial; N 64 to 512 (R/h = 16 to 128).
+# DERIVATION (before any run). The cell kappa at l = 0 is the divergence of the face-interpolated
+# normals of the cells l <= 1; the normal at l = 1 is the gradient over its face neighbours (Gauss
+# linear, leastSquares; the cellLimited limiter reads the same face neighbours), so the cell kappa
+# reads l <= 2. The face kappa on a face between l = 0 and l = 1 interpolates the l = 1 kappa, which
+# reads l <= 3. pointCellsLeastSquares reads the point neighbours: on a 2D hex mesh a corner neighbour
+# of an l = 1 cell lies up to 2 face layers further out, one layer deeper than the face stencils.
+# PRE-REGISTERED (2026-11-14, before any run):
+#   S1 Gauss linear, leastSquares, cellLimited leastSquares 1: N_CHANGED_CELL = 0 for k >= 3 and > 0
+#      for k <= 2; N_CHANGED_FACE = 0 for k >= 4 and > 0 for k <= 3; at every N.
+#   S2 pointCellsLeastSquares: N_CHANGED_CELL = 0 for k >= 4; N_CHANGED_FACE = 0 for k >= 5.
+#   S3 a perturbation that the stencil reads (k below the S1/S2 threshold) gives an E_KAPPA that does
+#      not converge: order <= 0 over 128-256-512 (an O(h) error of psi, two derivatives: O(1/h)).
+#   S4 the baseline (no perturbation): E_KAPPA_CELL_L1 order >= 1.5 for Gauss linear and leastSquares.
+# FALSIFIED: a nonzero change beyond the derived depth (the operator reads further than derived), or a
+# converging error for k inside the depth (an O(h) error in the stencil would then be harmless).
+# CONSEQUENCE (written before the run): the extension and the transport must keep psi second order
+# and smooth in the layers l <= 3 (cell kappa, compact schemes) or l <= 4 (face kappa; l <= 5 with
+# pointCellsLeastSquares), plus the transport margin that step B measures.
+study_name: a4CurvStencil2D
+case: 2DstaticCircle
+mesh: hex
+mode: serial
+np: 1
+solver: leiaTestCurvatureStencil
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 30
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [64, 128, 256, 512]

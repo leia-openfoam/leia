@@ -20,6 +20,7 @@ taken; nothing of sections 4 to 10 is implemented yet. Record: STATUS.md 11.29.
 | 8 | the target range of q | not yet decided; the supervisor asked for more material: section 4b and the deck's q stack |
 | 9 | start | step 0 and step A0 start on Lichtenberg |
 | 10 | the goal (supervisor, 2026-11-12, third round) | an ACCURATE, RESOLVED solver first, adaptive; interFoam is no reference anywhere in this plan. Every gate is judged against exact solutions and observed orders; the method must keep its accuracy on locally refined meshes |
+| 11 | parameters (supervisor, 2026-11-14) | NO case-specific parameters. A method setting is a dimensionless number in mesh units (cells, CFL) with ONE default for every case, or it is derived from local fields (q, curvature, normal strain rate, h). A physical length, time or rate chosen for one case is not allowed (rule 10 of section 3, step A0.4) |
 
 ---
 
@@ -132,6 +133,12 @@ are measured again from the bottom.
    spurious current and the pressure jump.
 8. **Everything runs on Lichtenberg**; the laptop builds and runs unit tests only if the supervisor
    allows it (current rule: no runs on the laptop).
+10. **No case-specific parameters** (row 11). Every gate runs every case of its ladder with the SAME
+   method settings; the per-case `.parameter` layer of this line holds problem data only (geometry,
+   velocity field, material properties, N, end time, CFL). A measurement window (for example the
+   band of fixed physical width of rule 7) is a metric, not a method setting, and may use the
+   geometry of the case. A tolerance or a safety cap is allowed only if the gate shows that it does
+   not bind (a counter in the log), and it has one value for all cases.
 9. **A bug found is a result.** It is recorded in STATUS.md and in the knowledge base the same day,
    and every number it touched is re-measured.
 
@@ -216,6 +223,71 @@ Each repair is an inert-by-default change, gated by bit identity where it claims
 The Eulerian transport (`eulerianAdvection`, sub-problem 0) is NOT changed in A0; `Sp` against
 `SuSp` for the material term is an arm of sub-problem B.
 
+## 4c. Step A0.4: the parameter audit (row 11, 2026-11-14), before step A
+
+No runs. Every method setting of this line goes into one of three classes:
+(i) dimensionless in mesh units with one default (allowed, but the default needs a measurement
+that is not tied to one case); (ii) derived from local fields (allowed); (iii) a physical scale or a
+per-case value (removed or replaced by (i) or (ii) before the setting is used again).
+
+Known members of (iii): the source mollifier widths `SDPLS_W1 0.05`, `SDPLS_W2 0.15` (physical
+lengths, the preprint's values for R0 = 0.3); `anisotropicDiffusion epsilonModel fixed` (a physical
+epsilon; the default `cellSize` is class i); the source rate beta of the model (a rate in 1/s, not
+yet set: step D must give it a rule); the fixed fade width of `aStatic2DfixedWidth` (L = 0.0625, a
+test value tied to R = 0.15, never a setting). Class (i) defaults that need their measurement or
+their does-not-bind counter: `nLayers 3`, `maxScale 5`, `cpTol 0.1`, `cpMaxDist 1.5`,
+`cpHaloReach 1.5`, the projectionBlend `w1 1.5`, `w2 4` (in cells), pseudoTime `nIterations 10` x
+`deltaTau 0.2`. Output: a table in this section, and a gate check that fails when a method token
+differs between the cases of one study.
+
+**The audit table (first pass, 2026-11-14; the PDE line only, defaults of `cases/default.parameter`
+and the 2Dvortex template).** Class: (i) global dimensionless, (ii) derived, (iii) forbidden. "Basis"
+is the measurement or derivation that fixes the value; "open" means it still needs one.
+
+| setting | value | class | basis / action |
+|---|---|---|---|
+| transport `nDefCorr` | 3 | i | MEASURED: 6 against 3 changes the errors by < 1 %, the passes 2-6 start below tolerance (11.30 items 1-2); keep |
+| `PSI_TOLERANCE` | 1e-10 | i | MEASURED: binds only for the seam comparison (11.30 item 8, 1e-14 there); keep, with the iteration counter |
+| `CFL` | 0.3 (0.5 in the PDE configs) | i | time-step law, matched across rungs; problem data of the study |
+| `grad(psi)` of the transport (`DIV_GRAD`) | cellLimited leastSquares 1 | i | a limiter is a switch; open: does it act inside the curvature stencil? a4 measures the limited gradient as a curvature gradient |
+| extension band `nLayers` (`N_LAYERS`) | 3 | i -> ii | the curvature depth is MEASURED (a4CurvStencil2D, STATUS 11.33 item 4): l <= 3 for the face curvature with compact schemes, l <= 4 with pointCellsLeastSquares; nLayers 3 in layer mode holds l <= 4, so the transport margin is 1 layer (compact) or 0; the plateau test of step B fixes the value |
+| `fadeMode` | levelSet | i | must become `layer` (no distance assumed; the stencil depth is a number of layers) |
+| `fadePlacement` | legacy (B: extendThroughFade) | i | MEASURED (11.31) |
+| `maxScale` | 5 | i (cap) | open: a counter must show that it never binds |
+| `cpTol`, `cpMaxDist`, `cpHaloReach` | 0.1, 1.5, 1.5 cells | i (tolerances) | open: the fallback counter (11.31-11.32) shows the cap binds on 0-7 % of the band; the fill is second order, so the result does not depend on it at N >= 128; to be shown on the q != 1 inputs |
+| projectionBlend `w1`, `w2` | 1.5, 4 cells | i | open (projectionBlend is not the selected model) |
+| pseudoTime `nIterations` x `deltaTau` | 10 x 0.2 | i | open: its reach (2 cells) is below the band; the model is not selected |
+| anisotropicDiffusion `epsilonModel` | cellSize (option `fixed`) | i (option iii) | remove the `fixed` option or mark it as an instrument |
+| source target `SDPLS_BETA` | 1 | i | the target |grad psi| = 1; dimensionless; keep |
+| source mollifier `SDPLS_W1`, `SDPLS_W2` | 0.05, 0.15 (lengths) | **iii** | replace by a band in layers (derived like the extension band) before any source arm |
+| source band `SDPLS_NLAYERS` | 3 | i -> ii | derive from the stencils, as the extension band |
+| gradient-control rate `GC_MU` | 1 1/s, set per arm from T_REF | **iii** | replace by a rule from local quantities (section 8) |
+| `GC_EPS` | 0.02, "a placeholder" | **iii** until measured | derive from the static floor or remove |
+| model rate beta of D. Bothe and K. Soga | unset | (iii) | a rule from local quantities (section 8) |
+| two-phase `CURVATURE_EXTENSION` | cellCentreInverse | i | its stencil depth (the quadratic fit) is measured like a4 before step E |
+
+The repository-wide audit (the semi-Lagrangian, DAVOF and surface-tension lines) follows the same
+classes and is a separate task.
+
+**The band width is derived from the curvature stencil (supervisor, 2026-11-14).** The curvature
+will be computed with UFVM operators, e.g. kappa = div(grad(psi)/|grad(psi)|). The stencil of that
+operator fixes how many cell layers l around the interface layer (l = 0, topological) must hold a
+second-order, smooth psi: with compact schemes the cell kappa reads l <= 2 and the face kappa
+l <= 3 (one more with pointCellsLeastSquares). A first-order value in a layer that the stencil reads
+(the fade, a band-edge jump, a first-order extension) enters kappa at the interface as O(1/h). So:
+
+1. `a4CurvStencil2D` (exact-solution gate, static) measures the depth of each gradient scheme:
+   an O(h) perturbation of psi on the layers l >= k changes kappa at l = 0 for k inside the depth
+   and leaves it identical for k beyond it.
+2. The extension band (the region where Uext = u(Pi(x)) at full weight) must cover that depth plus
+   the transport margin: the layers through which a defect of the outer region reaches the inner
+   layers by the transport stencil (linearUpwind reads two upwind layers per step). Step B measures
+   the margin with a plateau test: the curvature at the interface after transport, against the band
+   width in layers; the band width is the first value on the plateau, for every case of the ladder.
+3. The band and the fade are counted in topological layers (`fadeMode layer`), because the stencil
+   depth is a number of layers, not a distance.
+4. The curvature is part of the whole vector of every step from B on (rule 7).
+
 ## 5. Sub-problem A: the extension operator, static
 
 **Question.** Given $\phi$ and $\mathbf u$ at one instant, how close is the computed $\mathbf u_e$ to the
@@ -268,6 +340,12 @@ in transport until the cause is known.
 
 ## 6. Sub-problem B: transport with the exact extension (oracle)
 
+**The plateau test (2026-11-14).** Every B and C arm reports the curvature at the interface layer
+(cell and face, by the operator of a4CurvStencil2D) and runs the band width in layers over the
+derived depth and two more layers. The curvature must reach a plateau: no change beyond the
+mesh-convergence noise when the band grows. The first width on the plateau becomes the one default.
+
+
 **Question.** With the exact extension, does the Eulerian transport keep $\phi$ a signed distance,
 and does it put the interface where the flow puts it?
 
@@ -308,6 +386,15 @@ of STATUS 11.27 (`cases/2DstaticCircle`, `config/staticSource/`, `static_source_
 control), with the one-sided q of STATUS 11.26 ported to the Eulerian source, and with $q$ from
 $\hat d$. Prediction: the one-sided q follows the logistic law at order 1 or better and does not
 grow the grid-scale mode; the centred q reproduces the growth at $G(0)$ of STATUS 11.27.
+
+**The rate beta has no case-specific value (row 11).** The source vanishes on the zero set, so in
+the continuum beta does not move the interface; it is a numerical parameter, and it gets a rule from
+local quantities with one dimensionless constant c for all cases. Candidates, each a pre-registered
+arm: beta = c |a| with the normal strain rate a = n . grad(u) n (the cause of D_t q = -a q);
+beta dt = c (a relaxation per step, which changes the discrete problem with dt and must be shown to
+converge); beta = c |u|/h. The gate: the interface metrics converge at the same order for c over one
+decade, and c is then fixed once for every case. The band where the source acts is in cells or
+topological, never the physical mollifier widths of the SDPLS line.
 
 **D2, the source with the oracle extension**, on the cases of B with $\phi_0 = c\,d$ or $d\,g$: the
 source must bring $q$ to 1 at the rate of the law without moving the zero set beyond the transport

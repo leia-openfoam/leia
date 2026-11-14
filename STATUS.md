@@ -7819,7 +7819,96 @@ The supervisor's go of 2026-11-13: A0 repair 2 first, then step A on the harder 
    steadyUpwind fill, which does not converge (11.30 item 6). Plan A0 repair 3 (the failure switch)
    must cover this before extendThroughFade is used on more ranks.
 
-### 11.32 Ghost cells for the semi-Lagrangian fit at a 2:1 transition: the refined-box gate (2026-11-13, Lichtenberg)
+### 11.32 PDE level set: step A0.3, closestPoint repair 3, and the fixed-width fade (2026-11-14)
+
+The supervisor's decisions of 2026-11-14 (decision log): (1) step B uses `extendThroughFade`; (2) the
+first-order fade is accepted, and its derivation is tested; (3) repair 3 first.
+
+1. **The change.** Two strategy families of `closestPoint` (`closestPointStrategies.{H,C}`), defaults =
+   the shipped model: `cpFill` (token `CP_FILL`): `steadyUpwind` | `footPointTaylor` (a Jacobi
+   propagation of the nearest foot point p with n, u and grad u at p over face and processor
+   neighbours; Uext = u + (Pi - p).G with Pi = p + (I - n n).(C - p); compact, MPI through the
+   processor patches, independent of the cell order); `cpStep` (token `CP_STEP`): `distance`
+   (dx = -psi n) | `newton` (dx = -psi n/|grad psi|). New tokens `CP_MAX_DIST` (2Dvortex) and
+   `N_LAYERS` in the extension block of 2Dvortex, 2Dtranslation, 2DstaticCircle and 3Dshear (default 3
+   = the hardcoded value). Laptop: compile check and the dependency guard only.
+2. **Gates, pre-registered:** inertness (aStatic2Dedge, a2Seam2Dvortex{,serial}, a0Identity2Dvortex
+   re-run in clone `leia-pde-a3`, tolerance 0 against `leia-pde-a2`); `aStatic2Dfill` (failures forced
+   by CP_MAX_DIST 0.5; predictions F1 to F4, N1); `aStatic2DfillPar` (np 4; P1, P2);
+   `a3Seam2Dvortex{,serial}`; `aStatic2DfixedWidth` (decision 2). Read-out `pde_a3_analysis.py` and
+   `pde_a_static_analysis.py` (the model label now names every token that varies; a varying
+   N_LAYERS reads as the fade width L).
+3. **Results** (jobs 56315215 to 56315224, special00005, clone `leia-pde-a3` at 425b47f3, all
+   COMPLETED; read-out `studies/pdeLevelSet/a3/a3_summary.txt` and the `aStatic_summary.txt` of
+   aStatic2Dfill, aStatic2DfillPar and aStatic2DfixedWidth in that clone). Orders L1.
+   **Inertness: PASS**, 116 of 116 CSVs identical to clone `leia-pde-a2`; the control (steadyUpwind,
+   distance, cap 1.5 against aStatic2Dedge) identical at every N.
+4. **The fixed-width fade (decision 2): the derivation is CONFIRMED.** With L fixed at 0.0625
+   (N_LAYERS 3, 7, 15, 31 at N 64 to 512), E_FADEFLUX_L1 converges at orders 1.85 / 1.87 / 1.84
+   (extendThroughFade; 3.0e-5 at N 512) and 1.89 / 1.92 / 1.92 (insideBand); L = 0.03125 gives 1.92.
+   With L = 4 h it was order 1.0 to 1.4 (11.31 item 6). So the first order of 11.31 item 6 is the
+   width of the fade, L ~ h, and nothing else; every shell 1h..8h inside a fixed L is second order.
+5. **footPointTaylor: no gain; the premise of repair 3 was wrong.** With the descent capped at 3.5 h
+   (serial, 520 to 2164 failed cells, 0 unreached, 6 to 7 sweeps): footPointTaylor E_EXT_L1_4H 1.22e-4
+   at N 256, orders 1.98 / 2.05 (F1 CONFIRMED); but the shipped steadyUpwind fill gives 9.31e-5, orders
+   1.97 / 2.04 (F2, predicted <= 1.2: FALSIFIED). F3, F4 CONFIRMED. At np 4 (the real failures, 11 to
+   74 cells): steadyUpwind equals serial to within 1.6 % at N 128 and 256 (P2 FALSIFIED: the defect is
+   not visible); footPointTaylor too, but 7.7 % and 4.8 % off at N 32 and 64 (P1 FAILS at the coarse
+   rungs). Advected seam check, psi at t = 0.02, serial against np 4: footPointTaylor 1.9e-7 (levelSet)
+   and 1.45e-7 (layer), 2.7 and 2.5 times LARGER than steadyUpwind (a2Seam2Dvortex): FAIL as
+   pre-registered. READING: pinned at every successful cell, the steadyUpwind fill is second order;
+   "the steadyUpwind fill does not converge" (11.31 item 8) took the standalone model's result (pinned
+   at the interface layer only, 11.30 item 6) for the fill's. RETRACTED (retraction log). The parallel
+   fallback of 7 % is therefore not an accuracy defect at N >= 128. `cpFill steadyUpwind` stays the
+   default; `footPointTaylor` stays available and is not used (negative log).
+6. **The Newton step (N1): CONFIRMED** on the signed-distance input: newton equals distance to three
+   digits in every shell. Its test on q != 1 belongs to step A.
+7. **No case-specific parameters (the supervisor, 2026-11-14).** The fixed fade width L = 0.0625 of
+   aStatic2DfixedWidth was a TEST value, tied to R = 0.15 (2L < R) and to the 0.1 distance to the
+   top wall; it is not a setting. Rule: a method setting is dimensionless in mesh units with one
+   default for every case, or derived from local fields. Consequences in the plan: row 11, rule 10,
+   step A0.4 (the parameter audit, before step A), step D (beta gets a rule from local quantities).
+   Known violations: `SDPLS_W1 0.05`, `SDPLS_W2 0.15` (physical mollifier widths); the unset beta;
+   `epsilonModel fixed` (legacy option).
+
+### 11.33 PDE level set: no free parameters (repository-wide) and the curvature stencil (2026-11-14)
+
+1. **The supervisor, 2026-11-14:** the rule of 11.32 item 7 is repository-wide: no free parameters
+   that require tuning to problems or problem families. `CLAUDE.md` and `AGENTS.md` get the section
+   "No free parameters: every method setting is derived or global"; the per-case `.parameter` layer
+   holds problem data only.
+2. **The curvature sets the band.** The curvature will be computed with UFVM operators, e.g.
+   kappa = div(grad(psi)/|grad(psi)|); the stencil of that operator sets how many layers around the
+   interface must hold a second-order, smooth psi, and a first-order value in an outer layer that the
+   stencil reads enters kappa at the interface. Plan section 4c (the derivation) and section 6 (the
+   plateau test of step B).
+3. **The exact-solution gate** `config/pdeLevelSet/a4CurvStencil2D.yaml`, new test application
+   `leiaTestCurvatureStencil` (psi = exact distance of the circle, O(h) perturbation on the layers
+   l >= k, kappa with four gradient schemes; new inert fvSchemes keys `kappaGrad*` and the inert
+   `levelSet.curvatureStencil` dictionary in `cases/2DstaticCircle`). Pre-registered S1 to S4: compact
+   schemes read l <= 2 (cell) and l <= 3 (face); pointCellsLeastSquares one layer more. Read-out
+   `workflow/scripts/pde_a4_curvstencil.py`. Laptop: compile check only.
+4. **Result of a4CurvStencil2D: S1 to S4 CONFIRMED** (driver 56327220, analysis 56327221,
+   special00005, clone `leia-pde-a4` at 20b5e442; the case sweeps PHASE_INDICATOR, which the test
+   does not read: the two cases of each N are byte-identical; read-out fixed for that). Circle R = 0.25,
+   N 64 to 512, an O(h) perturbation on the layers l >= k:
+   - Gauss linear, leastSquares, cellLimited leastSquares 1: the cell curvature at l = 0 is bit-
+     identical to the unperturbed one for k >= 3 (0 changed cells), the face curvature for k >= 4;
+     pointCellsLeastSquares one layer deeper (k >= 4 and k >= 5). The derived depths hold exactly.
+   - A perturbation inside that depth: E_KAPPA order -0.8 to -1.2 at every rung (the error grows as
+     1/h; at N 512 it is 8 to 170 against 1.7e-4 unperturbed). A perturbation one layer outside
+     the depth has no effect at all.
+   - Unperturbed: cell and face curvature second order (orders 1.98 to 2.00); E_KAPPA_CELL_L1 at
+     N 512: 1.7e-4 (Gauss linear = leastSquares = cellLimited on this distance field) and 5.9e-5
+     (pointCellsLeastSquares, 3 times smaller).
+   CONSEQUENCE: with compact schemes, psi must be second order and smooth on the layers l <= 2 (cell
+   curvature) and l <= 3 (face curvature, where snGrad(alpha) is nonzero); with
+   pointCellsLeastSquares l <= 3 and l <= 4. The default extension band (fadeMode layer, nLayers 3)
+   holds the full extension on l <= 4: one layer of transport margin for the face curvature with
+   compact schemes, none with pointCellsLeastSquares. Step B's plateau test decides whether one layer
+   is enough.
+
+### 11.34 Ghost cells for the semi-Lagrangian fit at a 2:1 transition: the refined-box gate (2026-11-13, Lichtenberg)
 
 Branch `feature/sl-ghost-cells`, clone `/work/scratch/tm83tomy/leia-ghost` (own binaries,
 libraries `davof-v1.0-42-g5b853707`, OpenFOAM-v2606). Configs
@@ -7885,7 +7974,7 @@ four rungs 1.97; uniform control 1.21, 2.28, 2.06. Orders of the volume error: g
    class. (f) The symbol predicts the two arms in the right sense, but the measured growth of
    the original scheme was not compared with 1.096 per step.
 
-### 11.33 Ghost-cell class: HPCToolkit profile, serial and 4 ranks (2026-11-13, Lichtenberg, special00005)
+### 11.35 Ghost-cell class: HPCToolkit profile, serial and 4 ranks (2026-11-13, Lichtenberg, special00005)
 
 The full note with commands, jobs and the text reports of the databases is
 `docs/semi-lagrangian-level-set/ghost-cell-profile-2026-11-13.md`. Case: the N = 128 rung of
@@ -7916,23 +8005,41 @@ No source file was changed.
    The class fits level 0, exchanges, then fits level 1, so two ranks wait in each phase. The
    fit work per rank is balanced (260 s to 271 s). Without the wait the speed-up is about 3.7
    (DERIVED).
-6. **OPEN DEFECT: the ghost class depends on the decomposition (MEASURED).** Serial against
-   4 ranks, the metric CSVs differ at tolerance 0 and at 1e-10. The volume error differs from
-   step 8 (1.4e-12 relative) and reaches 6.1e-5 relative (1.3e-11 absolute). The L1 shape
-   error differs by at most 1.0e-6 relative; the L2 gradient error by 1.0e-4 at T = 1. Each
-   decomposition is deterministic. The cause is not established. HYPOTHESIS: the summation
-   order of the restriction (`syncTools::syncPointList`). There is no control: the original
-   class has no serial against 4 ranks run on this mesh. Until the control and the cause
-   exist, a multi-rank result of the ghost class is not a reference value. The unit gate
-   `leiaTestGhostCellReconstruction` gives equal numbers in serial and on 4 ranks (11.34), so
-   the one-step reconstruction is not the visible source.
+6. **OPEN DEFECT: the ghost class depends on the decomposition (MEASURED).** At N = 128,
+   serial against 4 ranks, the metric CSVs differ at tolerance 0 and at 1e-10. The volume error
+   differs from step 8 (1.4e-12 relative) and reaches 6.1e-5 relative (1.3e-11 absolute). The
+   L1 shape error differs by at most 1.0e-6 relative; the L2 gradient error by 1.0e-4 at
+   T = 1. Each decomposition is deterministic.
+   **Control (MEASURED 2026-11-13, `config/integration/ghostDecompN64{serial,np4}.yaml`,
+   N = 64, 172 steps, merged clone at d9b1e2c2):** largest relative difference between serial
+   and 4 ranks over the run:
+
+   | metric | original class | ghost class |
+   |---|---|---|
+   | relative volume error | 1.4e-10 | 5.2e-5 |
+   | shape error (L1) | identical | 1.4e-5 |
+   | gradient error, L1 | 2.4e-12 | 4.2e-5 |
+   | gradient error, L2 | identical | 2.9e-5 |
+
+   The original class stays at round-off size, although its field is destroyed on this mesh.
+   The ghost class adds the dependence. Its gradient errors (L1, L2, mean) differ from step 1;
+   those of the original class are identical at step 1. The pre-registered reading "the ghost
+   class adds it" holds. The cause is not established. HYPOTHESIS: a ghost value or a
+   restricted value at a processor boundary differs from its serial value (summation order,
+   or a stencil entry that one side does not see). The unit gate
+   `leiaTestGhostCellReconstruction` gives equal numbers in serial and on 4 ranks (11.36), but
+   it reads cell-centre fits of analytic fields and prints two error norms; it does not
+   compare the field cell by cell. Until the cause is found and removed, a multi-rank result
+   of the ghost class is not a reference value. A second, separate defect: the column
+   `MEAN_DELTA_X` of the gradient function object differs by 2.8e-4 between serial and
+   4 ranks at time 0 in both classes (a metric, not the solver).
 7. **Proposed changes, not made.** (a) Fit the cells that need no coarser coefficients first,
    exchange once, then fit the transition cells. (b) Exchange and store coefficients only for
    stencil entries coarser than their cell. (c) Remove the heap allocation from `fitCell`.
    (d) HYPOTHESIS: store the factorised fit per cell on a static mesh, for both classes.
    (e) Exclude the function objects from timing comparisons.
 
-### 11.34 Integration of the semi-Lagrangian and the PDE level-set lines: the identity check (2026-11-13, Lichtenberg, special00005)
+### 11.36 Integration of the semi-Lagrangian and the PDE level-set lines: the identity check (2026-11-13, Lichtenberg, special00005)
 
 Branch `integration/sl-pde` joins the hub's `development` (PDE level-set work), the laptop
 commits of the amplification analysis and `feature/sl-ghost-cells`. Scripts:
@@ -7967,12 +8074,24 @@ in serial and on 4 ranks with equal numbers; the ghost class has a relative erro
 for a quadratic field at a transition (the restriction is not exact for a quadratic) and
 round-off elsewhere.
 
+**Round 2 (MEASURED, 2026-11-13/14): PASS on all four items, for merged d9b1e2c2 against
+base 4e89b060.** Both clones were rebuilt (`Allwmake rc=0`, `leia-check-deps: PASS`; the string
+`fadePlacement` is in `libleiaVelocityExtension.so` of both trees). The round-1 output was
+moved to `studies_round1_87a70b22` in both clones before the runs. The same six studies give
+the same counts: 36 of 36, 27 of 27, 27 of 27 (polyhedral, steps 967, 1989, 3945 on 48 ranks),
+48 of 48, 6 of 6 and 10 of 10; 154 of 154 CSV pairs, overall rc 0
+(`int.round2.compare.log` in the merged clone). The unit gate exits 0 in serial and on
+4 ranks with the numbers of round 1.
+
 **Limits of the check.**
 
-1. The hub moved from 87a70b22 to 4e89b060 during the check (PDE level set A0.2, the token
-   `VE_FADE_PLACEMENT` with the default `legacy`, changes in `velocityExtension`; the
-   davof-article). The branch now contains these commits. The measured identity is for the
-   pair 0ba14c08 and 87a70b22. The check for the new pair is not done yet.
+1. The hub moves during a check. Round 1 is for 0ba14c08 against 87a70b22. Round 2 (below)
+   is for d9b1e2c2 against 4e89b060. The hub then moved to 0e2caf53 (PDE level set A0.3 and
+   A0.4, new file `closestPointStrategies`, new tokens with defaults in `fvSolution` templates,
+   the rule "no free parameters"). The branch contains 0e2caf53; the identity for this third
+   pair is NOT measured. The files that the branch changes and the files that the hub changed
+   overlap only in `STATUS.md`, the guide twins, `cases/default.parameter` and two logs of the
+   knowledge base (DERIVED from `git diff --name-only`; not a replacement for a run).
 2. `config/advConv3DshearHex.yaml` and `config/advConv3DshearPoly.yaml` had
    `solve_runtime: 14400` (minutes, 10 days); sbatch refused the jobs in both trees. This was
    a launch failure. The value is 1440 now. The time limit does not enter the solver.

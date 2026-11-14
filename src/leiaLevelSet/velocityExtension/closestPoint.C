@@ -68,7 +68,9 @@ Foam::closestPoint::closestPoint(const fvMesh& mesh)
         velExtDict_.getOrDefault<word>("footPointSource", "fieldInterpolation")
     ),
     cpInterp_(velExtDict_.getOrDefault<word>("cpInterp", "cellPoint")),
-    recon_(nullptr)
+    recon_(nullptr),
+    step_(closestPointStep::New(velExtDict_)),
+    fill_(closestPointFill::New(velExtDict_))
 {
     if (cpWalkMaxSteps_ <= 0)
     {
@@ -370,6 +372,26 @@ void Foam::closestPoint::extend()
     }
     const auto& C = mesh_.C();
 
+    // The strategies' inputs, computed only when the selected strategy reads
+    // them (the defaults read none, so the shipped path does no extra work).
+    tmp<volScalarField> tMagGradPsi;
+    if (step_->needsGradMag())
+    {
+        tMagGradPsi = mag(fvc::grad(psi_));
+    }
+    const bool footData = fill_->needsFootData();
+    vectorField footN;
+    tensorField footG;
+    tmp<volTensorField> tgULocal;
+    if (footData)
+    {
+        footN.setSize(mesh_.nCells(), Zero);
+        footG.setSize(mesh_.nCells(), Zero);
+        tgULocal = fvc::grad(U_);
+    }
+    boolList fixedMask(mesh_.nCells(), false);
+    boolList failedMask(mesh_.nCells(), false);
+
     // M_c (Eqs. (15)/(16)) allocated on first use and RETAINED across time
     // steps -- that persistence is the whole optimisation: it is what turns
     // the octree into the preprocessing step of Sec. 2.1.1 instead of a
@@ -576,6 +598,7 @@ void Foam::closestPoint::extend()
         {
             scalar psix;
             vector nx;
+            scalar qx = 1;   // |grad psi| at x, read by the newton step only
             if (cx >= 0)
             {
                 // SINGLE-VARIABLE SWAP: only WHERE psi is read changes. The
@@ -599,6 +622,10 @@ void Foam::closestPoint::extend()
                     psix = psiInterp.interpolate(x, cx);
                 }
                 nx = nHat_[cx];
+                if (tMagGradPsi.valid())
+                {
+                    qx = tMagGradPsi()[cx];
+                }
             }
             else
             {
@@ -609,12 +636,13 @@ void Foam::closestPoint::extend()
                 // formula exactly, rather than max(mag(g), SMALL), removes a
                 // second silent difference between the local and halo branches.
                 nx = gj/(Foam::mag(gj) + SMALL);
+                qx = Foam::mag(gj);
             }
 
             // Step cap, UNCONDITIONALLY -- see the nIter comment above. Capping
             // only in parallel was what made the descent path, and therefore
             // the foot point and Uext, depend on the rank count.
-            vector dx = -psix*nx;
+            vector dx = step_->step(psix, nx, qx);
             {
                 const scalar maxStep =
                     0.9*cellSize_[cLast >= 0 ? cLast : c];
@@ -769,12 +797,28 @@ void Foam::closestPoint::extend()
             {
                 ++nHalo;
             }
+            fixedMask[c] = true;
+            if (footData)
+            {
+                if (cx >= 0)
+                {
+                    footN[c] = nHat_[cx];
+                    footG[c] = tgULocal()[cx];
+                }
+                else
+                {
+                    const vector& gj = ccGPsi[jg];
+                    footN[c] = gj/(Foam::mag(gj) + SMALL);
+                    footG[c] = ccGU[jg];
+                }
+            }
             fixedCells.append(c);
             fixedVals.append(Uext_[c]);
         }
         else
         {
             ++nFailed;
+            failedMask[c] = true;
         }
     }
 
@@ -836,9 +880,22 @@ void Foam::closestPoint::extend()
 
     // Fill failures (and keep the far field consistent) with the steady
     // upwind transport pinned at ALL successful closest-point cells.
+    //
+    // The fill is a strategy (cpFill). The default, steadyUpwind, returns
+    // false and this solve runs as shipped. nFailed is the GLOBAL count, so
+    // every rank enters the (collective) fill or the solve together.
     if (nFailed > 0)
     {
-        solveSteady(Uext_, fixedCells, fixedVals);
+        if
+        (
+           !fill_->fill
+            (
+                mesh_, Uext_, fixedMask, failedMask, footPoint_, footN, footG
+            )
+        )
+        {
+            solveSteady(Uext_, fixedCells, fixedVals);
+        }
     }
 }
 

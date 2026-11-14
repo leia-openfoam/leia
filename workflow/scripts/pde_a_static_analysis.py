@@ -17,13 +17,20 @@ def main():
     ap.add_argument("--study", default="studies/pdeLevelSet/aStatic2D")
     a = ap.parse_args()
     rows = []
-    for case in sorted(glob.glob(os.path.join(a.study, "*_[0-9]*"))):
+    cases = [(c, json.load(open(os.path.join(c, "case_params.json")))["tokens"])
+             for c in sorted(glob.glob(os.path.join(a.study, "*_[0-9]*")))]
+    # The model label: the extension, then every listed token that varies in this study. A
+    # varying N_LAYERS is replaced by the physical fade width L = (N_LAYERS + 1)/N_CELLS, so a
+    # fixed-width ladder (N_LAYERS proportional to N) reads as one series.
+    KEYS = ("FADE_MODE", "VE_FADE_PLACEMENT", "CP_FILL", "CP_STEP", "CP_MAX_DIST", "N_LAYERS")
+    vary = [k for k in KEYS if len({str(t.get(k)) for _, t in cases}) > 1]
+    for case, t in cases:
         f = os.path.join(case, "leiaTestVelocityExtensionExact.csv")
-        t = json.load(open(os.path.join(case, "case_params.json")))["tokens"]
         r = list(csv.DictReader(open(f)))[0] if os.path.isfile(f) and os.path.getsize(f) else {}
-        model = str(t["VELOCITY_EXTENSION"]) + ("/" + str(t["FADE_MODE"]) if "FADE_MODE" in t else "") \
-            + ("/" + str(t["VE_FADE_PLACEMENT"]) if "VE_FADE_PLACEMENT" in t else "")
-        rows.append(dict(model=model, N=int(t["N_CELLS"]), case=os.path.basename(case), **r))
+        parts = [str(t["VELOCITY_EXTENSION"])]
+        for k in vary:
+            parts.append(f"L={(int(t[k]) + 1) / int(t['N_CELLS']):.4g}" if k == "N_LAYERS" else str(t.get(k)))
+        rows.append(dict(model="/".join(parts), N=int(t["N_CELLS"]), case=os.path.basename(case), **r))
     out = os.path.join(a.study, "aStatic_table.csv")
     keys = ["model", "N", "case"] + [k for k in (rows[0].keys() if rows else []) if k not in ("model", "N", "case")]
     with open(out, "w", newline="") as fh:

@@ -184,9 +184,11 @@ drifts from the code; the token files cannot, because the workflow renders every
 from them. Three layers, later overriding earlier:
 
 1. `cases/default.parameter` — the global default, flat (`TOKEN value;`).
-2. `cases/<case>.parameter` — the per-case default, in a `values { ... }` block. Some
-   settings are genuinely case-dependent; this layer exists so they are not collapsed to
-   one global winner.
+2. `cases/<case>.parameter` — the per-case values, in a `values { ... }` block. Since
+   2026-11-14 this layer holds PROBLEM DATA only: geometry, velocity field, material
+   properties, mesh resolution, end time, CFL. A METHOD setting here is a free parameter
+   tuned to one case, which the section "No free parameters" below forbids; an existing
+   one is a defect to remove, not a precedent.
 3. `axes_override` in `config/<study>.yaml` — the per-study sweep.
 
 **This guide holds no case- or study-specific method settings.** (The BDF2 mandate below is
@@ -836,6 +838,40 @@ hydrodynamics here before, and only the coupled arms show that.
   reinitialisation OFF.
 - **No partial solutions.** Do not bank a tuned coefficient that papers over a
   defect that is still there.
+- **No free parameters** (see the section below). No method setting is tuned to a
+  problem or to a family of problems.
+
+## No free parameters: every method setting is derived or global
+
+**A method setting is either a dimensionless number in mesh units (cells, layers, CFL)
+with ONE default for every case, or it is computed from local fields (|grad psi|, the
+curvature, the normal strain rate, h).** A physical length, time or rate chosen for one
+case or for a family of cases is not allowed (supervisor, 2026-11-14). Every case of a
+study runs with the same method settings; a gate fails a study whose method tokens differ
+between its cases.
+
+1. **A count of cells follows from the stencils.** A band width, a number of anchor
+   layers or a halo depth is DERIVED from the stencils of the operators that read the
+   field, and the derivation is checked by an exact-solution gate. Example, the PDE
+   level-set line: the curvature kappa = div(grad(psi)/|grad(psi)|) with compact schemes
+   reads psi in the cell layers l <= 2 around the interface layer (l <= 3 for the face
+   curvature), so the extension and the transport must keep psi second order and smooth
+   in those layers plus the transport margin; a first-order value in a layer that the
+   stencil reads enters the curvature at the interface (`config/pdeLevelSet/a4CurvStencil2D.yaml`).
+2. **A rate or a strength gets a rule from local quantities** with one dimensionless
+   constant for every case, and the gate shows that the result converges at the same
+   order over a range of that constant.
+3. **A tolerance or a safety cap has one value for every case** and is allowed only if
+   a counter in the log shows that it does not bind.
+4. **A measurement window is not a method setting.** A metric may use the geometry of
+   the case (for example a band of fixed physical width for an error norm).
+
+MEASURED 2026-11-14: a fade width of fixed physical size made the face flux of the
+velocity extension second order (orders 1.85 to 1.92), but the width had to stay below
+the drop radius and the distance to the wall, so it was a case-specific value and was
+not adopted. Known violations to remove: the source mollifier widths `SDPLS_W1 0.05`
+and `SDPLS_W2 0.15` (physical lengths of one preprint case) and the hardcoded `nLayers`
+of several case templates (plan-velocity-extension-verification.md, step A0.4).
 
 ## A wrong setup voids its data. Re-run, do not reuse
 

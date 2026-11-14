@@ -1,0 +1,31 @@
+# PDE LEVEL SET, STEP A0.3, the static test on 4 ranks (the twin of aStatic2Dfill, cap 1.5 only).
+# At np 4 the failures are the real ones: descents that leave the one-layer halo (STATUS 11.31 item 8).
+# PRE-REGISTERED (2026-11-14, before any run):
+#   P1 footPointTaylor at np 4: E_EXT_L1_4H, E_EXT_L1_W and E_FLUX_L1_4H within 5 % of the serial
+#      arm (aStatic2Dfill, cap 1.5, distance) at every N, and order >= 1.8 over 64-128-256.
+#   P2 steadyUpwind at np 4: worse than serial by more than 5 % in at least one of these columns at
+#      N 256 (the defect is visible in the static test).
+# FALSIFIED: P1 fails -- the fill does not remove the decomposition dependence.
+study_name: aStatic2DfillPar
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaTestVelocityExtension
+solve_runtime: 60
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  END_TIME: [1]
+  N_CELLS: [32, 64, 128, 256]
+  VELOCITY_EXTENSION: [closestPoint]
+  FADE_MODE: [levelSet]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  CP_FILL: [steadyUpwind, footPointTaylor]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  PHASE_INDICATOR: [detrixheAslam]

@@ -347,6 +347,8 @@ levelSet
         // layer: band and fade on the topological layer index from the alpha seed (no distance assumed)
         fadeMode    @!FADE_MODE!@;
         fadePlacement @!VE_FADE_PLACEMENT!@;
+        cpStep        @!CP_STEP!@;   // closestPoint: distance (default) | newton
+        cpFill        @!CP_FILL!@;   // closestPoint: steadyUpwind (default) | footPointTaylor
         // REQUIRED in the two-phase cases: interfaceExtension looks the phase
         // indicator up by the dictionary key `alpha`, DEFAULTING to the name
         // "alpha". These cases name it alpha.water, so without this entry every
