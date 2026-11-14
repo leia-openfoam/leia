@@ -1,0 +1,9 @@
+row,metric,N=128,p_ls,p_pairwise
+plicRDF,L1_alphaf_end,--,--,
+plicRDF,L1_alphaf_max,--,--,
+plicRDF,L1_n_end,1.22e+00,--,
+plicRDF,L1_x_end,2.43e-01,--,
+plicRDF,Eshape_end,2.83e-02,--,
+plicRDF,Ebound_end,3.19e-05,,
+plicRDF,minAlpha_run,-4.5e-03,,
+plicRDF,status,ok,,

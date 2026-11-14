@@ -1,0 +1,9 @@
+row,metric,Co=0.2,Co=0.95955
+plicRDF,L1_alphaf_end,--,--
+plicRDF,L1_alphaf_max,--,--
+plicRDF,L1_n_end,6.18e-01,6.33e-01
+plicRDF,L1_x_end,6.10e-02,5.90e-02
+plicRDF,Eshape_end,3.07e-03,3.11e-03
+plicRDF,Ebound_end,3.60e-09,1.11e-04
+plicRDF,minAlpha_run,-5.9e-05,-3.1e-03
+plicRDF,status,ok,ok

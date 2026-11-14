@@ -1,0 +1,9 @@
+row,metric,N=64,p_ls,p_pairwise
+isoAlpha,L1_alphaf_end,--,--,
+isoAlpha,L1_alphaf_max,--,--,
+isoAlpha,L1_n_end,1.44e-01,--,
+isoAlpha,L1_x_end,5.11e-03,--,
+isoAlpha,Eshape_end,1.42e-03,--,
+isoAlpha,Ebound_end,4.89e-08,,
+isoAlpha,minAlpha_run,-1.0e-04,,
+isoAlpha,status,ok,,

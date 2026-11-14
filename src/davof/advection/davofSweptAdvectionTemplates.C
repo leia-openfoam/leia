@@ -890,24 +890,27 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
         davofProf::lap(profT, davofProf::pReport);   // the parallel report block above
         davofProf::T[davofProf::pAdvect] = davofProf::now() - profA0;
         davofProf::count(davofProf::cExch, Pstream::parRun() ? 3 : 0);   // alpha1_ boundary updates
-        List<scalar> tSum(davofProf::nPhase), tMax(davofProf::nPhase), nSum(davofProf::nCount);
-        forAll(tSum, k) { tSum[k] = tMax[k] = davofProf::T[k]; }
-        forAll(nSum, k) { nSum[k] = davofProf::N[k]; }
+        List<scalar> tSum(davofProf::nPhase), tMax(davofProf::nPhase), tMin(davofProf::nPhase);
+        List<scalar> nSum(davofProf::nCount), nMax(davofProf::nCount);
+        forAll(tSum, k) { tSum[k] = tMax[k] = tMin[k] = davofProf::T[k]; }
+        forAll(nSum, k) { nSum[k] = nMax[k] = davofProf::N[k]; }
         if (Pstream::parRun())
         {
             Pstream::listReduce(tSum, sumOp<scalar>());
             Pstream::listReduce(tMax, maxOp<scalar>());
+            Pstream::listReduce(tMin, minOp<scalar>());
             Pstream::listReduce(nSum, sumOp<scalar>());
+            Pstream::listReduce(nMax, maxOp<scalar>());
         }
         const scalar nProcs = Pstream::nProcs();
         Info<< "davofProf: step " << mesh_.time().timeIndex() << " ranks " << Pstream::nProcs();
         for (int k = 0; k < davofProf::nPhase; ++k)
         {
-            Info<< " T_" << davofProf::phaseName[k] << " " << tSum[k]/nProcs << " " << tMax[k];
+            Info<< " T_" << davofProf::phaseName[k] << " " << tSum[k]/nProcs << " " << tMax[k] << " " << tMin[k];
         }
         for (int k = 0; k < davofProf::nCount; ++k)
         {
-            Info<< " N_" << davofProf::countName[k] << " " << nSum[k];
+            Info<< " N_" << davofProf::countName[k] << " " << nSum[k] << " " << nMax[k];
         }
         Info<< " X_swept " << sweptExchangeParts_[0] << " " << sweptExchangeParts_[1] << " " << sweptExchangeParts_[2]
             << " " << sweptExchangeParts_[3] << " " << sweptExchangeParts_[4] << " " << sweptExchangeParts_[5]
