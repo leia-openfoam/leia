@@ -42,6 +42,10 @@ def parse(path):
     abort = []
     with open(path, errors="replace") as fh:
         for line in fh:
+            # parallel: a rank's partial line or its "[n] " prefix may precede the text
+            idx = line.find("DIAG ")
+            if idx > 0:
+                line = line[idx:]
             m = RE_STEP.match(line)
             if m:
                 g = m.groups()
@@ -65,19 +69,25 @@ def parse(path):
             m = RE_CELL.match(line)
             if m:
                 g = m.groups()
-                cur = dict(step=int(g[0]), cell=int(g[1]), x=g[2], a0=float(g[3]), a1=float(g[4]), plane=int(g[5]),
-                           m=float(g[6]), out=float(g[7] or "nan"), inn=float(g[8] or "nan"), faces=[])
-                cells.setdefault(cur["step"], []).append(cur)
+                try:
+                    cur = dict(step=int(g[0]), cell=int(g[1]), x=g[2], a0=float(g[3]), a1=float(g[4]), plane=int(g[5]),
+                               m=float(g[6]), out=float(g[7] or "nan"), inn=float(g[8] or "nan"), faces=[])
+                    cells.setdefault(cur["step"], []).append(cur)
+                except ValueError:
+                    cur = None   # a line glued to another rank's output (parallel)
                 continue
             m = RE_FACE.match(line)
             if m and cur is not None:
                 g = m.groups()
-                cur["faces"].append(dict(face=int(g[0]), flux=float(g[2]), phidt=float(g[3]), state=g[4], depth=float(g[5]),
-                                         donor=int(g[6]), donorA=(float(g[7]) if g[7] else None),
-                                         donorM=(float(g[8]) if g[8] else None), cen=int(g[9]), wet=float(g[10]),
-                                         vtot=float(g[11]), dpiece=(float(g[12]) if g[12] else None),
-                                         other=(int(g[13]) if g[13] else None),
-                                         otherA=(float(g[14]) if g[14] else None)))
+                try:
+                    cur["faces"].append(dict(face=int(g[0]), flux=float(g[2]), phidt=float(g[3]), state=g[4], depth=float(g[5]),
+                                             donor=int(g[6]), donorA=(float(g[7]) if g[7] else None),
+                                             donorM=(float(g[8]) if g[8] else None), cen=int(g[9]), wet=float(g[10]),
+                                             vtot=float(g[11]), dpiece=(float(g[12]) if g[12] else None),
+                                             other=(int(g[13]) if g[13] else None),
+                                             otherA=(float(g[14]) if g[14] else None)))
+                except ValueError:
+                    pass   # a line cut by another rank's output (parallel)
                 continue
             if line.startswith("DIAG boundFlux"):
                 traps.append(line.strip())
@@ -164,6 +174,8 @@ def main():
         print("| cell | alpha^n | alpha new | has plane | outflow/V_k | inflow/V_k | faces: plane / noPlane uncut / noPlane CUT | donor = centroid cell | max prismWet | max flux out/V_k | max alpha^n of donors | face with max |one-pieces|/V_k |")
         print("|---|---|---|---|---|---|---|---|---|---|---|---|")
         for c in cells[s]:
+            if not c["faces"]:
+                continue
             st = {"plane": 0, "noPlane-uncut": 0, "noPlane-CUT": 0, "unprocessed": 0}
             for f in c["faces"]:
                 st[f["state"]] += 1
