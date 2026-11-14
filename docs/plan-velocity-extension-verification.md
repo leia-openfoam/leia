@@ -240,6 +240,35 @@ their does-not-bind counter: `nLayers 3`, `maxScale 5`, `cpTol 0.1`, `cpMaxDist 
 `deltaTau 0.2`. Output: a table in this section, and a gate check that fails when a method token
 differs between the cases of one study.
 
+**The audit table (first pass, 2026-11-14; the PDE line only, defaults of `cases/default.parameter`
+and the 2Dvortex template).** Class: (i) global dimensionless, (ii) derived, (iii) forbidden. "Basis"
+is the measurement or derivation that fixes the value; "open" means it still needs one.
+
+| setting | value | class | basis / action |
+|---|---|---|---|
+| transport `nDefCorr` | 3 | i | MEASURED: 6 against 3 changes the errors by < 1 %, the passes 2-6 start below tolerance (11.30 items 1-2); keep |
+| `PSI_TOLERANCE` | 1e-10 | i | MEASURED: binds only for the seam comparison (11.30 item 8, 1e-14 there); keep, with the iteration counter |
+| `CFL` | 0.3 (0.5 in the PDE configs) | i | time-step law, matched across rungs; problem data of the study |
+| `grad(psi)` of the transport (`DIV_GRAD`) | cellLimited leastSquares 1 | i | a limiter is a switch; open: does it act inside the curvature stencil? a4 measures the limited gradient as a curvature gradient |
+| extension band `nLayers` (`N_LAYERS`) | 3 | i -> ii | DERIVED from the curvature stencil plus the transport margin (this section, items 1-2); open until a4 and the plateau test of step B |
+| `fadeMode` | levelSet | i | must become `layer` (no distance assumed; the stencil depth is a number of layers) |
+| `fadePlacement` | legacy (B: extendThroughFade) | i | MEASURED (11.31) |
+| `maxScale` | 5 | i (cap) | open: a counter must show that it never binds |
+| `cpTol`, `cpMaxDist`, `cpHaloReach` | 0.1, 1.5, 1.5 cells | i (tolerances) | open: the fallback counter (11.31-11.32) shows the cap binds on 0-7 % of the band; the fill is second order, so the result does not depend on it at N >= 128; to be shown on the q != 1 inputs |
+| projectionBlend `w1`, `w2` | 1.5, 4 cells | i | open (projectionBlend is not the selected model) |
+| pseudoTime `nIterations` x `deltaTau` | 10 x 0.2 | i | open: its reach (2 cells) is below the band; the model is not selected |
+| anisotropicDiffusion `epsilonModel` | cellSize (option `fixed`) | i (option iii) | remove the `fixed` option or mark it as an instrument |
+| source target `SDPLS_BETA` | 1 | i | the target |grad psi| = 1; dimensionless; keep |
+| source mollifier `SDPLS_W1`, `SDPLS_W2` | 0.05, 0.15 (lengths) | **iii** | replace by a band in layers (derived like the extension band) before any source arm |
+| source band `SDPLS_NLAYERS` | 3 | i -> ii | derive from the stencils, as the extension band |
+| gradient-control rate `GC_MU` | 1 1/s, set per arm from T_REF | **iii** | replace by a rule from local quantities (section 8) |
+| `GC_EPS` | 0.02, "a placeholder" | **iii** until measured | derive from the static floor or remove |
+| model rate beta of D. Bothe and K. Soga | unset | (iii) | a rule from local quantities (section 8) |
+| two-phase `CURVATURE_EXTENSION` | cellCentreInverse | i | its stencil depth (the quadratic fit) is measured like a4 before step E |
+
+The repository-wide audit (the semi-Lagrangian, DAVOF and surface-tension lines) follows the same
+classes and is a separate task.
+
 **The band width is derived from the curvature stencil (supervisor, 2026-11-14).** The curvature
 will be computed with UFVM operators, e.g. kappa = div(grad(psi)/|grad(psi)|). The stencil of that
 operator fixes how many cell layers l around the interface layer (l = 0, topological) must hold a
