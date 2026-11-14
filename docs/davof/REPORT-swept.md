@@ -6745,3 +6745,59 @@ plicRDF cases' ratio of max OF Co to target; the standing ranks per resolution (
 deformation3D); rows DAVOF onePlane and DAVOF pieces (the `recommended` setting), both with ccsEndInterval cubic, ccsTolerance
 relative (1e-12, floor 1e-15), grazingCut openfoam; plicRDF (the stored standing results at 0.2 and 0.5, the third target
 run) and isoAlpha (all three targets run); one repetition per new cell.
+
+
+## Pieces path: aborts and cost (diagnostic round `diag2`, 2026-11-14; leia branch `davof-ccs-pieces` off `davof-ccs` 59a54c3a)
+
+PRE-REGISTERED before the first run of this section. Print-only instrumentation; no method change, no new rule or
+tolerance. Open measurement, no prediction.
+
+### Part 1: are the pieces aborts caused by the CCS change?
+
+Cases (all `recommended` = signedTets + scale + normalAndAlpha, hexahedral, OF Co as in Stage B, the same ranks):
+shear2D N 128 (1 rank) at target Co 0.2 (Stage B: abort step 5062, t = 6.08) and 0.5 (abort step 1789, t = 5.38,
+min alpha -1.13); deformation3D N 128 (64 ranks) at Co 0.2 (abort step 4150, t = 2.594); shear2D N 256 (8 ranks) at
+Co 0.2 (completed, max(alpha) - 1 = 1.84e+02 at some step, normal end-state errors).
+
+Key sets. NEW (Stage B): ccsEndInterval cubic, ccsTolerance relative, positioningTol 1e-12, ccsRoundoffFloor 1e-15,
+grazingCut openfoam. OLD: ccsEndInterval none, ccsTolerance absolute, positioningTol 1e-14, grazingCut fork. Everything
+else identical. The four cases are rerun with the OLD keys. A case that completes with the old keys and aborts with the
+new ones is a regression of the CCS change; a case that aborts with both is not caused by the CCS change (and the step,
+min and max alpha of the two aborts are compared); a case that aborts with the old keys and completes with the new ones
+is reported as such. The stored standing results of the KISS workspace (`enright/kiss/leia/studies/davof/standing_*`,
+read only, old keys, `recommended`, Co 0.2 and 0.5) are tabulated for the same cells: status, abort step, min and max
+alpha.
+
+The 1.84e+02 case (shear2D N 256, 8 ranks, Co 0.2) is run with BOTH key sets with the print-only key `alphaDump`: at
+every step on which max(alpha) - 1 after the conservative bounding exceeds the largest value printed before (and 1e-8),
+the owner rank of the maximum prints: step, global cell, alpha^n, alpha before and after the bounding, per face of the
+cell phi dt, the flux before and after the bounding, the ratio after/before (the bounded face fraction's scale factor s),
+alpha_f, the other cell's alpha^n and surface flag, the cell's plane (unit normal, centre), |m_k|/V^(2/3) and
+|n_plane|. The per-step lines "before the bounding" and "After conservative bounding" (min and max alpha) are in
+every log already. Verification that the key is print-only: with the key off the rendered dictionaries are
+byte-identical, and the end-state errors of the NEW-key run with the key on equal the Stage B values to the digit.
+
+### Part 2: cost profile of the pieces path
+
+Print-only wall-clock timers (steady clock) behind the key `phaseProfile` (default false), one line per step on the
+master: per phase the mean and the maximum over the ranks, and the counts of the step. Phases of a step: reinit of the
+face fractions, reconstruction (area normal, explicit-plane cut, ring normal, CCS positioning with its number of cuts,
+report), cell surfaces, wisp surfaces, candidate cells, the two surface exchanges, the swept exchange, the face loop
+(trace of the face to its pre-image = the tets, ring and pre-test, volume clips of the signed tets against the cell
+planes, area clips of the pre-image, the remainder = assembly, flux scaling and the alpha_f update of the face),
+processor-patch sync, alpha update, limiter (limitFluxes, boundFlux), brute-force bounding, default face fractions and
+wet-face publication, reduction-heavy reports, and the time between two advect() calls (function objects, IO, Courant
+number). Counts per step: interface cells, faces swept, faces with a flux, tets (triangles of the swept volume), clips
+performed, pieces produced, ring cells and touched cells (the cells whose planes a face's swept volume is clipped
+against), exchanges and collectives issued by the davof code. The key switches the existing per-class counters
+(`sweptClassStats` accumulators) on; no result changes.
+
+Runs (rows pieces = `recommended`, plicRDF, isoAlpha; the same cases for the three rows; plicRDF and isoAlpha with
+OpenFOAM's `profiling` active in controlDict): deformation3D N 64 on 8 ranks and N 128 on 64 ranks at OF Co 0.2 and
+0.95; shear3D N 64 on 8 ranks at Co 0.2; NEW keys. A pieces run whose full length exceeds 2 h is limited to the first
+20 % of its steps (END_TIME set to 20 % of the end time; stated per run, the other two rows use the same END_TIME).
+Strong scaling: deformation3D N 64 pieces on 1, 8 and 64 ranks for the first 200 steps (time per step, parallel
+efficiency, exchange count). Tables: time per step per phase (mean, share of the step), time per interface cell per
+step, clips per swept face, pieces per face, tets per face; the same per-step totals for plicRDF and isoAlpha; the
+ratio pieces/plicRDF per phase where a phase corresponds; the dependence on N (per interface cell) and on Co.
+Reported: the three largest phases with the measured operation count behind each. No optimisation.
