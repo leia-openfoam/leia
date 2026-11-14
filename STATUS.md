@@ -7923,6 +7923,34 @@ first-order fade is accepted, and its derivation is tested; (3) repair 3 first.
    `aStatic2Dellipse` (semi-axes 0.18 x 0.12, N 128 to 512; E1 to E3); inertness: aStatic2Dedge and
    a0Identity2Dvortex re-run against clone `leia-pde-a3`. Read-out `pde_a5_analysis.py` and
    `pde_a_static_analysis.py`. Clone `leia-pde-a5`. Laptop: compile check only.
+3. **Results** (jobs 56356510 to 56356515, special00005, clone `leia-pde-a5` at 45fa83f2, all
+   COMPLETED; read-out `studies/pdeLevelSet/a5/a5_summary.txt` and the `aStatic_summary.txt` of
+   aStatic2Dq, aStatic2DqPar, aStatic2Dellipse). Orders over N 128-256-512 (circle also 64), L1.
+   **Inertness PASS** (100 of 100 CSVs identical to clone `leia-pde-a3`); the input was applied in
+   every non-distance case (94 of 94).
+4. **The Newton step makes closestPoint independent of q; the distance step does not (Q3 CONFIRMED).**
+   Off-vertex circle, quadratic input (q about 0.3), layer band, E_EXT_L1_2H: newton 3.7e-4, 8.3e-5,
+   2.1e-5 (orders 2.17 / 2.00), distance step 5.6e-4, 2.4e-4, 1.2e-4 (orders 1.22 / 1.04: the O(h) foot
+   point of the derivation). Face flux in the shells 1h-3h: newton orders 2.0 to 2.3, distance step 1.0
+   to 1.6. On scaledDistance (q 0.8 to 1.25) and on the distance input both steps are second order in
+   the shells 1h-3h (Q1, Q2 there CONFIRMED). The ellipse (E1): newton orders 1.85 to 2.35 in 1h-3h
+   on both inputs. meshWave: order 0.95 to 1.2 on every input and both surfaces (Q5, E3 CONFIRMED).
+   At np 4 the Newton arm equals serial to 1.7 % (N 128) and 0.2 % (N 256, 512): PASS.
+5. **The 4h shell is first order with the layer band, on every input (Q1, Q2, Q3 in that shell
+   FAILED; E1 too).** Distance input, circle: E_EXT_L1_4H orders 1.43 / 1.21 (layer) against 1.93 /
+   2.17 (levelSet). READING (DERIVED from the geometry, consistent with 11.31 item 7): with nLayers 3
+   the full extension holds on the layers l <= 4, and on a hexahedral mesh the face layer 4 lies at a
+   distance between about 2.8 h (diagonal) and 4 h (axis); the fade (first order by its width,
+   11.32 item 4) starts inside the 4h shell. This is a property of measuring in distance shells, not
+   a defect of the extension; the requirement of the curvature is stated in LAYERS (11.33 item 4).
+   The test application must therefore report the error per topological layer.
+6. **The levelSet band fails on q != 1 (Q4).** On the quadratic input it reads |psi| as a distance:
+   the band holds 1.9 to 3.4 times the cells of the layer band, and 476 to 15604 descents fail
+   (layer band: 0 to 2). N 64 misses the pre-registered factor 2 (1.87). The layer band is the only
+   one that does not assume a distance.
+7. E2 and the 2 % clause of Q1 FAIL at single rungs (newton and distance step differ by up to 14 % at
+   N 64 to 128 and 8 % at N 512 on the ellipse; both are second order; the difference is at the size of
+   the error itself).
 
 ### 11.35 Ghost cells for the semi-Lagrangian fit at a 2:1 transition: the refined-box gate (2026-11-13, Lichtenberg)
 
