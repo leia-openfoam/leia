@@ -101,6 +101,7 @@ int main(int argc, char *argv[])
         alphas.append(1.0 - e);
     }
 
+    std::vector<double> fullRels;
     label nDumpAll = 0;
     const label nDumpMax = 400;
     cutCellPLIC cutPos(mesh);
@@ -121,6 +122,7 @@ int main(int argc, char *argv[])
         {
             std::vector<double> errs, errsW;
             label nDump = 0;
+            label nFail = 0;
             label nExit[5] = {0, 0, 0, 0, 0};
             label nNoPlane = 0, cutsMax = 0, endOk = 0, endRej = 0;
             double cutsSum = 0;
@@ -175,6 +177,72 @@ int main(int argc, char *argv[])
                     }
                     errs.push_back(err);
                     errsW.push_back(errW);
+                    if (rec.fullRel >= 0) fullRels.push_back(rec.fullRel);
+
+                    // the located pre-existing defect: 20 gross failures of the
+                    // OLD setting at alpha = 1e-2, dumped with the iteration history
+                    if (arm == 0 && alpha == 1e-2 && err > 1e-3 && nFail < 20)
+                    {
+                        ++nFail;
+                        DynamicList<scalar> hist, histBr;
+                        Foam::davof::ccsRecord rec2;
+                        rec2.hist = &hist;
+                        rec2.histBr = &histBr;
+                        Foam::davof::ccsPositionPlane
+                        (
+                            mesh, cutPos, celli, alpha, n, p0, tolRel, maxIter, rec2, false, false
+                        );
+                        // the non-planarity of the cell's faces: max over faces of
+                        // max_i |(x_i - c_f).n_f| / sqrt(|S_f|)
+                        scalar warp = 0;
+                        for (const label fi : mesh.cells()[celli])
+                        {
+                            const vector nf = normalised(mesh.faceAreas()[fi]);
+                            const scalar sc = Foam::sqrt(mag(mesh.faceAreas()[fi]));
+                            for (const label pi : mesh.faces()[fi])
+                            {
+                                warp = max(warp, mag((P[pi] - mesh.faceCentres()[fi]) & nf)/sc);
+                            }
+                        }
+                        // V_full of the cut at the far extreme (p_e) against V_k
+                        scalar fullRel = -1;
+                        {
+                            const label st = cutChk.calcSubCell(celli, pMin + 1e-8*(pMax - pMin), n);
+                            if (st == 0) fullRel = (cutChk.subCellVolume() - Vc)/Vc;
+                        }
+                        // the vertex levels, sorted
+                        std::vector<double> lv;
+                        for (const label pi : mesh.cellPoints(celli)) lv.push_back((P[pi] - xc) & n);
+                        std::sort(lv.begin(), lv.end());
+                        Info<< "FAILDUMP," << tag << ",cell " << celli << ",normal " << n
+                            << ",aligned " << (label(&n - &normals[0]) < 26) << ",alpha " << alpha
+                            << ",V_k " << Vc << ",warp/sqrt(S_f) " << warp
+                            << ",(V(pMin+)-V_k)/V_k " << fullRel << ",exit " << rec2.exitCode
+                            << ",pMin " << pMin << ",pMax " << pMax << ",p0 " << p0 << nl;
+                        Info<< "  levels:";
+                        for (double l : lv) Info<< " " << l;
+                        Info<< nl << "  history (cut: p, r/V_k, A):";
+                        for (label q = 0; q + 2 < hist.size(); q += 3)
+                        {
+                            Info<< " (" << hist[q] << ", " << hist[q+1] << ", " << hist[q+2] << ")";
+                        }
+                        Info<< nl << "  bracket (lo, hi) per iteration:";
+                        for (label q = 0; q + 1 < histBr.size(); q += 2)
+                        {
+                            Info<< " (" << histBr[q] << ", " << histBr[q+1] << ")";
+                        }
+                        Info<< nl;
+                        // V(p) on a grid of 41 points over [pMin, pMax]: monotone?
+                        Info<< "  V(p)/V_k on a grid:";
+                        for (label q = 0; q <= 40; ++q)
+                        {
+                            const scalar pq = pMin + (pMax - pMin)*q/40.0;
+                            const label st = cutChk.calcSubCell(celli, pq, n);
+                            const scalar Vq = (st == 0) ? cutChk.subCellVolume() : ((st < 0) ? Vc : 0);
+                            Info<< " " << Vq/Vc;
+                        }
+                        Info<< nl;
+                    }
                     if (err > 1e-10 && nDump < 3 && nDumpAll < nDumpMax)
                     {
                         ++nDump; ++nDumpAll;
@@ -206,6 +274,15 @@ int main(int argc, char *argv[])
                 << nNoPlane << "," << cutsSum/m << "," << cutsMax << ","
                 << endOk << "," << endRej << nl;
         }
+    }
+    if (!fullRels.empty())
+    {
+        std::sort(fullRels.begin(), fullRels.end());
+        size_t above = 0;
+        for (double v : fullRels) if (v > 1e-13) ++above;
+        Info<< "FULLREL," << tag << ",n " << fullRels.size() << ",max " << fullRels.back()
+            << ",median " << fullRels[fullRels.size()/2] << ",p99 "
+            << fullRels[size_t(0.99*(fullRels.size() - 1))] << ",above1e-13 " << above << nl;
     }
     return 0;
 }

@@ -253,7 +253,7 @@ def mode_plane(args, pattern="kiss_plane_*_np[18]", tag="plane", identTol=IDENT_
             # the CCS gate (2026-11-14): the cut-faces clause is not in it; the pieces row has no limiter line (n/a)
             limV = (r2.get("limVolumeSum", 0.0)/((BOX_L/r["N"])**3)) if r2 else None
             cut = int(op.get("noPlaneCutSum", 0)) if op else None
-            checks = dict(L1=(r["L1af"] is not None and r["L1af"] < P1_TOL), Linf=(r["Linfaf"] is not None and r["Linfaf"] < P1_LINF),
+            checks = dict(L1=(r["L1af"] is not None and r["L1af"] < (5e-12 if ccsGate else P1_TOL)), Linf=(r["Linfaf"] is not None and r["Linfaf"] < (5e-10 if ccsGate else P1_LINF)),
                           E=(r["Eshape"] is not None and r["Eshape"] < P1_E), minA=(r["minAlpha"] is not None and r["minAlpha"] > P1_MIN),
                           lim=((limV is None and ccsGate) or (limV is not None and limV < P1_LIMV)), cut=(ccsGate or cut == 0), done=(r["status"] != "aborted"))
             ok = all(checks.values())

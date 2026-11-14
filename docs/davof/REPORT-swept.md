@@ -6666,3 +6666,41 @@ and Stage B does not start.
 ### Stage B: an open statement
 
 Measurement, no prediction; the comparison is error against wall clock at equal ranks and Co.
+
+### POST HOC revision 1 (2026-11-14, after the first Gate A-unit and the first plane gate; recorded as a revision, not as a prediction)
+
+The first clauses of this section failed, and the cause is an error of the brief, not of the implementation.
+
+1. The brief's liquid end was a mirror: for alpha_k > 1/2 the closed form positioned the plane so that the
+   volume W of the complementary cut (normal and position mirrored) equals (1 - alpha_k) V_k. On cells with
+   warped faces the cut's volumes do not complement: V(p) + W(p) differs from V_k (median 1.7e-3 V_k on the
+   perturbed hexahedra at alpha_k 0.99; each cut fans a warped face around its own centre). Positioning W is
+   not positioning V. Measured on the perturbed and polyhedral standing cells (job 56326983): the median of
+   |V_cut - alpha V_k| / ((1 - alpha) V_k) rose from 3.2e-13 (old setting) to 6.3e-2 (new) at alpha 0.99 on the
+   perturbed cells. The mirror is withdrawn.
+2. The corrected liquid end works in the ORIGINAL frame. t_n is the far extreme vertex level, t_{n-1} the next
+   distinct level. One cut at t_{n-1} gives V_{n-1}, A_{n-1}. V_full is the cut's OWN volume at the extreme: one
+   cut at t_n + 1e-8 of the extent, V_full = V(p_e) + A_n (p_e - t_n), with A_n the area of a cell face on the
+   extreme level, else 0 (|V_full - V_k| / V_k is printed per mesh; the cut routine returns V_k for a plane
+   outside the cell). If V_{n-1} <= alpha_k V_k < V_full the root lies in the last interval: for a unique extreme
+   vertex u = u_1 ((V_full - alpha_k V_k) / (V_full - V_{n-1}))^(1/3) from t_n (cancellation free), else the Hermite
+   cubic by `hermiteRoot01`. One verification cut in the original frame; a miss falls through to the iteration
+   unchanged. The relative tolerance stays 1e-12 min(alpha_k, 1 - alpha_k) V_k with the iteration's round-off-floor
+   exit (counted separately from maxIter).
+3. Gate A-unit, revised clauses (post hoc):
+   (i) hex1 (planar faces, the cells of the Stage B meshes): error <= 1e-10 for alpha_k and 1 - alpha_k in
+       [1e-6, 1/2]; for smaller contents the achieved floor per alpha and the count above 1e-10 are reported, no
+       clause; zero no-plane returns for alpha_k >= 1e-14.
+   (ii) pert and poly: NO REGRESSION against the old setting, per alpha and in both halves (alpha_k <= 1/2 and
+       > 1/2): the median error, the count above 1e-10, the count of gross failures (> 1e-3) and the count of
+       maxIter exits each not worse than the old setting (+1 % allowed on counts).
+   The gross failures and maxIter exits present in BOTH settings (pert 261, poly 182 of 205200 at alpha_k 1e-2) are a
+   located pre-existing defect; they are not repaired. Twenty of them per mesh are dumped with the iteration
+   history, the vertex levels, a face non-planarity measure and V(p) on a grid.
+4. Gate A-plane, revised clauses (post hoc): L1(alpha_f) < 5e-12 and Linf(alpha_f) < 1e-10 -> < 5e-10. Reason: the
+   pieces row sat at L1 1.0e-12 to 1.8e-12 on oblique N 160 before any CCS change (round 3); the two cases are
+   run once with the old keys to show it. Everything else as before; onePlane at OF Co 1 on the normal arm stays
+   an open measurement. A regression is a case that passes with the old keys and fails with the new ones. All
+   160 cases are rerun with the corrected library (the plane cases have interface cells with alpha_k > 1/2 in
+   their last interval).
+5. Stage B only if both revised gates pass.

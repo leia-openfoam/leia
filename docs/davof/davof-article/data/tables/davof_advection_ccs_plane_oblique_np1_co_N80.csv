@@ -1,0 +1,9 @@
+row,metric,Co=0.2,Co=0.5,Co=0.8,Co=0.95,Co=1
+davof-planeSurf-ringArea,L1_alphaf_end,2.41e-13,2.38e-13,2.61e-13,3.21e-13,4.95e-13
+davof-planeSurf-ringArea,L1_alphaf_max,2.45e-13,2.39e-13,2.61e-13,3.21e-13,4.95e-13
+davof-planeSurf-ringArea,L1_n_end,1.49e-13,1.49e-13,1.59e-13,2.06e-13,3.58e-13
+davof-planeSurf-ringArea,L1_x_end,2.64e-17,2.50e-17,3.48e-17,3.67e-17,1.34e-16
+davof-planeSurf-ringArea,Eshape_end,5.01e-23,3.88e-23,5.01e-23,7.88e-23,1.03e-22
+davof-planeSurf-ringArea,Ebound_end,1.82e-13,1.50e-13,1.85e-13,3.42e-13,4.16e-13
+davof-planeSurf-ringArea,minAlpha_run,-9.7e-15,-3.4e-14,-6.7e-14,-9.3e-14,-1.8e-13
+davof-planeSurf-ringArea,status,ok,ok,ok,ok,ok

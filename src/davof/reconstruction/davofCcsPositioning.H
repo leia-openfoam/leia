@@ -170,7 +170,10 @@ struct ccsRecord
     label nNewton = 0;       // Newton steps taken
     label nBisect = 0;       // bisection steps taken
     label endState = 0;      // ccsEndInterval: 0 not tried, 1 accepted (gas end), 2 accepted (liquid end), -1 tried and rejected
-    label nEndCuts = 0;      // cuts spent on the end-interval closed form (the t_1 cut, the verification, the re-cut)
+    DynamicList<scalar>* hist = nullptr;    // optional (test application): p, r/V_k, A per cut of the iteration
+    DynamicList<scalar>* histBr = nullptr;  // optional: the bracket lo, hi per iteration
+    scalar fullRel = -1;     // liquid end: |V_full - V_k|/V_k of the cut (-1: not formed)
+    label nEndCuts = 0;      // cuts spent on the end-interval closed form (the t_1 cut, the verification)
 };
 
 
@@ -178,8 +181,8 @@ struct ccsRecord
 //  T. Maric, Iterative Volume-of-Fluid interface positioning in general
 //  polyhedrons with Consecutive Cubic Spline interpolation, J. Comput. Phys.:
 //  X 11 (2021) 100093, doi:10.1016/j.jcpx.2021.100093, arXiv:2012.02227.
-//  In the frame of the unit normal nn = sgn n (sgn = +1: the gas end, -1:
-//  the liquid end, the frame of the complementary volume) let V(q) be the
+//  The gas end (alpha <= 1/2; sgn = +1, the original frame; a mirrored
+//  sgn = -1 frame was withdrawn 2026-11-14, see ccsLiquidEndSolve). Let V(q) be the
 //  volume on the side (x - x_c).nn > q. It vanishes at the extreme vertex
 //  level t_0 and between two consecutive vertex levels it is exactly a cubic
 //  of q, with dV/du = A (u = t_0 - q, A the cut area). One cut at the next
@@ -275,6 +278,111 @@ inline bool ccsEndIntervalSolve
 }
 
 
+//- The liquid end of the end-interval closed form, in the ORIGINAL frame
+//  (ccsEndInterval cubic, alpha > 1/2). T. Maric, Iterative Volume-of-Fluid
+//  interface positioning in general polyhedrons with Consecutive Cubic
+//  Spline interpolation, J. Comput. Phys.: X 11 (2021) 100093,
+//  doi:10.1016/j.jcpx.2021.100093, arXiv:2012.02227. With t_n the far
+//  extreme vertex level (the lowest p) and t_{n-1} the next distinct level,
+//  the cut volume V(p) = V_full - W(u), u = p - t_n, W cubic with W(0) = 0,
+//  W'(0) = A_n (the area of an extreme cell face on the level, else 0) and
+//  W' = A. V_full is the CUT'S OWN volume at the extreme (the cut routine
+//  returns the mesh volume V_k for a plane outside the cell; on warped faces
+//  the limit of the cut from inside differs from it): one cut at
+//  p_e = t_n + 1e-8 (extent), V_full = V(p_e) + A_n (p_e - t_n). One cut at
+//  t_{n-1} gives V_{n-1}, A_{n-1}. If V_{n-1} <= alpha V_k < V_full the root
+//  lies in the interval: u = u_1 (W_T/W_1)^(1/3), W_T = V_full - alpha V_k,
+//  W_1 = V_full - V_{n-1}, for a unique extreme vertex (A_n = 0 and W_1 =
+//  A_{n-1} u_1/3 to 1e-12 relative), else the Hermite cubic by
+//  hermiteRoot01. One verification cut in the original frame decides.
+//  rec.fullRel holds |V_full - V_k|/V_k.
+template<class CutCell>
+inline bool ccsLiquidEndSolve
+(
+    const fvMesh& mesh,
+    CutCell& cut,
+    const label celli,
+    const vector& n,
+    const scalar target,
+    const scalar tol,
+    scalar& pAcc,
+    scalar& rAcc,
+    ccsRecord& rec
+)
+{
+    const scalar Vc = mesh.V()[celli];
+    const point& xc = mesh.C()[celli];
+    const pointField& P = mesh.points();
+    scalar pMin = GREAT, pMax = -GREAT;
+    for (const label pi : mesh.cellPoints(celli))
+    {
+        const scalar f = (P[pi] - xc) & n;
+        pMin = min(pMin, f);
+        pMax = max(pMax, f);
+    }
+    const scalar ext = pMax - pMin;
+    if (!(ext > 0)) return false;
+    const scalar lvlTol = 1e-12*ext;
+    scalar tm = GREAT;
+    for (const label pi : mesh.cellPoints(celli))
+    {
+        const scalar f = (P[pi] - xc) & n;
+        if (f > pMin + lvlTol) tm = min(tm, f);
+    }
+    if (tm == GREAT) return false;
+
+    scalar An = 0;
+    for (const label fi : mesh.cells()[celli])
+    {
+        bool onLevel = true;
+        for (const label pi : mesh.faces()[fi])
+        {
+            if (((P[pi] - xc) & n) > pMin + lvlTol) { onLevel = false; break; }
+        }
+        if (onLevel) An += mag(mesh.faceAreas()[fi]);
+    }
+
+    const scalar pe = pMin + 1e-8*ext;
+    if (!(pe < tm)) return false;
+    label status = cut.calcSubCell(celli, pe, n);
+    ++rec.nEvals; ++rec.nEndCuts;
+    if (status != 0) return false;
+    const scalar Vfull = cut.subCellVolume() + An*(pe - pMin);
+    rec.fullRel = mag(Vfull - Vc)/Vc;
+
+    status = cut.calcSubCell(celli, tm, n);
+    ++rec.nEvals; ++rec.nEndCuts;
+    if (status != 0) return false;
+    const scalar Vm = cut.subCellVolume();
+    const scalar Am = mag(cut.faceArea());
+    const scalar WT = Vfull - target;
+    const scalar W1 = Vfull - Vm;
+    if (!(W1 > 0) || !(WT > 0) || !(target >= Vm)) return false;
+    const scalar u1 = tm - pMin;
+
+    scalar u = 0;
+    if (An == 0 && mag(W1 - Am*u1/3) <= 1e-12*W1)
+    {
+        u = u1*Foam::cbrt(WT/W1);
+    }
+    else
+    {
+        scalar s = 0.5;
+        if (!hermiteRoot01(-WT, An*u1, W1 - WT, Am*u1, s)) return false;
+        u = s*u1;
+    }
+    const scalar p = pMin + u;
+    status = cut.calcSubCell(celli, p, n);
+    ++rec.nEvals; ++rec.nEndCuts;
+    if (status != 0) return false;
+    const scalar r = cut.subCellVolume() - target;
+    if (mag(r) > tol) return false;
+    pAcc = p;
+    rAcc = r;
+    return true;
+}
+
+
 //- Position the plane of celli along the unit normal n by CCS from p0 so
 //  that the cut volume equals alpha V_c (see the Description). Returns the
 //  status of the final cut (0 cut, -1 fully liquid, +1 fully gas); the cut
@@ -318,7 +426,13 @@ inline label ccsPositionPlane
     }
     const scalar h = Foam::cbrt(Vc);
 
-    rec = ccsRecord();
+    {
+        DynamicList<scalar>* h1 = rec.hist;
+        DynamicList<scalar>* h2 = rec.histBr;
+        rec = ccsRecord();
+        rec.hist = h1;
+        rec.histBr = h2;
+    }
 
     // ccsEndInterval cubic: the closed form in the first interval from the
     // nearer end (the gas end for alpha <= 1/2, the liquid end in the frame
@@ -326,29 +440,26 @@ inline label ccsPositionPlane
     // verification cut, else the iteration below runs unchanged
     if (endInterval && target > 0 && target < Vc)
     {
-        const scalar sgn = (target <= 0.5*Vc) ? scalar(1) : scalar(-1);
-        const scalar T = (sgn > 0) ? target : Vc - target;
+        // the gas end (alpha <= 1/2) and the liquid end (alpha > 1/2), both
+        // in the ORIGINAL frame (the complementary frame of the first
+        // version was withdrawn 2026-11-14: on warped faces the cut's
+        // V + W differs from V_k, so positioning W is not positioning V)
+        const bool gasEnd = (target <= 0.5*Vc);
         scalar pAcc = 0, rAcc = 0;
-        if (ccsEndIntervalSolve(mesh, cut, celli, n, sgn, T, tol, pAcc, rAcc, rec))
+        const bool ok = gasEnd
+          ? ccsEndIntervalSolve(mesh, cut, celli, n, scalar(1), target, tol, pAcc, rAcc, rec)
+          : ccsLiquidEndSolve(mesh, cut, celli, n, target, tol, pAcc, rAcc, rec);
+        if (ok)
         {
-            label st = 0;
-            if (sgn < 0)
-            {
-                // the cut object holds the plane of the ORIGINAL normal
-                st = cut.calcSubCell(celli, pAcc, n);
-                ++rec.nEvals; ++rec.nEndCuts;
-            }
-            else
-            {
-                st = 0;
-            }
-            rec.endState = (sgn > 0) ? 1 : 2;
+            // the verification cut, in the original frame, is the cut the
+            // object holds
+            rec.endState = gasEnd ? 1 : 2;
             rec.exitCode = 1;
             rec.pStart = pAcc;
             rec.rStart = rAcc/Vc;
             rec.pFinal = pAcc;
             rec.rFinal = rAcc/Vc;
-            return st;
+            return 0;
         }
         rec.endState = -1;
     }
@@ -362,6 +473,12 @@ inline label ccsPositionPlane
         A = (status == 0) ? mag(cut.faceArea()) : 0;
         r = V - target;
         ++rec.nEvals;
+        if (rec.hist)
+        {
+            rec.hist->append(p);
+            rec.hist->append(r/Vc);
+            rec.hist->append(A);
+        }
     };
 
     // the bracket: lo with r >= 0 (more liquid), hi with r <= 0
@@ -391,6 +508,11 @@ inline label ccsPositionPlane
         if (r > 0) { lo = p; rlo = r; Alo = A; loEval = true; }
         else       { hi = p; rhi = r; Ahi = A; hiEval = true; }
         const scalar w = hi - lo;
+        if (rec.histBr)
+        {
+            rec.histBr->append(lo);
+            rec.histBr->append(hi);
+        }
         if (w <= 1e-15*max(h, max(mag(lo), mag(hi))))
         {
             rec.exitCode = 3;
