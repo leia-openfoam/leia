@@ -214,6 +214,9 @@ struct GridPt { double c; int tag; int lev; };   // tag 0 plain, 1 left of level
 struct Acc
 {
     std::vector<double> jumps;       // per vertex level
+    std::vector<double> jumpsInner;  // per vertex level except the lowest and the highest
+    std::vector<double> jumpsFirst;  // the lowest level (the gap between V_k and the cut's own full-wet limit)
+    long nSt0 = 0;                   // (cell, normal) pairs for which the cut at c_min + d is a cut (status 0)
     std::vector<double> fullDev;     // per (cell, normal)
     std::vector<double> diffRef;     // per (cell, normal): max over the grid
     std::vector<double> cellJump;    // per selected cell: max jump
@@ -465,6 +468,8 @@ int main(int argc, char *argv[])
                 {
                     const double jmp = std::abs(v[idxL[j] + 1] - v[idxL[j]])/Vk;
                     a.jumps.push_back(jmp);
+                    if (j > 0 && j + 1 < lev.size()) a.jumpsInner.push_back(jmp);
+                    if (j == 0) a.jumpsFirst.push_back(jmp);
                     a.cellJump[ic] = std::max(a.cellJump[ic], jmp);
                     if (v[idxL[j] + 1] - v[idxL[j]] > monoTol*Vk) ++a.nUpJumpLevels;
                 }
@@ -489,6 +494,7 @@ int main(int argc, char *argv[])
                     if (m == 0) st = cutLeia.calcSubCell(celli, c, n);
                     else if (m == 1) st = cutOF.calcSubCell(celli, c, n);
                     else st = cutIso.calcSubCell(celli, nC + c);
+                    if (st == 0) ++a.nSt0;
                     double vf;
                     if (st == 0)
                     {
@@ -520,7 +526,10 @@ int main(int argc, char *argv[])
                     {
                         const bool cross = (v[k] - T)*(v[k + 1] - T) <= 0;
                         if (!cross) continue;
-                        if (g[k].tag == 1 && g[k + 1].tag == 2 && g[k].lev == g[k + 1].lev)
+                        // a level pair is a jump when V changes by more than 1e-6 V_k across it (the continuous
+                        // change across 2 d is below 1e-8 V_k); otherwise the interval is continuous
+                        if (g[k].tag == 1 && g[k + 1].tag == 2 && g[k].lev == g[k + 1].lev
+                            && std::abs(v[k + 1] - v[k]) > 1e-6*Vk)
                         {
                             if (firstJumpLev < 0) firstJumpLev = g[k].lev;
                         }
@@ -586,6 +595,18 @@ int main(int argc, char *argv[])
             << (m == iRef ? 0.0 : quantile(a.diffRef, 1.0)) << ","
             << (m == iRef ? 0.0 : quantile(a.diffRef, 0.5)) << ","
             << (m == iRef ? 0.0 : quantile(a.diffRef, 0.99)) << nl;
+    }
+
+    Info<< "T1b,header,tag,method,jumpInnerMax,jumpInnerMedian,jumpInnerP99,nInnerAbove1e-6,nInner,jumpFirstMax,jumpFirstMedian,"
+        << "jumpFirstP99,pairsWithCutAt_cmin+d" << nl;
+    for (int m = 0; m < 3; ++m)
+    {
+        const Acc& a = acc[m];
+        const long nIn = std::count_if(a.jumpsInner.begin(), a.jumpsInner.end(), [](double j){ return j > 1e-6; });
+        Info<< "T1b," << tag << "," << methName[m] << "," << quantile(a.jumpsInner, 1.0) << "," << quantile(a.jumpsInner, 0.5)
+            << "," << quantile(a.jumpsInner, 0.99) << "," << nIn << "," << a.jumpsInner.size() << ","
+            << quantile(a.jumpsFirst, 1.0) << "," << quantile(a.jumpsFirst, 0.5) << "," << quantile(a.jumpsFirst, 0.99) << ","
+            << a.nSt0 << nl;
     }
 
     Info<< "T2,header,tag,method,alpha,nPairs,noRootEndGap,noRootInnerJump,noRootOther,rootFound" << nl;
