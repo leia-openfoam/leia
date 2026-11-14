@@ -117,6 +117,8 @@ SourceFiles
 #include "FixedList.H"
 #include "List.H"
 #include "davofSimplexGeometry.H"   // davof::triNegativePolygon (the wet polygon of a cut triangle)
+#include "IOstreams.H"
+#include "Pstream.H"
 #include "davofPhaseProf.H"         // diag2 (print-only operation counters of sweptPieceExactVolume)
 
 namespace Foam
@@ -508,6 +510,21 @@ inline scalar sweptPieceExactVolume
         set3(P[2], xRef, C, B);
         set3(P[3], xRef, A, C);
         bool anyLeft = true;
+        // diag2 (print only, sweptPieceDump): the signed volume of the polyhedron now
+        const bool dbg = davofProf::dumping;
+        const label nClip0 = nTetClipL;
+        auto volNow = [&]() -> scalar
+        {
+            scalar w3 = 0;
+            for (label i = 0; i < nP; ++i)
+            {
+                const poly& q = P[i];
+                if (q.n < 3) continue;
+                w3 += (q.p[0] - xRef) & areaOf(q, xRef);
+            }
+            return sgn*w3/3;
+        };
+        const scalar vInit = dbg ? volNow() : 0;
         auto clipAll = [&](const halfSpace& hs)
         {
             FixedList<point, 48> cross;
@@ -586,9 +603,23 @@ inline scalar sweptPieceExactVolume
         {
             clipAll(cellPlanes[i]);
         }
+        const scalar vCell = (dbg && anyLeft) ? volNow() : 0;
         if (wetPlane && anyLeft)
         {
             clipAll(plic);
+        }
+        if (dbg)
+        {
+            const scalar vFin = anyLeft ? volNow() : 0;
+            const std::streamsize op = Pout.precision(17);
+            Pout<< "    TET " << k << " cell " << davofProf::dumpCell << " apex " << xRef
+                << " A " << A << " B " << B << " C " << C
+                << " V_tet(signed) " << vs << " V_polyhedron(before clips) " << vInit
+                << " plane clips " << (nTetClipL - nClip0) << " V after cell clip " << vCell
+                << " V after PLIC clip " << vFin << " sum so far " << (vol + vFin)
+                << " |V_clip|/|V_tet| " << mag(vFin)/max(mag(vs), VSMALL)
+                << ((mag(vFin) > mag(vs)*(1 + 1e-12) || mag(vCell) > mag(vs)*(1 + 1e-12)) ? "  P1 VIOLATION" : "") << nl;
+            Pout.precision(op);
         }
         if (!anyLeft) continue;
         scalar v3 = 0;

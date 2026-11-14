@@ -103,6 +103,12 @@ static const char* const countName[nCount] =
     "volClips", "areaClips", "pieces", "exch", "limitCells", "tetsBuilt", "tetClips", "polyClips", "covClips"
 };
 
+// sweptPieceDump (print only): the face re-evaluation with the print on, the cell being clipped, the counts
+inline bool pieceDump = false;
+inline bool dumping = false;
+inline int dumpCell = -1;
+inline int nPieceDumps = 0;
+inline int pieceDumpStep = 0;
 inline bool on = false;                 // phaseProfile
 inline bool dump = false;               // alphaDump
 inline double dumpRecord = 1e-8;        // the largest max(alpha) - 1 dumped so far

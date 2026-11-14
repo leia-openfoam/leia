@@ -832,6 +832,32 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
     // rule of sweptPieceVolume, davofSweptPieces.H, 2026-11-02)
     const point xDonor = mesh_.cellCentres()[donor];
 
+    // diag2 (sweptPieceDump, print only): the face
+    const bool dumping = davofProf::dumping;
+    if (dumping)
+    {
+        const std::streamsize op = Pout.precision(17);
+        scalar sumAbsTet = 0;
+        forAll(T, k)
+        {
+            const vector aT = 0.5*((T[k][1] - T[k][0]) ^ (T[k][2] - T[k][0]));
+            sumAbsTet += mag(((T[k][0] - xf) & aT)/3);
+        }
+        Pout<< "davofPieceDump: FACE " << facei << " donor " << donor << " step " << mesh_.time().timeIndex()
+            << " t " << mesh_.time().value() << " phi_f " << phiF << " dt " << dt << " phi dt " << phiF*dt
+            << " V_donor " << mesh_.V()[donor] << " sweeps " << sweeps
+            << " swept volume vTotal " << vTotal << " sum|V_tet| " << sumAbsTet
+            << " sum|V_tet|/vTotal " << sumAbsTet/max(vTotal, VSMALL) << " triangles " << T.size()
+            << " ring size " << ring.size() << " donorOnly " << donorOnly << nl
+            << "  face centre xf " << xf << " pre-image centre xq " << xq << " displacement " << (xf - xq) << nl;
+        const face& fcD = mesh_.faces()[facei];
+        forAll(fcD, i)
+        {
+            Pout<< "  point " << i << " P " << P[fcD[i]] << " pre-image q " << q[i] << " displacement P - q " << (P[fcD[i]] - q[i]) << nl;
+        }
+        Pout.precision(op);
+    }
+
     // The coplanar rule of the face update (sweptCoplanar, davofSweptPieces.H):
     // donorSide gives a part of the pre-image lying in a cell plane to the
     // cell on the donor's side of that plane, nRef the donor's outward
@@ -1090,6 +1116,33 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
             }
         }
         if (st.touched) ++nSweptPreClipped_; else ++nSweptPreSkipped_;
+        if (dumping)
+        {
+            const std::streamsize op = Pout.precision(17);
+            scalar emin = GREAT, emax = -GREAT;
+            if (!st.rc && st.wetPlane)
+            {
+                for (const label pi : cellPoints[st.c])
+                {
+                    const scalar sv = (P[pi] - st.plic.x0) & st.plic.n;
+                    emin = min(emin, sv); emax = max(emax, sv);
+                }
+            }
+            Pout<< "  RING cell " << st.c << (st.rc ? " (remote)" : "") << " alpha^n " << st.a0c << " hasSurface " << st.hasS
+                << " wetPlane " << st.wetPlane << " wet " << st.wet << " wisp " << st.wisp << " pre-test touched " << st.touched
+                << " planes " << planes.size() << " V " << (st.rc ? scalar(-1) : mesh_.V()[st.c]) << nl;
+            if (st.wetPlane)
+            {
+                Pout<< "    plane unit normal " << st.plic.n << " x0 " << st.plic.x0
+                    << " cell vertex extent along n relative to x0 [" << emin << ", " << emax << "] x0 inside the extent "
+                    << ((emin <= 0 && emax >= 0) ? "yes" : "NO") << nl;
+            }
+            if (st.touched)
+            {
+                forAll(planes, ip) Pout<< "    cell plane " << ip << " n " << planes[ip].n << " x0 " << planes[ip].x0 << nl;
+            }
+            Pout.precision(op);
+        }
         if (st.touched && (sweptStateShortcut_ || sweptPreTestCheck_))
         {
             forAll(Vsw, vi)
@@ -1229,6 +1282,13 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
         vector preAw(Zero); scalar preCov = 0;
         if (sweeps)
         {
+            if (dumping)
+            {
+                davofProf::dumpCell = c;
+                const std::streamsize op = Pout.precision(17);
+                Pout<< "  PIECE cell " << c << " (donor " << (!rc && c == donor) << ") evaluation, running threeV " << threeV << nl;
+                Pout.precision(op);
+            }
             const double tv0 = tick();
             // sweptSliverClosedForm (round 4, gain 5): a ring cell without a
             // PLIC plane that one plane alone cuts (the pre-test's count)
@@ -1247,6 +1307,15 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
                     sweptPieceValidate_
                 );
             tStatVol += tick() - tv0;
+            if (dumping)
+            {
+                const std::streamsize op = Pout.precision(17);
+                Pout<< "  PIECE cell " << c << " result V_piece (sum of the clipped signed tets) " << r.volume
+                    << " coverage " << r.coverage << " coverage/sumMagT " << r.coverage/max(sumMagT, VSMALL)
+                    << " exactUsed " << r.exactUsed << " degenerate " << r.degenerate << " wetPlane " << wetPlane
+                    << " wet " << wet << " counted (coverage above 1e-12 sumMagT) " << (r.coverage > 1e-12*sumMagT) << nl;
+                Pout.precision(op);
+            }
             // the pre-image's wetted part in the face's orientation (preSign)
             if (areaFromVolume) { preAw = preSign*r.aPre; preCov = r.covPre; }
             nStatVolClips += r.nClip; nStatTris += r.nTri;
@@ -1559,7 +1628,15 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
     }
 
     vLiq = sweeps ? threeV/3 : 0;
-    if (davofProf::dump && facei < static_cast<label>(davofProf::faceScale.size()))
+    if (dumping)
+    {
+        const std::streamsize op = Pout.precision(17);
+        Pout<< "  SUM threeV (3 x sum of the piece volumes of wet cells) " << threeV << " unscaled liquid vLiq = threeV/3 " << vLiq
+            << " ; vLiq/vTotal " << vLiq/max(vTotal, VSMALL) << " coverage " << coverage << " sumMagT " << sumMagT
+            << " coverage/sumMagT " << coverage/max(sumMagT, VSMALL) << " shortFull " << shortFull << " shortEmpty " << shortEmpty << nl;
+        Pout.precision(op);
+    }
+    if ((davofProf::dump || davofProf::pieceDump) && facei < static_cast<label>(davofProf::faceScale.size()))
     {
         // alphaDump (print only): the swept volume, the unscaled liquid volume and the flux scale
         davofProf::faceVSwept[facei] = vTotal;
@@ -1595,6 +1672,18 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
     }
     aWet = aPreWet;
     af = fractionOf(aWet);
+    if (dumping)
+    {
+        const std::streamsize op = Pout.precision(17);
+        Pout<< "  SCALE sweptScaleToPhi " << sweptScaleToPhi_ << " numerator |phi_f| dt " << mag(phiF)*dt << " denominator vTotal "
+            << vTotal << " factor " << ((sweptScaleToPhi_ && sweeps && vTotal > VSMALL) ? mag(phiF)*dt/vTotal : 1.0)
+            << " scaled liquid vLiq " << vLiq << nl
+            << "  FACE FRACTION numerator (aPreWet.aPreFull) " << (aPreWet & aPreFull) << " denominator |aPreFull|^2 " << A2
+            << " alpha_f " << af << " aPreWet " << aPreWet << " aPreFull " << aPreFull << " sumMagPre " << sumMagPre
+            << " coveragePre " << coveragePre << nl
+            << "davofPieceDump: END FACE " << facei << nl;
+        Pout.precision(op);
+    }
     if (debugFace)
     {
         dbg() << "result af " << af << " vLiq " << vLiq << " threeV " << threeV

@@ -335,6 +335,9 @@ ENRIGHT_SETTINGS = OrderedDict([
     # max(alpha) after the bounding); no result changes, every other setting renders as before
     ("recommendedProfile", ("signedTets",      "false", "scale",   "normalAndAlpha",     "false")),
     ("recommendedDump",    ("signedTets",      "false", "scale",   "normalAndAlpha",     "false")),
+    ("recommendedPieceDump5035", ("signedTets", "false", "scale",   "normalAndAlpha",     "false")),
+    ("recommendedPieceDump1655", ("signedTets", "false", "scale",   "normalAndAlpha",     "false")),
+    ("recommendedPieceDump100000", ("signedTets", "false", "scale", "normalAndAlpha",     "false")),
 ])
 # the print-only key each diag2 setting appends to TPF_ENRIGHT_KEYS
 DIAG_KEYS = {"recommendedProfile": "phaseProfile", "recommendedDump": "alphaDump"}
@@ -355,6 +358,9 @@ ENRIGHT_LABELS = OrderedDict([
     ("onePlane", "one plane per face (KISS)"),
     ("recommendedProfile", "signedTets + scale + normalAndAlpha, phase timers"),
     ("recommendedDump", "signedTets + scale + normalAndAlpha, alpha dump"),
+    ("recommendedPieceDump5035", "signedTets + scale + normalAndAlpha, piece dump"),
+    ("recommendedPieceDump1655", "signedTets + scale + normalAndAlpha, piece dump"),
+    ("recommendedPieceDump100000", "signedTets + scale + normalAndAlpha, piece dump (never fires)"),
 ])
 
 
@@ -387,6 +393,12 @@ def enright_setting_tokens(name):
             out["TPF_ENRIGHT_KEYS"] += (
                 "\n        // the KISS variant (Tomislav, 2026-11-09; leia davof-kiss): one plane per face"
                 "\n        sweptClip onePlane;")
+        if name.startswith("recommendedPieceDump"):
+            # diag2 follow-up (2026-11-15): sweptPieceDump from the step in the name
+            out["TPF_ENRIGHT_KEYS"] += (
+                "\n        // diag2 (2026-11-15; leia davof-ccs-pieces): print-only face dump"
+                "\n        sweptPieceDump true;"
+                "\n        sweptPieceDumpStep " + name[len("recommendedPieceDump"):] + ";")
         if name in DIAG_KEYS:
             out["TPF_ENRIGHT_KEYS"] += (
                 "\n        // diag2 (2026-11-14; leia davof-ccs-pieces): print-only diagnostic key"

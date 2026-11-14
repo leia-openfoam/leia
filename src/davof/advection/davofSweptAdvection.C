@@ -723,6 +723,10 @@ Foam::davofSweptAdvection::davofSweptAdvection
                     davofProf::dump = modelDict().getOrDefault<bool>("alphaDump", false);
                     davofProf::lastEnd = -1;
                     davofProf::reset();
+                    davofProf::pieceDump = modelDict().getOrDefault<bool>("sweptPieceDump", false);
+                    davofProf::pieceDumpStep = modelDict().getOrDefault<label>("sweptPieceDumpStep", 0);
+                    davofProf::nPieceDumps = 0;
+                    if (davofProf::pieceDump) Info<< ", sweptPieceDump true (from step " << davofProf::pieceDumpStep << ")";
                     if (davofProf::on) Info<< ", phaseProfile true";
                     if (davofProf::dump) Info<< ", alphaDump true";
                     Info<< ", sweptDonorFastPath " << sweptDonorFastPath_

@@ -1931,6 +1931,32 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
                 sweptClassify_ ? &xqSw : nullptr
             );
             if (davofProf::on) davofProf::add(davofProf::pFFlux, davofProf::now() - profF);
+            // diag2 sweptPieceDump (print only): a face whose unscaled liquid volume exceeds 10 times
+            // its swept volume (and 1e-3 V_donor) is evaluated a second time with the print on
+            if
+            (
+                davofProf::pieceDump && !davofProf::dumping && davofProf::nPieceDumps < 3
+             && mesh_.time().timeIndex() >= davofProf::pieceDumpStep
+             && facei < static_cast<label>(davofProf::faceScale.size())
+             && davofProf::faceVSwept[facei] > 0
+            )
+            {
+                const scalar liq0 = mag(davofProf::faceVLiq0[facei]);
+                if (liq0 > 10*davofProf::faceVSwept[facei] && liq0 > 1e-3*mesh_.V()[local])
+                {
+                    ++davofProf::nPieceDumps;
+                    davofProf::dumping = true;
+                    scalar af2 = 0; vector aWet2(Zero); scalar vSw2 = 0;
+                    sweptFaceCellsFlux
+                    (
+                        facei, local, S, dt, phiF, sweeps, UInterp, *UpPtr,
+                        af2, aWet2, vSw2,
+                        sweptClassify_ ? &qSw : nullptr,
+                        sweptClassify_ ? &xqSw : nullptr
+                    );
+                    davofProf::dumping = false;
+                }
+            }
         }
         else if (wetVecPtr_)
         {

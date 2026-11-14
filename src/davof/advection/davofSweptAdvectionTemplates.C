@@ -530,7 +530,7 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
         if (davofProf::lastEnd >= 0) davofProf::T[davofProf::pBetween] = profA0 - davofProf::lastEnd;
     }
     // the face records of the dump (alphaDump)
-    if (davofProf::dump)
+    if (davofProf::dump || davofProf::pieceDump)
     {
         davofProf::faceVSwept.assign(mesh_.nFaces(), -1.0);
         davofProf::faceScale.assign(mesh_.nFaces(), -1.0);
