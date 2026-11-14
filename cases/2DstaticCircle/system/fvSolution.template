@@ -153,6 +153,14 @@ levelSet
     // The circle of the static source test: radius CIRCLE_R, centre off the cell lattice
     // (case parameter). The same centre and radius enter system/setExprFieldsDict, so the
     // initial fields and the reference psiEnd share the exact zero set.
+    // leiaTestCurvatureStencil only (2026-11-14): which layers of psi the curvature reads.
+    curvatureStencil
+    {
+        gradSchemes (kappaGradGaussLinear kappaGradLSQ kappaGradCellLimitedLSQ kappaGradPointLSQ);
+        eps     1;      // perturbation eps*h on the layers l >= k
+        kMax    6;
+        seed    1;
+    }
     implicitSurface
     {
         type implicitSphere;

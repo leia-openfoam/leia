@@ -59,6 +59,12 @@ gradSchemes
     // is the leading suspect for the sub-second-order band gradient error.
     // DEFAULT IS THE HISTORICAL VALUE -- every other study renders unchanged.
     grad(psi)       $@!DIV_GRAD!@;
+    // leiaTestCurvatureStencil (2026-11-14): the gradients of the curvature kappa = div(grad psi/|grad psi|),
+    // read only by that test application (levelSet.curvatureStencil.gradSchemes).
+    kappaGradGaussLinear      Gauss linear;
+    kappaGradLSQ              leastSquares;
+    kappaGradCellLimitedLSQ   cellLimited leastSquares 1;
+    kappaGradPointLSQ         pointCellsLeastSquares;
     // Reconstruction gradient for the linearUpwind steady velocity extension.
     grad(Uext)      leastSquares;
     // Pure least-squares gradient for the Aslam cascade's normal derivative

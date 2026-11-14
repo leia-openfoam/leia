@@ -240,6 +240,25 @@ their does-not-bind counter: `nLayers 3`, `maxScale 5`, `cpTol 0.1`, `cpMaxDist 
 `deltaTau 0.2`. Output: a table in this section, and a gate check that fails when a method token
 differs between the cases of one study.
 
+**The band width is derived from the curvature stencil (supervisor, 2026-11-14).** The curvature
+will be computed with UFVM operators, e.g. kappa = div(grad(psi)/|grad(psi)|). The stencil of that
+operator fixes how many cell layers l around the interface layer (l = 0, topological) must hold a
+second-order, smooth psi: with compact schemes the cell kappa reads l <= 2 and the face kappa
+l <= 3 (one more with pointCellsLeastSquares). A first-order value in a layer that the stencil reads
+(the fade, a band-edge jump, a first-order extension) enters kappa at the interface as O(1/h). So:
+
+1. `a4CurvStencil2D` (exact-solution gate, static) measures the depth of each gradient scheme:
+   an O(h) perturbation of psi on the layers l >= k changes kappa at l = 0 for k inside the depth
+   and leaves it identical for k beyond it.
+2. The extension band (the region where Uext = u(Pi(x)) at full weight) must cover that depth plus
+   the transport margin: the layers through which a defect of the outer region reaches the inner
+   layers by the transport stencil (linearUpwind reads two upwind layers per step). Step B measures
+   the margin with a plateau test: the curvature at the interface after transport, against the band
+   width in layers; the band width is the first value on the plateau, for every case of the ladder.
+3. The band and the fade are counted in topological layers (`fadeMode layer`), because the stencil
+   depth is a number of layers, not a distance.
+4. The curvature is part of the whole vector of every step from B on (rule 7).
+
 ## 5. Sub-problem A: the extension operator, static
 
 **Question.** Given $\phi$ and $\mathbf u$ at one instant, how close is the computed $\mathbf u_e$ to the
@@ -291,6 +310,12 @@ in transport until the cause is known.
 ---
 
 ## 6. Sub-problem B: transport with the exact extension (oracle)
+
+**The plateau test (2026-11-14).** Every B and C arm reports the curvature at the interface layer
+(cell and face, by the operator of a4CurvStencil2D) and runs the band width in layers over the
+derived depth and two more layers. The curvature must reach a plateau: no change beyond the
+mesh-convergence noise when the band grows. The first width on the plateau becomes the one default.
+
 
 **Question.** With the exact extension, does the Eulerian transport keep $\phi$ a signed distance,
 and does it put the interface where the flow puts it?

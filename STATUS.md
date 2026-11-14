@@ -7870,3 +7870,21 @@ first-order fade is accepted, and its derivation is tested; (3) repair 3 first.
    step A0.4 (the parameter audit, before step A), step D (beta gets a rule from local quantities).
    Known violations: `SDPLS_W1 0.05`, `SDPLS_W2 0.15` (physical mollifier widths); the unset beta;
    `epsilonModel fixed` (legacy option).
+
+### 11.33 PDE level set: no free parameters (repository-wide) and the curvature stencil (2026-11-14)
+
+1. **The supervisor, 2026-11-14:** the rule of 11.32 item 7 is repository-wide: no free parameters
+   that require tuning to problems or problem families. `CLAUDE.md` and `AGENTS.md` get the section
+   "No free parameters: every method setting is derived or global"; the per-case `.parameter` layer
+   holds problem data only.
+2. **The curvature sets the band.** The curvature will be computed with UFVM operators, e.g.
+   kappa = div(grad(psi)/|grad(psi)|); the stencil of that operator sets how many layers around the
+   interface must hold a second-order, smooth psi, and a first-order value in an outer layer that the
+   stencil reads enters kappa at the interface. Plan section 4c (the derivation) and section 6 (the
+   plateau test of step B).
+3. **The exact-solution gate** `config/pdeLevelSet/a4CurvStencil2D.yaml`, new test application
+   `leiaTestCurvatureStencil` (psi = exact distance of the circle, O(h) perturbation on the layers
+   l >= k, kappa with four gradient schemes; new inert fvSchemes keys `kappaGrad*` and the inert
+   `levelSet.curvatureStencil` dictionary in `cases/2DstaticCircle`). Pre-registered S1 to S4: compact
+   schemes read l <= 2 (cell) and l <= 3 (face); pointCellsLeastSquares one layer more. Read-out
+   `workflow/scripts/pde_a4_curvstencil.py`. Laptop: compile check only.
