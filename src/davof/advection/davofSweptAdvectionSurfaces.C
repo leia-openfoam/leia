@@ -2694,10 +2694,14 @@ void Foam::davofSweptAdvection::reinitFaceFractions()
     const label nInt = mesh_.nInternalFaces();
     cutFacePLIC cutFace(mesh_);
     // the wetted fraction of a face by the plane of a cell: normal_ points
-    // into the liquid, as cutFacePLIC assumes ((p - base).n > 0 liquid)
+    // into the liquid, as cutFacePLIC assumes ((p - base).n > 0 liquid);
+    // the UNIT normal (2026-11-10: calcSubFace snaps |(p - base).n| < SMALL
+    // to zero and calls a face without a positive point a gas face, so the
+    // area vector normal_ of a sliver cut returned 0 on fully wet faces;
+    // davof.C inducedFaceFractions)
     auto clipBy = [&](const label facei, const label celli) -> scalar
     {
-        cutFace.calcSubFace(facei, nrm[celli], ctr[celli]);
+        cutFace.calcSubFace(facei, nrm[celli]/mag(nrm[celli]), ctr[celli]);
         const scalar af = mag(cutFace.subFaceArea())/mag(Sf[facei]);
         return min(max(af, scalar(0)), scalar(1));
     };
