@@ -1140,7 +1140,7 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
         dgWet_.setSize(nF); dgWet_ = 0;
         dgVtot_.setSize(nF); dgVtot_ = 0;
         dgRingDepth_.setSize(nF); dgRingDepth_ = 0;
-        dgPieces_.setSize(nF); dgPieces_ = -1;
+        dgPieces_.setSize(nF); dgPieces_ = -GREAT;   // -GREAT: not computed (a pieces flux may be -1e-20)
         dgOne_.setSize(nF); dgOne_ = 0;
         dgM_.setSize(mesh_.nCells()); dgM_ = Zero;
         if (davofPtr_) dgM_ = davofPtr_->areaNormal().primitiveField();

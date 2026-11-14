@@ -2571,7 +2571,7 @@ void Foam::davofSweptAdvection::onePlaneDiagStep()
             if (s == 3) { hasCut = true; hasNo = true; }
             else if (s == 2) hasNo = true;
             else if (s == 0 && faceOk(facei)) hasUn = true;   // empty-patch faces carry no flux
-            if (dgPieces_[facei] >= 0)
+            if (dgPieces_[facei] > -0.5*GREAT)
             {
                 if (mag(dgOne_[facei] - dgPieces_[facei]) > 0.1*V[celli]) bigDiff = true;
             }
@@ -2624,7 +2624,7 @@ void Foam::davofSweptAdvection::onePlaneDiagStep()
         scalar sum = 0, mx = 0;
         forAll(dgPieces_, facei)
         {
-            if (dgPieces_[facei] < 0) continue;
+            if (dgPieces_[facei] < -0.5*GREAT) continue;
             const label o = own[facei];
             const bool nb = (facei < nInt);
             if (!(hasSurface_.test(o) || (nb && hasSurface_.test(nei[facei])))) continue;
@@ -2697,7 +2697,7 @@ void Foam::davofSweptAdvection::onePlaneDiagStep()
                 }
                 os << " donorIsCentroidCell " << int(dgCentroid_[facei])
                    << " prismWet " << dgWet_[facei] << " prismV/V_k " << dgVtot_[facei]/V[celli];
-                if (dgPieces_[facei] >= 0)
+                if (dgPieces_[facei] > -0.5*GREAT)
                 {
                     os << " |one-pieces|/V_k " << mag(dgOne_[facei] - dgPieces_[facei])/V[celli];
                 }
