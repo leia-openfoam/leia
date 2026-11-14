@@ -789,6 +789,7 @@ class davofSweptAdvection
             bool onePlaneDiag_;
             label onePlaneDiagCells_;
             labelList onePlaneCompareSteps_;
+            label onePlaneCompareEvery_;   // compare at every n-th time index (0: none)
             bool onePlaneCompareNow_;
             //- per face: 0 not processed, 1 donor plane, 2 no plane and the
             //  ring uncut, 3 no plane and the ring cut

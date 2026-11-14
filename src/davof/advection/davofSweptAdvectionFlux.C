@@ -2570,7 +2570,7 @@ void Foam::davofSweptAdvection::onePlaneDiagStep()
             const label s = dgState_[facei];
             if (s == 3) { hasCut = true; hasNo = true; }
             else if (s == 2) hasNo = true;
-            else if (s == 0) hasUn = true;
+            else if (s == 0 && faceOk(facei)) hasUn = true;   // empty-patch faces carry no flux
             if (dgPieces_[facei] >= 0)
             {
                 if (mag(dgOne_[facei] - dgPieces_[facei]) > 0.1*V[celli]) bigDiff = true;
@@ -2665,12 +2665,20 @@ void Foam::davofSweptAdvection::onePlaneDiagStep()
             if (nPrint++ >= onePlaneDiagCells_) break;
             std::ostringstream os;
             os.precision(8);
+            scalar outSum = 0, inSum = 0;
+            for (const label facei : cells[celli])
+            {
+                const scalar fo = ((own[facei] == celli) ? 1 : -1)*dgDVfPre_[facei];
+                if (fo > 0) outSum += fo; else inSum -= fo;
+            }
             os << "DIAG step " << ti << " cell " << celli << " at (" << Cc[celli].x() << ' '
                << Cc[celli].y() << ' ' << Cc[celli].z() << ") alpha^n " << a0[celli]
                << " alpha after update " << a[celli] << " hasPlane " << (hasSurface_.test(celli) ? 1 : 0)
-               << " |m|/V^(2/3) " << mag(dgM_[celli])/Foam::pow(V[celli], 2.0/3.0) << '\n';
+               << " |m|/V^(2/3) " << mag(dgM_[celli])/Foam::pow(V[celli], 2.0/3.0)
+               << " outflow/V_k " << outSum/V[celli] << " inflow/V_k " << inSum/V[celli] << '\n';
             for (const label facei : cells[celli])
             {
+                if (!faceOk(facei)) continue;
                 const scalar sgn = (own[facei] == celli) ? 1 : -1;
                 const label other =
                     (facei < nInt) ? (own[facei] == celli ? nei[facei] : own[facei]) : label(-1);

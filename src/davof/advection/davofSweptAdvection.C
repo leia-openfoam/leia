@@ -291,6 +291,7 @@ Foam::davofSweptAdvection::davofSweptAdvection
     onePlaneDiag_(modelDict().getOrDefault<bool>("sweptOnePlaneDiag", false)),
     onePlaneDiagCells_(modelDict().getOrDefault<label>("sweptOnePlaneDiagCells", 20)),
     onePlaneCompareSteps_(modelDict().getOrDefault<labelList>("sweptOnePlaneCompareSteps", labelList())),
+    onePlaneCompareEvery_(modelDict().getOrDefault<label>("sweptOnePlaneCompareEvery", 0)),
     onePlaneCompareNow_(false),
     dgState_(),
     dgDonor_(),

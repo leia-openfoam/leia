@@ -1145,6 +1145,7 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
         dgM_.setSize(mesh_.nCells()); dgM_ = Zero;
         if (davofPtr_) dgM_ = davofPtr_->areaNormal().primitiveField();
         const label ti = mesh_.time().timeIndex();
+        if (onePlaneCompareEvery_ > 0 && ti % onePlaneCompareEvery_ == 0) onePlaneCompareNow_ = true;
         forAll(onePlaneCompareSteps_, k)
         {
             if (onePlaneCompareSteps_[k] == ti) onePlaneCompareNow_ = true;

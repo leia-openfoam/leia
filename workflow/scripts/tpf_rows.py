@@ -334,6 +334,8 @@ ENRIGHT_SETTINGS = OrderedDict([
     # REPORT-swept.md "One plane per face on curved interfaces: first fault"); transport
     # identical to onePlane
     ("onePlaneDiag",       ("signedTets",      "false", "none",    "normalAndAlpha",     "false", "onePlane")),
+    ("onePlaneDiagCmp1",   ("signedTets",      "false", "none",    "normalAndAlpha",     "false", "onePlane")),
+    ("onePlaneDiagCmp10",  ("signedTets",      "false", "none",    "normalAndAlpha",     "false", "onePlane")),
 ])
 ENRIGHT_TOKENS = ("TPF_SWEPT_PIECE_VOLUME", "TPF_SWEPT_PIECE_VALIDATE",
                   "TPF_SWEPT_BOUNDED_FACE_FRACTION", "TPF_INTERFACE_CELL_RULE",
@@ -351,6 +353,8 @@ ENRIGHT_LABELS = OrderedDict([
     ("recommended", "signedTets + scale + normalAndAlpha"),
     ("onePlane", "one plane per face (KISS)"),
     ("onePlaneDiag", "one plane per face (KISS), diagnostics"),
+    ("onePlaneDiagCmp1", "one plane per face (KISS), diagnostics, pieces comparison every step"),
+    ("onePlaneDiagCmp10", "one plane per face (KISS), diagnostics, pieces comparison every 10th step"),
 ])
 
 
@@ -383,8 +387,12 @@ def enright_setting_tokens(name):
             out["TPF_ENRIGHT_KEYS"] += (
                 "\n        // the KISS variant (Tomislav, 2026-11-09; leia davof-kiss): one plane per face"
                 "\n        sweptClip onePlane;")
-        if name == "onePlaneDiag":
+        if name in ("onePlaneDiag", "onePlaneDiagCmp1", "onePlaneDiagCmp10"):
             out["TPF_ENRIGHT_KEYS"] += "\n        sweptOnePlaneDiag true;"
+        if name == "onePlaneDiagCmp1":
+            out["TPF_ENRIGHT_KEYS"] += "\n        sweptOnePlaneCompareEvery 1;"
+        if name == "onePlaneDiagCmp10":
+            out["TPF_ENRIGHT_KEYS"] += "\n        sweptOnePlaneCompareEvery 10;"
     return out
 
 
