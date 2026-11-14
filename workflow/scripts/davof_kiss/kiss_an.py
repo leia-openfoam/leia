@@ -238,7 +238,7 @@ def table(rows, cols, title):
         print("  " + " | ".join(str(r.get(c, "")).ljust(w) for c, w in zip(cols, widths)))
 
 
-def mode_plane(args, pattern="kiss_plane_*_np[18]", tag="plane", identTol=IDENT_TOL):
+def mode_plane(args, pattern="kiss_plane_*_np[18]", tag="plane", identTol=IDENT_TOL, ccsGate=False):
     recs = collect(args.studies_dir, pattern)
     write_csv(os.path.join(args.out, "kiss_%s_cases.csv" % tag), [flat(r) for r in recs])
     rows = []
@@ -247,18 +247,23 @@ def mode_plane(args, pattern="kiss_plane_*_np[18]", tag="plane", identTol=IDENT_
         op = r["onePlane"]; r2 = r["rule2"]
         steps = max(r["steps"] or 1, 1)
         v = ""
-        if r["setting"] == "onePlane":
+        if r["setting"] == "onePlane" or (ccsGate and r["setting"] == "recommended"):
             noPlane = int(op.get("noPlaneSum", 0)) if op else None
             lim = int(r2.get("limFacesSum", 0)) if r2 else None
+            # the CCS gate (2026-11-14): the cut-faces clause is not in it; the pieces row has no limiter line (n/a)
             limV = (r2.get("limVolumeSum", 0.0)/((BOX_L/r["N"])**3)) if r2 else None
             cut = int(op.get("noPlaneCutSum", 0)) if op else None
             checks = dict(L1=(r["L1af"] is not None and r["L1af"] < P1_TOL), Linf=(r["Linfaf"] is not None and r["Linfaf"] < P1_LINF),
                           E=(r["Eshape"] is not None and r["Eshape"] < P1_E), minA=(r["minAlpha"] is not None and r["minAlpha"] > P1_MIN),
-                          lim=(limV is not None and limV < P1_LIMV), cut=(cut == 0), done=(r["status"] != "aborted"))
+                          lim=((limV is None and ccsGate) or (limV is not None and limV < P1_LIMV)), cut=(ccsGate or cut == 0), done=(r["status"] != "aborted"))
             ok = all(checks.values())
             v = "P1 ok" if ok else "P1 FAIL (" + ", ".join(k for k, c in checks.items() if not c) + ")"
-            nCells += 1
-            if not ok: fails.append(r)
+            openCell = ccsGate and r["setting"] == "onePlane" and r["arm"] == "normal" and abs(r["co"] - 0.6202) < 1e-6
+            if openCell:
+                v = "OPEN (Co 1 normal arm): " + v
+            else:
+                nCells += 1
+                if not ok: fails.append(r)
         rows.append(dict(study=r["study"], setting=r["setting"], arm=r["arm"], N=r["N"], Co=r["co"], ofCo=g(r["ofCo"]),
                          L1af=f(r["L1af"]), Linfaf=f(r["Linfaf"]), Eshape=f(r["Eshape"]), L1x=f(r["L1x"]), L1n=f(r["L1n"]),
                          minAlpha=g(r["minAlpha"], 6), excess=g(r["excess"]), massDev=g(r["massDevPct"]),
@@ -392,13 +397,15 @@ def mode_standing(args):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("mode", choices=("plane", "identity", "rotation", "standing", "scan", "gate3b", "gate95"))
+    ap.add_argument("mode", choices=("plane", "identity", "rotation", "standing", "scan", "gate3b", "gate95", "ccsplane"))
     ap.add_argument("--studies-dir", default=os.path.join(REPO, "studies", "davof"))
     ap.add_argument("--out", default=os.path.join(REPO, "studies", "davof", "kiss_tables"))
     ap.add_argument("--standing-tables", default=None, help="the directory of make_standing_tables.py's CSVs (mode standing)")
     a = ap.parse_args()
     if a.mode == "scan":
         mode_plane(a, "kiss_scan*_np[18]", "scan", IDENT_TOL_3B)
+    elif a.mode == "ccsplane":
+        mode_plane(a, "ccs_plane_*_np[18]", "ccsplane", IDENT_TOL_3B, True)
     elif a.mode == "gate95":
         mode_plane(a, "kiss_gate95_*_np[18]", "gate95", IDENT_TOL_3B)
     elif a.mode == "gate3b":
