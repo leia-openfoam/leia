@@ -169,13 +169,120 @@ struct ccsRecord
     label nHermite = 0;      // CCS steps taken
     label nNewton = 0;       // Newton steps taken
     label nBisect = 0;       // bisection steps taken
+    label endState = 0;      // ccsEndInterval: 0 not tried, 1 accepted (gas end), 2 accepted (liquid end), -1 tried and rejected
+    label nEndCuts = 0;      // cuts spent on the end-interval closed form (the t_1 cut, the verification, the re-cut)
 };
+
+
+//- The end-interval closed form of the CCS positioning (ccsEndInterval cubic).
+//  T. Maric, Iterative Volume-of-Fluid interface positioning in general
+//  polyhedrons with Consecutive Cubic Spline interpolation, J. Comput. Phys.:
+//  X 11 (2021) 100093, doi:10.1016/j.jcpx.2021.100093, arXiv:2012.02227.
+//  In the frame of the unit normal nn = sgn n (sgn = +1: the gas end, -1:
+//  the liquid end, the frame of the complementary volume) let V(q) be the
+//  volume on the side (x - x_c).nn > q. It vanishes at the extreme vertex
+//  level t_0 and between two consecutive vertex levels it is exactly a cubic
+//  of q, with dV/du = A (u = t_0 - q, A the cut area). One cut at the next
+//  distinct level t_1 gives V_1 and A_1. If the target T <= V_1 the root lies
+//  in the first interval: the root of the Hermite cubic through (0, 0, A_0)
+//  and (u_1, V_1, A_1), t = t_0 - u_1 (T/V_1)^(1/3) when A_0 = 0 and
+//  V_1 = A_1 u_1/3 (a unique extreme vertex), hermiteRoot01 otherwise. A_0 is
+//  the area of an extreme cell face lying on the level t_0, else 0. One
+//  verification cut at the root decides: |V - T| <= tol accepts, else the
+//  caller iterates unchanged. Two levels are the same when they differ by
+//  less than 1e-12 of the cell's extent along nn (the definition of
+//  "distinct" at round-off). Returns true and the plane position p (of the
+//  ORIGINAL normal) when accepted; the cut object then holds the cut of the
+//  frame (the caller re-cuts for the liquid end).
+template<class CutCell>
+inline bool ccsEndIntervalSolve
+(
+    const fvMesh& mesh,
+    CutCell& cut,
+    const label celli,
+    const vector& n,
+    const scalar sgn,
+    const scalar T,
+    const scalar tol,
+    scalar& pAcc,
+    scalar& rAcc,
+    ccsRecord& rec
+)
+{
+    const scalar Vc = mesh.V()[celli];
+    const vector nn = sgn*n;
+    const point& xc = mesh.C()[celli];
+    const pointField& P = mesh.points();
+    scalar gMax = -GREAT, gMin = GREAT;
+    for (const label pi : mesh.cellPoints(celli))
+    {
+        const scalar g = (P[pi] - xc) & nn;
+        gMax = max(gMax, g);
+        gMin = min(gMin, g);
+    }
+    const scalar lvlTol = 1e-12*(gMax - gMin);
+    if (!(gMax > gMin)) return false;
+    const scalar t0 = gMax;
+    scalar t1 = -GREAT;
+    for (const label pi : mesh.cellPoints(celli))
+    {
+        const scalar g = (P[pi] - xc) & nn;
+        if (g < t0 - lvlTol) t1 = max(t1, g);
+    }
+    if (t1 == -GREAT) return false;
+
+    // A_0: the area of a cell face lying on the extreme level
+    scalar A0 = 0;
+    for (const label fi : mesh.cells()[celli])
+    {
+        bool onLevel = true;
+        for (const label pi : mesh.faces()[fi])
+        {
+            if (((P[pi] - xc) & nn) < t0 - lvlTol) { onLevel = false; break; }
+        }
+        if (onLevel) A0 += mesh.magSf()[fi];
+    }
+
+    label status = cut.calcSubCell(celli, t1, nn);
+    ++rec.nEvals; ++rec.nEndCuts;
+    if (status != 0) return false;
+    const scalar V1 = cut.subCellVolume();
+    const scalar A1 = mag(cut.faceArea());
+    if (!(V1 > 0) || !(T > 0) || T >= V1) return false;
+    const scalar u1 = t0 - t1;
+
+    scalar u = 0;
+    if (A0 == 0 && mag(V1 - A1*u1/3) <= 1e-12*V1)
+    {
+        u = u1*Foam::cbrt(T/V1);
+    }
+    else
+    {
+        scalar s = 0.5;
+        if (!hermiteRoot01(-T, A0*u1, V1 - T, A1*u1, s)) return false;
+        u = s*u1;
+    }
+    const scalar q = t0 - u;
+    status = cut.calcSubCell(celli, q, nn);
+    ++rec.nEvals; ++rec.nEndCuts;
+    if (status != 0) return false;
+    const scalar r = cut.subCellVolume() - T;
+    if (mag(r) > tol) return false;
+    pAcc = sgn*q;
+    rAcc = (sgn > 0) ? r : -r;
+    return true;
+}
 
 
 //- Position the plane of celli along the unit normal n by CCS from p0 so
 //  that the cut volume equals alpha V_c (see the Description). Returns the
 //  status of the final cut (0 cut, -1 fully liquid, +1 fully gas); the cut
-//  object holds it.
+//  object holds it. Keys (2026-11-14, defaults reproduce the old behaviour):
+//  endInterval (ccsEndInterval cubic) and relativeTol (ccsTolerance
+//  relative), both after T. Maric, Iterative Volume-of-Fluid interface
+//  positioning in general polyhedrons with Consecutive Cubic Spline
+//  interpolation, J. Comput. Phys.: X 11 (2021) 100093,
+//  doi:10.1016/j.jcpx.2021.100093, arXiv:2012.02227.
 template<class CutCell>
 inline label ccsPositionPlane
 (
@@ -187,14 +294,16 @@ inline label ccsPositionPlane
     const scalar p0,
     const scalar tolRel,
     const label maxIter,
-    ccsRecord& rec
+    ccsRecord& rec,
+    const bool endInterval = false,   // ccsEndInterval cubic (T. Maric, J. Comput. Phys.: X 11 (2021) 100093, doi:10.1016/j.jcpx.2021.100093, arXiv:2012.02227)
+    const bool relativeTol = false    // ccsTolerance relative: |r| <= tolRel min(alpha, 1 - alpha) V_c
 )
 {
     const scalar Vc = mesh.V()[celli];
     // the target within [0, V_c]: a volume fraction outside it (a round-off
     // wisp of -3e-15, 2026-11-04) has no plane but the vertex extreme
     const scalar target = min(max(alpha, scalar(0)), scalar(1))*Vc;
-    const scalar tol = tolRel*Vc;
+    const scalar tol = tolRel*(relativeTol ? min(target, Vc - target) : Vc);
     const point& xc = mesh.C()[celli];
     const pointField& P = mesh.points();
 
@@ -209,6 +318,39 @@ inline label ccsPositionPlane
     const scalar h = Foam::cbrt(Vc);
 
     rec = ccsRecord();
+
+    // ccsEndInterval cubic: the closed form in the first interval from the
+    // nearer end (the gas end for alpha <= 1/2, the liquid end in the frame
+    // of the complementary volume otherwise); accepted after one
+    // verification cut, else the iteration below runs unchanged
+    if (endInterval && target > 0 && target < Vc)
+    {
+        const scalar sgn = (target <= 0.5*Vc) ? scalar(1) : scalar(-1);
+        const scalar T = (sgn > 0) ? target : Vc - target;
+        scalar pAcc = 0, rAcc = 0;
+        if (ccsEndIntervalSolve(mesh, cut, celli, n, sgn, T, tol, pAcc, rAcc, rec))
+        {
+            label st = 0;
+            if (sgn < 0)
+            {
+                // the cut object holds the plane of the ORIGINAL normal
+                st = cut.calcSubCell(celli, pAcc, n);
+                ++rec.nEvals; ++rec.nEndCuts;
+            }
+            else
+            {
+                st = 0;
+            }
+            rec.endState = (sgn > 0) ? 1 : 2;
+            rec.exitCode = 1;
+            rec.pStart = pAcc;
+            rec.rStart = rAcc/Vc;
+            rec.pFinal = pAcc;
+            rec.rFinal = rAcc/Vc;
+            return st;
+        }
+        rec.endState = -1;
+    }
 
     label status = 0;
     scalar r = 0, A = 0;

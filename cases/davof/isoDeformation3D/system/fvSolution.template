@@ -41,6 +41,10 @@ solvers
         // openfoam (v2606's cutCellPLIC, the default) | fork (the TwoPhaseFlow
         // threshold 10*SMALL, the opt-in copy); the fork's binary ignores the key
         grazingCut      @!TPF_GRAZING_CUT!@;
+        // the CCS positioning (T. Maric, J. Comput. Phys.: X 11 (2021) 100093, doi:10.1016/j.jcpx.2021.100093,
+        // arXiv:2012.02227): ccsEndInterval none | cubic, ccsTolerance absolute | relative (leia 2026-11-14)
+        ccsEndInterval  @!TPF_CCS_END_INTERVAL!@;
+        ccsTolerance    @!TPF_CCS_TOLERANCE!@;
         isoFaceTol      1e-8;
         surfCellTol     1e-8;
         // plicRDF: the initial guess from the previous normals (the library's

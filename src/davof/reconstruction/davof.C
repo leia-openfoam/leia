@@ -161,8 +161,11 @@ bool Foam::reconstruction::davof::positionPlane
         const label status = Foam::davof::ccsPositionPlane
         (
             mesh_, cutCellPos_, celli, ac, n/nMag, pPlane_[celli],
-            positioningTol_, positioningMaxIter_, rec
+            positioningTol_, positioningMaxIter_, rec,
+            ccsEndInterval_ == "cubic", ccsTolerance_ == "relative"
         );
+        if (rec.endState > 0) ++nPosEndOk_;
+        if (rec.endState < 0) ++nPosEndRej_;
         lastCcsExit_ = rec.exitCode;
         lastCcsEvals_ = rec.nEvals;
         lastCcsRFinal_ = rec.rFinal;
@@ -411,6 +414,10 @@ Foam::reconstruction::davof::davof
     positioning_(modelDict().getOrDefault<word>("positioning", "ccs")),
     positioningTol_(modelDict().getOrDefault<scalar>("positioningTol", 1e-14)),
     positioningMaxIter_(modelDict().getOrDefault<label>("positioningMaxIter", 30)),
+    ccsEndInterval_(modelDict().getOrDefault<word>("ccsEndInterval", "none")),
+    ccsTolerance_(modelDict().getOrDefault<word>("ccsTolerance", "absolute")),
+    nPosEndOk_(0),
+    nPosEndRej_(0),
     grazingCut_(modelDict().getOrDefault<word>("grazingCut", "openfoam")),
     cutCellPos_(alpha1.mesh(), grazingCut_ == "fork"),
     positioningResidual_
@@ -565,8 +572,22 @@ Foam::reconstruction::davof::davof
             << "positioning '" << positioning_
             << "' unknown. Valid: vofCutCell, ccs." << exit(FatalIOError);
     }
+    if (ccsEndInterval_ != "none" && ccsEndInterval_ != "cubic")
+    {
+        FatalIOErrorInFunction(modelDict())
+            << "ccsEndInterval '" << ccsEndInterval_
+            << "' unknown. Valid: none, cubic." << exit(FatalIOError);
+    }
+    if (ccsTolerance_ != "absolute" && ccsTolerance_ != "relative")
+    {
+        FatalIOErrorInFunction(modelDict())
+            << "ccsTolerance '" << ccsTolerance_
+            << "' unknown. Valid: absolute, relative." << exit(FatalIOError);
+    }
     if (positioning_ == "ccs")
     {
+        Info<< "davof: positioning ccs ccsEndInterval " << ccsEndInterval_
+            << ", ccsTolerance " << ccsTolerance_ << endl;
         Info<< "davof: positioning ccs (Consecutive Cubic Spline on the"
             << " cutCellPLIC cut from the explicit position, positioningTol "
             << positioningTol_ << " of V, positioningMaxIter "
@@ -653,6 +674,7 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
     maxPlaneVolDefect_ = 0;
     maxPlaneAreaDefect_ = 0;
     nPosCells_ = nPosEvals_ = maxPosEvals_ = nPosFloor_ = nPosMaxIter_ = 0;
+    nPosEndOk_ = nPosEndRej_ = 0;
     minInterfaceMagRel_ = GREAT;
     nPosEnd_ = nPosEndNoPlane_ = 0;
     maxPosRes_ = sumPosRes_ = 0;
@@ -940,6 +962,7 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
     {
         label nC = nPosCells_, nE = nPosEvals_, mE = maxPosEvals_;
         label nF = nPosFloor_, nM = nPosMaxIter_, nEnd = nPosEnd_, nEndNo = nPosEndNoPlane_;
+        label nEO = nPosEndOk_, nER = nPosEndRej_;
         scalar rMax = maxPosRes_, rSum = sumPosRes_;
         labelList hist(posEvalHist_);
         if (Pstream::parRun())
@@ -948,6 +971,7 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
             reduce(mE, maxOp<label>()); reduce(nF, sumOp<label>());
             reduce(nM, sumOp<label>()); reduce(nEnd, sumOp<label>());
             reduce(nEndNo, sumOp<label>());
+            reduce(nEO, sumOp<label>()); reduce(nER, sumOp<label>());
             reduce(rMax, maxOp<scalar>()); reduce(rSum, sumOp<scalar>());
             forAll(hist, k) reduce(hist[k], sumOp<label>());
         }
@@ -957,7 +981,8 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
             << "), residual max " << rMax << " mean " << rSum/max(nC, label(1))
             << ", floor exits " << nF << ", maxIter exits " << nM
             << ", end-of-interval cells " << nEnd << " (" << nEndNo
-            << " without a plane)";
+            << " without a plane), end-interval closed form accepted " << nEO
+            << " rejected " << nER;
     }
     {
         label nO = nRuleOutside_, nOP = nRuleOutsidePlane_;

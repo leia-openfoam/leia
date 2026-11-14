@@ -252,6 +252,19 @@ class davof
         scalar positioningTol_;
         label positioningMaxIter_;
 
+        //- ccs end-interval closed form (key ccsEndInterval none | cubic) and
+        //  the convergence test (key ccsTolerance absolute | relative:
+        //  |r| <= positioningTol V_c | positioningTol min(alpha, 1 - alpha)
+        //  V_c). T. Maric, Iterative Volume-of-Fluid interface positioning
+        //  in general polyhedrons with Consecutive Cubic Spline
+        //  interpolation, J. Comput. Phys.: X 11 (2021) 100093,
+        //  doi:10.1016/j.jcpx.2021.100093, arXiv:2012.02227. Defaults none
+        //  and absolute reproduce the positioning before 2026-11-14.
+        word ccsEndInterval_;
+        word ccsTolerance_;
+        label nPosEndOk_;
+        label nPosEndRej_;
+
         //- The grazing-cut rule of the cell cuts below (key grazingCut,
         //  2026-11-06): openfoam (v2606's cutCellPLIC, ROOTVSMALL, the
         //  default) | fork (the TwoPhaseFlow threshold 10*SMALL in the copy

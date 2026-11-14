@@ -6606,3 +6606,63 @@ maxIter or returns no plane):
 `grazingCut fork` (the policy of 2026-11-07 for reproducing the fork track) makes the cell cut blind to
 slivers below an absolute area of 1e-14 m^2, i.e. alpha below 8e-9 .. 6e-8 at N 80 .. 160; both stand
 until Tomislav decides.
+
+
+## CCS aligned with the published method (Tomislav, 2026-11-14; leia branch `davof-ccs` off `davof-kiss` f0b3f6fd)
+
+PRE-REGISTERED before the first run of this section (the header of this round).
+
+Reference: T. Maric, Iterative Volume-of-Fluid interface positioning in general polyhedrons with
+Consecutive Cubic Spline interpolation, Journal of Computational Physics: X 11 (2021) 100093,
+doi:10.1016/j.jcpx.2021.100093, arXiv:2012.02227 (one work; the journal version and the arXiv version).
+
+### The change, three items, each behind a key (the default reproduces the old behaviour)
+
+- A1 `ccsEndInterval none | cubic`. Between two consecutive vertex levels along the unit normal the
+  cut volume V(q) is exactly a cubic of the plane position and dV/du = A, the cut area. One cut at
+  the next distinct vertex level t_1 gives V_1 and A_1. If the target (alpha_k V_k for alpha_k <= 1/2,
+  the complementary (1 - alpha_k) V_k in the mirrored frame otherwise) is not above V_1, the root lies
+  in the first interval: t = t_0 - u_1 (T / V_1)^(1/3) for a unique extreme vertex (A_0 = 0 and V_1 =
+  A_1 u_1 / 3 to 1e-12 relative), else the root of the Hermite cubic through (t_0, 0, A_0) and
+  (t_1, V_1, A_1) by `hermiteRoot01`; A_0 is the area of a cell face on the extreme level, else 0. One
+  verification cut decides; a rejected case runs the existing iteration unchanged. Two levels are the
+  same when they differ by less than 1e-12 of the cell's extent along the normal.
+- A2 `ccsTolerance absolute | relative`. relative: |r| <= positioningTol min(alpha_k, 1 - alpha_k) V_k
+  with positioningTol 1e-12; the round-off-floor exit of the iteration stays, no other floor.
+- A3 `grazingCut openfoam` as the study setting (the key exists and openfoam is its default; the
+  study configs of the standing matrix set it, a value change only).
+- The unit-normal clip fix 9c0d983d of `davof-iter` is not an ancestor of `davof-kiss`. Its hunks in
+  the iterative corrector, the predictor of `isoAdvectorScheme` and the `correctorLog` conflict,
+  because that code does not exist on `davof-kiss` (they stay out). The one hunk in
+  `reinitFaceFractions` (the clip receives nrm/mag(nrm)) applied unchanged and is the commit 494f148e.
+
+### Gate A-unit (`applications/test/davofTestCcsPositioning`)
+
+Cells: a unit hexahedron, the perturbed hexahedra and the polyhedra of the standing mesh classes (N 16
+on the 1 x 1 x 2 box; 200 cells each, evenly strided). Normals: 1000 random unit directions (fixed
+seed) and the 26 axis, edge and corner aligned ones. alpha in {1e-2, 1e-4, 1e-6, 1e-8, 1e-10, 1e-12,
+1e-14, 1e-16, 1e-20} and 1 - {1e-2, 1e-4, 1e-6, 1e-8, 1e-10, 1e-12, 1e-14}. Old setting: ccsEndInterval
+none, ccsTolerance absolute, 1e-14. New setting: cubic, relative, 1e-12. The start is the linear
+guess pMin + (1 - alpha)(pMax - pMin) for both. The volume error is measured by an independent cut
+(the mirrored complementary cut for alpha > 1/2). Clauses of the new setting:
+1. |V_cut - alpha V_k| / (min(alpha, 1 - alpha) V_k) <= 1e-10 for alpha >= 1e-14 (the achieved
+   maximum, median and the count above 1e-10 are reported per alpha; where the round-off of the cut
+   limits it, the report names the alpha);
+2. zero maxIter exits;
+3. zero returns without a plane for alpha >= 1e-16;
+4. the number of cuts per positioning, mean and maximum, old against new (reported, no clause).
+
+### Gate A-plane
+
+The baseline plane gate of rounds 3b and 3c (`planeTranslation3D`, both arms normal / oblique, N 20 /
+40 / 80 / 160, OF Co 0.2 / 0.5 / 0.8 / 0.95 / 1, np1 and np8), both rows (`onePlane` and `pieces`),
+the new setting (cubic, relative 1e-12, grazingCut openfoam). Clauses for `onePlane` at OF Co <= 0.95
+and `pieces` at every Co: L1(alpha_f) < 1e-12, Linf(alpha_f) < 1e-10, E_shape < 1e-15, min alpha >
+-1e-12, limiter volume < 1e-12 of a cell, np8 = np1 to 1e-10. `onePlane` at OF Co 1 on the normal arm
+is an open measurement (it failed before; reported whether it changed, not repaired). A clause that
+passed before and fails now stops the work: the first failing case is reported with its log excerpt
+and Stage B does not start.
+
+### Stage B: an open statement
+
+Measurement, no prediction; the comparison is error against wall clock at equal ranks and Co.
