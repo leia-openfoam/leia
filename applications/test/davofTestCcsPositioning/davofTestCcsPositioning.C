@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
         const scalar tolRel = (arm == 1) ? 1e-12 : 1e-14;
         for (const scalar alpha : alphas)
         {
-            std::vector<double> errs, errsW;
+            std::vector<double> errs, errsW, errs4;
             label nDump = 0;
             label nFail = 0;
             label nExit[5] = {0, 0, 0, 0, 0};
@@ -178,6 +178,7 @@ int main(int argc, char *argv[])
                     errs.push_back(err);
                     errsW.push_back(errW);
                     if (rec.fullRel >= 0) fullRels.push_back(rec.fullRel);
+                    if (rec.exitCode == 4) errs4.push_back(err);
 
                     // the located pre-existing defect: 20 gross failures of the
                     // OLD setting at alpha = 1e-2, dumped with the iteration history
@@ -265,6 +266,15 @@ int main(int argc, char *argv[])
             for (double e : errsW) { if (e > 1e-10) ++overW; }
             size_t gross = 0;
             for (double e : errs) { if (e > 1e-3) ++gross; }
+            if (!errs4.empty())
+            {
+                std::sort(errs4.begin(), errs4.end());
+                size_t small = 0;
+                for (double e : errs4) if (e < 1e-6) ++small;
+                Info<< "EXIT4," << tag << "," << (arm ? "new" : "old") << "," << alpha
+                    << ",n " << errs4.size() << ",below1e-6 " << small
+                    << ",median err " << errs4[errs4.size()/2] << ",max err " << errs4.back() << nl;
+            }
             Info<< "RESULT," << tag << "," << (arm ? "new" : "old") << ","
                 << alpha << "," << m << "," << errs.back() << ","
                 << errs[m/2] << "," << sum/m << "," << over << ","

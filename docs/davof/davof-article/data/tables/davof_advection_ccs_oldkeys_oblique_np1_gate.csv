@@ -1,0 +1,3 @@
+row,arm,N,Co,L1_alphaf_max,Linf_alphaf_max,L1_n_max,status,gate
+davof-planeSurf-ringArea,oblique,160,0.95,1.0371383876372211e-12,8.052138047043994e-11,5.825789901707636e-13,completed,FAIL
+davof-planeSurf-ringArea,oblique,160,1,1.8009564213641129e-12,1.711490948963501e-10,1.3104572273470314e-12,completed,FAIL
