@@ -7863,3 +7863,10 @@ first-order fade is accepted, and its derivation is tested; (3) repair 3 first.
    default; `footPointTaylor` stays available and is not used (negative log).
 6. **The Newton step (N1): CONFIRMED** on the signed-distance input: newton equals distance to three
    digits in every shell. Its test on q != 1 belongs to step A.
+7. **No case-specific parameters (the supervisor, 2026-11-14).** The fixed fade width L = 0.0625 of
+   aStatic2DfixedWidth was a TEST value, tied to R = 0.15 (2L < R) and to the 0.1 distance to the
+   top wall; it is not a setting. Rule: a method setting is dimensionless in mesh units with one
+   default for every case, or derived from local fields. Consequences in the plan: row 11, rule 10,
+   step A0.4 (the parameter audit, before step A), step D (beta gets a rule from local quantities).
+   Known violations: `SDPLS_W1 0.05`, `SDPLS_W2 0.15` (physical mollifier widths); the unset beta;
+   `epsilonModel fixed` (legacy option).

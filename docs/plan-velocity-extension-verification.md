@@ -20,6 +20,7 @@ taken; nothing of sections 4 to 10 is implemented yet. Record: STATUS.md 11.29.
 | 8 | the target range of q | not yet decided; the supervisor asked for more material: section 4b and the deck's q stack |
 | 9 | start | step 0 and step A0 start on Lichtenberg |
 | 10 | the goal (supervisor, 2026-11-12, third round) | an ACCURATE, RESOLVED solver first, adaptive; interFoam is no reference anywhere in this plan. Every gate is judged against exact solutions and observed orders; the method must keep its accuracy on locally refined meshes |
+| 11 | parameters (supervisor, 2026-11-14) | NO case-specific parameters. A method setting is a dimensionless number in mesh units (cells, CFL) with ONE default for every case, or it is derived from local fields (q, curvature, normal strain rate, h). A physical length, time or rate chosen for one case is not allowed (rule 10 of section 3, step A0.4) |
 
 ---
 
@@ -132,6 +133,12 @@ are measured again from the bottom.
    spurious current and the pressure jump.
 8. **Everything runs on Lichtenberg**; the laptop builds and runs unit tests only if the supervisor
    allows it (current rule: no runs on the laptop).
+10. **No case-specific parameters** (row 11). Every gate runs every case of its ladder with the SAME
+   method settings; the per-case `.parameter` layer of this line holds problem data only (geometry,
+   velocity field, material properties, N, end time, CFL). A measurement window (for example the
+   band of fixed physical width of rule 7) is a metric, not a method setting, and may use the
+   geometry of the case. A tolerance or a safety cap is allowed only if the gate shows that it does
+   not bind (a counter in the log), and it has one value for all cases.
 9. **A bug found is a result.** It is recorded in STATUS.md and in the knowledge base the same day,
    and every number it touched is re-measured.
 
@@ -215,6 +222,23 @@ Each repair is an inert-by-default change, gated by bit identity where it claims
 
 The Eulerian transport (`eulerianAdvection`, sub-problem 0) is NOT changed in A0; `Sp` against
 `SuSp` for the material term is an arm of sub-problem B.
+
+## 4c. Step A0.4: the parameter audit (row 11, 2026-11-14), before step A
+
+No runs. Every method setting of this line goes into one of three classes:
+(i) dimensionless in mesh units with one default (allowed, but the default needs a measurement
+that is not tied to one case); (ii) derived from local fields (allowed); (iii) a physical scale or a
+per-case value (removed or replaced by (i) or (ii) before the setting is used again).
+
+Known members of (iii): the source mollifier widths `SDPLS_W1 0.05`, `SDPLS_W2 0.15` (physical
+lengths, the preprint's values for R0 = 0.3); `anisotropicDiffusion epsilonModel fixed` (a physical
+epsilon; the default `cellSize` is class i); the source rate beta of the model (a rate in 1/s, not
+yet set: step D must give it a rule); the fixed fade width of `aStatic2DfixedWidth` (L = 0.0625, a
+test value tied to R = 0.15, never a setting). Class (i) defaults that need their measurement or
+their does-not-bind counter: `nLayers 3`, `maxScale 5`, `cpTol 0.1`, `cpMaxDist 1.5`,
+`cpHaloReach 1.5`, the projectionBlend `w1 1.5`, `w2 4` (in cells), pseudoTime `nIterations 10` x
+`deltaTau 0.2`. Output: a table in this section, and a gate check that fails when a method token
+differs between the cases of one study.
 
 ## 5. Sub-problem A: the extension operator, static
 
@@ -308,6 +332,15 @@ of STATUS 11.27 (`cases/2DstaticCircle`, `config/staticSource/`, `static_source_
 control), with the one-sided q of STATUS 11.26 ported to the Eulerian source, and with $q$ from
 $\hat d$. Prediction: the one-sided q follows the logistic law at order 1 or better and does not
 grow the grid-scale mode; the centred q reproduces the growth at $G(0)$ of STATUS 11.27.
+
+**The rate beta has no case-specific value (row 11).** The source vanishes on the zero set, so in
+the continuum beta does not move the interface; it is a numerical parameter, and it gets a rule from
+local quantities with one dimensionless constant c for all cases. Candidates, each a pre-registered
+arm: beta = c |a| with the normal strain rate a = n . grad(u) n (the cause of D_t q = -a q);
+beta dt = c (a relaxation per step, which changes the discrete problem with dt and must be shown to
+converge); beta = c |u|/h. The gate: the interface metrics converge at the same order for c over one
+decade, and c is then fixed once for every case. The band where the source acts is in cells or
+topological, never the physical mollifier widths of the SDPLS line.
 
 **D2, the source with the oracle extension**, on the cases of B with $\phi_0 = c\,d$ or $d\,g$: the
 source must bring $q$ to 1 at the rate of the law without moving the zero set beyond the transport
