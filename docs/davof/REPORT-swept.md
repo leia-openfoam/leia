@@ -7019,3 +7019,54 @@ of plane clips, volume after the cell clip and after the PLIC clip, the sum per 
 denominator, the unscaled and scaled liquid volume and alpha_f. Runs: shear2D N 256 Co 0.2 new keys to END_TIME 3.03 (step 5040 at
 t = 3.0288); shear2D N 128 Co 0.5 old keys to END_TIME 5.0 (step 1660 at t = 4.989); key-off identity on shear2D N 64 Co 0.5. Budget: 2 builds,
 6 solve jobs.
+
+
+#### Pieces path: the wrong piece, results (2026-11-15)
+
+Commits: 4cfb49ed (key `sweptPieceDump`, settings `recommendedPieceDump<step>`, configs); test app `applications/test/davofTestPieceClip`.
+Jobs: library build 56370984; key-off identity 56371182 (recommended) and 56371183 (sweptPieceDump on, never fires); N 256 new keys
+56371184 (5042 steps); N 128 Co 0.5 old keys 56371185 (1664 steps); standalone test build and run 56372052 (an earlier compile of the test
+app, 56371981, failed on a missing include path). Dump files: /work/scratch/tm83tomy/davof/agents/diag2/pdump_new_N256_step5040.txt and
+pdump_old_N128_co05.txt (the logs of the two studies hold the same text; the trigger fired once in each run).
+Key off identical: shear2D N 64 Co 0.5, `system/` byte-identical to Stage B; E_shape 1.46401538395666859e-04, min alpha
+-7.4593109471776664e-16, 1 - max alpha -4.8849813083506888e-15 with the key off and on.
+
+Face 3601 (rank 7, cell 1878, step 5040, new keys): swept volume vTotal 3.5557316851152759e-11, phi dt -3.555731685114324e-11, sum |V_tet|
+3.5557316851152752e-11 (ratio 0.99999999999999978); ring of 6 cells, two kept by the pre-test (donor 1878 and 1879). The donor 1878 has
+alpha^n 8.1987795302946423e-15, no surface, and a wisp plane copied from the neighbour 1815 (alpha^n 0.99840421453993755): unit normal
+(-1, 0, -1.1494902637855374e-12), x0 (0.51562500000000167, 0, 0.11523437500000225), which lies on the +x face of the cell (extent of the
+cell vertices along n relative to x0: [-5.7976363451580853e-16, 0.0039062500000039101]). The neighbour's own plane: n (-1, 0,
+-1.1494902637855374e-12), x0 (0.51172498353695339, 0, 0.111328125), extent [-0.0039000164630488524, 6.2335369556378912e-06], x0 inside.
+Tets: 12 per cell (apex = face centre, 3F of the 4F triangles); all 12 have |V_tet| between 2.5e-12 and 3.4e-12 and after the six cell
+planes |V| <= |V_tet|; after the PLIC plane eleven give 0 or below 1.2e-17 and TET 6 gives -1.1001853062195708e-05 (V_tet
+3.4015793696028454e-12, V after the cell planes 2.9455011076077115e-12): ratio 3.234e+06 of the tet, 3.09e+05 of the swept volume. Piece of
+cell 1878 -1.1001853062207453e-05; piece of cell 1879 0; threeV -3.300555918662236e-05, unscaled liquid -1.1001853062207453e-05
+(vLiq/vTotal -309411.8); sweptScaleToPhi off (factor 1, |phi| dt / vTotal = 1.00000000000000); coverage / sumMagT 1.0000000000000004;
+alpha_f 0 (aPreWet = 0).
+Face 12790 (1 rank, cell 6420 donor, step 1660, old keys, N 128 Co 0.5): vTotal 1.0354672139431214e-08, sum |V_tet| ratio 1.0000000000000002;
+the ring cell 6548 (not the donor; alpha^n 1.2203112450910325e-15, no surface, wisp plane n (1.0796185446569768e-12, 0, 1), x0
+(0.16015624999999578, 0, 0.39843749999999623) on the cell's lower face, extent [-4.425016563362287e-16, 0.0078125000000079919]) gives after
+the cell planes 4.0e-12 to 2.8e-10 per tet and after the PLIC plane TET 5: 1.9317707577216788e-06, TET 10: 3.4080112939848249e-06, TET 13:
+1.9317707577216788e-06 (ratios 2228, 4098, 2228 of the tet); piece 7.2715528094225782e-06, unscaled liquid 7.27e-06 = 702 vTotal; the donor
+piece is 0; scale off; coverage / sumMagT 1.0000000000000004.
+
+Verdicts by the numbers.
+- P1 FALSIFIED: TET 6 of cell 1878 (N 256) and TETS 5, 10, 13 of cell 6548 (N 128) exceed their tets by factors 3.2e+06 and 2.2e+03 to 4.1e+03
+  after the PLIC clip (and only there: the cell planes never exceed the tet).
+- P2 HOLDS: sum |V_tet| / vTotal = 0.99999999999999978 (N 256) and 1.0000000000000002 (N 128); the tets are not larger than the swept volume.
+- P3 FALSIFIED: the factors applied are |phi| dt / vTotal (not applied, sweptScaleToPhi off; value 1), coverage / sumMagT 1.0000000000000004,
+  alpha_f numerator 0; the excess is in the raw piece sum.
+- P4 HOLDS: with the old keys the same quantity: the volume of one signed tet after the PLIC half-space clip (`clipAll(plic)`), in an empty
+  wisp cell (alpha^n 1e-15, no surface) whose wisp plane lies on a cell face with its normal within 1.1e-12 of the face normal.
+Named quantity: V after the PLIC half-space clip of one signed tet, davofSweptPieces.H line 609 (`clipAll(plic)`, in
+`sweptPieceExactVolume`, line 403; the clip lambda `clipAll` at 528, the cap construction from the crossing points at 553 to 600, the
+volume sum `v3` after 620). The wisp plane comes from the wisp-surface rule of davofSweptAdvectionSurfaces.C (`sweptWispSurface`, the
+neighbour's normal repositioned by alpha^n of the wisp).
+Standalone reproduction (`davofTestPieceClip`, job 56372052; one tet, the six cell planes with and without the axis-aligned form, the PLIC
+half-space, the numbers of the dump): `sweptPieceExactVolume` returns -1.1001853062195708e-05 (N 256) and 1.9317707577216788e-06 (N 128),
+bit for bit the dump values, with and without `setAxis`; the exact volume of the same ten half-spaces in long double (facets method, no
+shared code) is 0 after the PLIC plane (V after the cell planes 2.9455011076062789e-12 and 4.0039914299020777e-12, the code's cell-plane
+result 2.9455011076077115e-12 and 4.0039914299033936e-12); the exact tet volumes 3.4015793696028458e-12 and 8.6712912978152509e-10 equal
+the code's.
+Not determined: why the cap built from the crossing points of the PLIC clip is wrong when the plane lies within 1e-15 of a cell face
+(not instrumented: no fix, no tolerance changed).

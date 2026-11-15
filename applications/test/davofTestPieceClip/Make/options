@@ -1,0 +1,9 @@
+/* OpenFOAM v2606 + the header davofSweptPieces.H only (diag2 follow-up, 2026-11-15). */
+EXE_INC = \
+    -std=c++17 \
+    -I../../../src/davof/lnInclude \
+    -I../../../src/leiaLevelSet/lnInclude
+
+EXE_LIBS = \
+    -L$(FOAM_USER_LIBBIN) \
+    -lleiaDavof
