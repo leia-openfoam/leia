@@ -338,6 +338,7 @@ ENRIGHT_SETTINGS = OrderedDict([
     ("recommendedPieceDump5035", ("signedTets", "false", "scale",   "normalAndAlpha",     "false")),
     ("recommendedPieceDump1655", ("signedTets", "false", "scale",   "normalAndAlpha",     "false")),
     ("recommendedPieceDump100000", ("signedTets", "false", "scale", "normalAndAlpha",     "false")),
+    ("recommendedPieceDump1", ("signedTets", "false", "scale", "normalAndAlpha", "false")),
 ])
 # the print-only key each diag2 setting appends to TPF_ENRIGHT_KEYS
 DIAG_KEYS = {"recommendedProfile": "phaseProfile", "recommendedDump": "alphaDump"}
@@ -361,6 +362,7 @@ ENRIGHT_LABELS = OrderedDict([
     ("recommendedPieceDump5035", "signedTets + scale + normalAndAlpha, piece dump"),
     ("recommendedPieceDump1655", "signedTets + scale + normalAndAlpha, piece dump"),
     ("recommendedPieceDump100000", "signedTets + scale + normalAndAlpha, piece dump (never fires)"),
+    ("recommendedPieceDump1", "signedTets + scale + normalAndAlpha, piece dump from step 1"),
 ])
 
 

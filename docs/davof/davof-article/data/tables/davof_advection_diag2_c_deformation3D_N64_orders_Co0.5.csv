@@ -1,0 +1,9 @@
+row,metric,N=64,p_ls,p_pairwise
+davof-planeSurf-ringArea,L1_alphaf_end,2.41e-01,--,
+davof-planeSurf-ringArea,L1_alphaf_max,4.59e-01,--,
+davof-planeSurf-ringArea,L1_n_end,6.16e-01,--,
+davof-planeSurf-ringArea,L1_x_end,5.60e-02,--,
+davof-planeSurf-ringArea,Eshape_end,3.88e-03,--,
+davof-planeSurf-ringArea,Ebound_end,2.61e-08,,
+davof-planeSurf-ringArea,minAlpha_run,-9.7e-08,,
+davof-planeSurf-ringArea,status,ok,,
