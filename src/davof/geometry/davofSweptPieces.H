@@ -431,7 +431,9 @@ inline scalar sweptPieceExactVolume
     // the plane: kept, and no crossing through it (the coplanar rule, as the
     // closure's 1e-12 L: without it a swept face lying in a cell plane at
     // round-off distance made a spurious cap of the face's size, measured
-    // 2026-11-07 on the oblique plane N 40, 0.99 V_c against the true 0.95)
+    // 2026-11-07 on the oblique plane N 40, 0.99 V_c against the true 0.95); the
+    // distance of such a vertex is set to zero, so that the classification and the
+    // crossing parameter s0/(s0 - s1) are those of the same plane (2026-11-15)
     auto clipOne = []
     (
         const poly& q, const halfSpace& hs, poly& out,
@@ -443,8 +445,13 @@ inline scalar sweptPieceExactVolume
         {
             const point& p0 = q.p[j];
             const point& p1 = q.p[(j + 1) % q.n];
-            const scalar s0 = hs.dist(p0), s1 = hs.dist(p1);
-            const bool in0 = (s0 <= tol), in1 = (s1 <= tol);
+            scalar s0 = hs.dist(p0), s1 = hs.dist(p1);
+            // a vertex within tol of the plane is ON the plane: its distance is zero for the
+            // classification and for the crossing (2026-11-15, diag2: the crossing of a vertex
+            // classified inside at s <= tol but computed for s = 0 was extrapolated 1e3 edge lengths)
+            if (mag(s0) <= tol) s0 = 0;
+            if (mag(s1) <= tol) s1 = 0;
+            const bool in0 = (s0 <= 0), in1 = (s1 <= 0);
 #ifdef DAVOF_CLIPONE_TRACE
             // diag2 follow-up (compiled only into davofTestPieceClip): every crossing edge of the PLIC clip
             if (in0 != in1 && davofProf::clipTag == 99)
