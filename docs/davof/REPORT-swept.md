@@ -7141,3 +7141,20 @@ E_shape and wall clock against Stage B (new keys, before the change) and plicRDF
 | shear2D N 128 Co 0.5, 1 rank | 1.91646e-05 | 433 | aborted at 1789 | 267 | 2.24e-05 | 31 |
 | shear2D N 256 Co 0.2, 8 ranks | 2.14342e-06 | 1010 | 2.08169e-06 | 1033 | 2.49e-06 | 87 |
 | deformation3D N 128 Co 0.2, 64 ranks | not completed (4246 of 4800 steps, 25200 s) | 25200 (limit) | aborted at 4150 | 20367 | 6.89e-04 | 848 |
+
+
+### Pieces path: other clip sites, np1/np8, recompute (diag2, follow-up, 2026-11-15)
+
+PRE-REGISTERED (verbatim from the brief; the entries of A and B are registered at the time of their analysis, no run of either task
+preceded them; the B1 numbers of the existing logs were read before this entry was written, which is stated here).
+- Task A (other clip sites): PA1 "no further site produces a parameter outside [0, 1]" (falsifier: one that does). Gate after any change:
+  the two dumped tets still 3.5e-28 and 0; plane gate pieces rows 80 of 80; if the one-plane clip was changed, its plane-gate rows as in
+  Stage B.
+- Task B (np1/np8, plane oblique N 160 Co 1, pieces): PB1 the np8 run is the one away from the exact state and np1 is exact to the gate
+  thresholds; PB2 every differing face lies within one vertex ring of a processor patch; PB3 the faulty faces have fewer ring cells in
+  np8 than the matched faces in np1; PB4 with the simple decomposition the faulty faces move to the new processor boundaries.
+  Falsifiers: the opposite observation in each.
+- Task C (recompute the pieces rows, exactly the Stage B pieces matrix with the code of 112c284a, deformation3D N 128 and shear3D N 128
+  with a time limit of 30 h): PC1 27 of 27 complete; PC2 the extremes of alpha before the conservative bounding stay within [-1e-3, 1 + 1e-3]
+  in every case; PC3 E_shape of each case within a factor 1.5 of plicRDF. Falsifiers: an abort; a larger excursion (one dump rerun per
+  such case, at most 3); a ratio above 1.5 (report only). Stored plicRDF and isoAlpha values are reused.
