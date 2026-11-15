@@ -119,6 +119,8 @@ SourceFiles
 #include "davofSimplexGeometry.H"   // davof::triNegativePolygon (the wet polygon of a cut triangle)
 #include "IOstreams.H"
 #include "Pstream.H"
+#include <iostream>
+#include <iomanip>
 #include "davofPhaseProf.H"         // diag2 (print-only operation counters of sweptPieceExactVolume)
 
 namespace Foam
@@ -443,6 +445,18 @@ inline scalar sweptPieceExactVolume
             const point& p1 = q.p[(j + 1) % q.n];
             const scalar s0 = hs.dist(p0), s1 = hs.dist(p1);
             const bool in0 = (s0 <= tol), in1 = (s1 <= tol);
+#ifdef DAVOF_CLIPONE_TRACE
+            // diag2 follow-up (compiled only into davofTestPieceClip): every crossing edge of the PLIC clip
+            if (in0 != in1 && davofProf::clipTag == 99)
+            {
+                const double t = double(s0/(s0 - s1));
+                std::cerr << std::setprecision(17) << "      crossing edge: s0 " << s0 << " s1 " << s1 << " tol " << tol
+                    << " in0 " << in0 << " in1 " << in1 << " parameter s0/(s0-s1) " << t
+                    << " x (" << (p0 + (p1 - p0)*(s0/(s0 - s1))).x() << " " << (p0 + (p1 - p0)*(s0/(s0 - s1))).y() << " "
+                    << (p0 + (p1 - p0)*(s0/(s0 - s1))).z() << ") |p1 - p0| " << mag(p1 - p0)
+                    << " |x - p0|/|p1 - p0| " << mag((p1 - p0)*(s0/(s0 - s1)))/max(mag(p1 - p0), VSMALL) << std::endl;
+            }
+#endif
             if (in0 && out.n < 24) out.p[out.n++] = p0;
             if (in0 != in1)
             {
@@ -473,6 +487,7 @@ inline scalar sweptPieceExactVolume
         const scalar tolL = 1e-12*L;
         // the triangle's own part inside the cell (the coverage) and, after
         // the PLIC clip, the wetted part of a pre-image triangle
+        davofProf::clipTag = -1;
         if (coverage || covPre || aPre)
         {
             poly b; b.p[0] = t[0]; b.p[1] = t[1]; b.p[2] = t[2]; b.n = 3;
@@ -601,8 +616,10 @@ inline scalar sweptPieceExactVolume
         };
         for (label i = 0; i < nc && anyLeft; ++i)
         {
+            davofProf::clipTag = i;
             clipAll(cellPlanes[i]);
         }
+        davofProf::clipTag = 99;
         const scalar vCell = (dbg && anyLeft) ? volNow() : 0;
         if (wetPlane && anyLeft)
         {

@@ -107,6 +107,7 @@ static const char* const countName[nCount] =
 inline bool pieceDump = false;
 inline bool dumping = false;
 inline int dumpCell = -1;
+inline int clipTag = -1;                // the plane being clipped (99 = the PLIC plane); trace only
 inline int nPieceDumps = 0;
 inline int pieceDumpStep = 0;
 inline bool on = false;                 // phaseProfile

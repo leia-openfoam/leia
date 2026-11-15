@@ -1,6 +1,6 @@
 /* OpenFOAM v2606 + the header davofSweptPieces.H only (diag2 follow-up, 2026-11-15). */
 EXE_INC = \
-    -std=c++17 \
+    -std=c++17 -DDAVOF_CLIPONE_TRACE \
     -I../../../src/davof/lnInclude \
     -I../../../src/leiaLevelSet/lnInclude
 

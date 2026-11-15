@@ -7070,3 +7070,34 @@ result 2.9455011076077115e-12 and 4.0039914299033936e-12); the exact tet volumes
 the code's.
 Not determined: why the cap built from the crossing points of the PLIC clip is wrong when the plane lies within 1e-15 of a cell face
 (not instrumented: no fix, no tolerance changed).
+
+
+### Pieces path: the coplanar rule made consistent (diag2, follow-up, 2026-11-15)
+
+Hypothesis (Tomislav's reading of the code): clipOne (davofSweptPieces.H) classifies a vertex as inside when s <= tol but computes the
+crossing for the plane s = 0, x = p0 + (p1 - p0) s0/(s0 - s1); when both distances are positive and straddle tol, the parameter lies far
+outside [0, 1] and the crossing is extrapolated 1e3 to 1e6 edge lengths away.
+
+STEP 1 result (before any change; standalone `davofTestPieceClip` with a compile-time trace in clipOne, no change of behaviour): the PLIC
+clip of the two dumped tets has 8 crossing edges per tet. N 256 cell 1878 tet 6 (tol 3.909e-15): parameters 1, -1365.59, 1, -2.0e-12,
+1366.59, -2.0e-12, 1366.59, -1365.59, with s0/s1 = 3.9076e-15 / 3.9104e-15 on the large ones (edges 1.36e-04 and 3.77e-03; the point x lies
+5.15 and 0.183 away from the tet of size 4e-3). N 128 cell 6548 tet 5 (tol 7.827e-15): parameters -8.9e-12, 1, 1, -231.748, -8.9e-12,
+232.948, -231.948, 232.748, with s0/s1 = 7.8142e-15 / 7.8479e-15 on the large ones (edges 1.6e-04 and 7.2e-04, x at 0.034 and 0.17). Parameters
+outside [0, 1] occur in all 8 + 8 edges (the small ones by 1e-12 to 2e-12); the reading is confirmed. The trace file is
+/work/scratch/tm83tomy/davof/agents/diag2/trace_step1.txt.
+
+PRE-REGISTERED before step 2 (the change):
+- G1 (standalone, after the change): both dumped tets return |V after the PLIC clip - exact| <= 1e-10 |V_tet|.
+- G2: the pieces rows (setting recommended) of the plane gate, exactly the cases and thresholds of Stage B, pass in the same number as in
+  Stage B.
+- G3: shear2D N 64 Co 0.5 (1 rank, new keys): E_shape differs from 1.46401538395666859e-04 by less than 1e-6 relative.
+- P5: shear2D N 128 Co 0.5 (new keys, 1 rank), shear2D N 128 Co 0.2 (new keys, 1 rank) and deformation3D N 128 Co 0.2 (new keys, 64 ranks)
+  complete. Falsifier: any abort.
+- P6: in these three and in shear2D N 256 Co 0.2 (new keys, 8 ranks) the run extremes of alpha before the conservative bounding stay within
+  [-1e-3, 1 + 1e-3]. Falsifier: any larger excursion (report step and value; rerun that case once with sweptPieceDump to dump the face).
+
+THE CHANGE (unconditional on this branch, in clipOne only): a vertex within tol of the plane is ON the plane, its distance is set to zero
+before the classification and before the crossing: `if (mag(s0) <= tol) s0 = 0; if (mag(s1) <= tol) s1 = 0; in0 = (s0 <= 0), in1 = (s1 <= 0)`;
+the rest unchanged; the coverage clips take the same change. Plane gate: the four studies of Stage B (planeTranslation3D normal / oblique,
+np 1 / 8, N 20 to 160, OF Co 0.2 to 1) with the pieces row only (`recommended`), the thresholds of kiss_an.py `ccsplane`. Budget: 2 builds
+(library, test app), the gate pieces rows, 5 solve jobs and at most 2 dump reruns.
