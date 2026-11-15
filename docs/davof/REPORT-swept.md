@@ -7158,3 +7158,90 @@ preceded them; the B1 numbers of the existing logs were read before this entry w
   with a time limit of 30 h): PC1 27 of 27 complete; PC2 the extremes of alpha before the conservative bounding stay within [-1e-3, 1 + 1e-3]
   in every case; PC3 E_shape of each case within a factor 1.5 of plicRDF. Falsifiers: an abort; a larger excursion (one dump rerun per
   such case, at most 3); a ratio above 1.5 (report only). Stored plicRDF and isoAlpha values are reused.
+
+
+#### Results of tasks A, B, C (2026-11-15)
+
+Code of all runs: 112c284a (clipOne, a vertex within tol of the plane is on the plane); tasks A and B changed no code.
+
+TASK A, other clip sites (by reading; PA1 HOLDS: no further site produces a parameter outside [0, 1]).
+| site | tolerance | classification | level of the crossing | parameter in [0, 1] |
+|---|---|---|---|---|
+| clipOne, davofSweptPieces.H:446-470 (coverage clips 505, 512; tet clips 562) | tolL = 1e-12 L | s <= 0 after |s| <= tol set to 0 | s = 0 | yes (fixed by 112c284a) |
+| clipWith / planeDistances, davofSweptPieces.H:206-262 (the area clips 1126-1156; the closure path 735, 829; clipByHalfSpace 268) | none | s <= 0 | s = 0 | yes (s_i <= 0 < s_j or s_j <= 0 < s_i) |
+| sweptPieceVolume closure path, davofSweptPieces.H:725-840 | 1e-12 L (`s3max`, `inPlane`) decide a skip or a contact, no crossing | s <= 0 in clipWith | s = 0 | yes (through clipWith) |
+| sweptPieceArea coplanar rule, davofSweptPieces.H:1087-1160 | 1e-10 L (coplanar test) decides keep or drop | s <= 0 in clipWith | s = 0 | yes (through clipWith) |
+| sweptPieceOnePlane (sweptClip onePlane), davofSweptPieces.H:1014-1062 | 1e-10 L (rule a: a triangle lying in the plane, no crossing) | s <= 0 in triNegativePolygon | s = 0 | yes |
+| triNegativePolygon / edgeCrossing, leiaLevelSet/davof/davofSimplexGeometry.H:92-135 (callers Flux.C:642, 1566, 2478; Surfaces.C:3033; davofInit.C:207; davofState.C:316, 476; davofRegeneration.H:167, raw distances) | none | phi <= 0 | phi = 0 | yes |
+| pre-test, davofSweptAdvectionFlux.C ~1100-1135 | 1e-10 L, 0 | decision only (skip a ring cell) | none computed | not a crossing site |
+| cutFacePLIC (OpenFOAM geometricVoF cellCuts/cutFace/cutFacePLIC.C:69-74, cutFace.C:87-88; used by davofCutCellPLIC.C:79 and Surfaces.C clipBy 2755) | SMALL: |value| < SMALL set to 0 before the classification | strict > 0 / < 0 | value = 0 between strictly opposite signs | yes (the same rule as 112c284a) |
+| CCS Hermite start s = f0/(f0 - f1), davofCcsPositioning.H:112 | none | accepted only for 0 < s < 1 | the cubic root | yes (by the acceptance test) |
+| capMoments, kromerBotheVolumeRule.C:640 (test code) | none | f < 0 | f = 0 | yes |
+| face crossings of the Kromer-Bothe rule, davofKromerBothe.H:690-725 | epsV = 1e-14 max|f| (adds a crossing at the vertex) | quadratic roots along the edge | roots of the quadratic from segmentRootsFromValues | not the two-distance pattern; not examined further |
+No site is marked "no": A2 (standalone tests at +-0.999 tol and +-1.001 tol) and A3 (further changes) are void; no build and no gate rerun followed.
+
+TASK B, np 1 against np 8, plane oblique N 160 Co 1, pieces (the existing logs of the gate rerun with 112c284a, jobs 56372734 np 1 and
+56372756 np 8; postProcessing/areaFractionError per step). The "difference of 7.0e-3" is the identity clause of kiss_an.py (errors
+compared relatively when above 1e-12): L1(alpha_f) at the last step is 1.0755e-12 (np 1) and 1.0680e-12 (np 8), relative difference
+7.04e-03; both are at the round-off level and 5 times below the gate threshold 5e-12. Per step, both runs: L1(alpha_f) <= 1.0755e-12 and
+Linf <= 4.0270e-11 at every step (the gate threshold 5e-10; no face above 1e-10 in either run); |L1(np1) - L1(np8)| <= 8.5e-15 per step;
+|Linf(np1) - Linf(np8)| up to 1.0e-11 (step 27: 3.70e-11 against 2.67e-11; first step above 1e-12: step 4, 1.35e-12), the same value at
+the last step (4.0270342616111066e-11); E_shape 4.894e-23 against 4.932e-23; E_mass 1.008e-09 in both; the numbers of faces and of
+interface cells per step equal. The same reading applies to the Stage B pairs flagged DIFFERS (L1(alpha_f) 4.1e-3, 8.6e-3, 3.0e-3 relative at
+1e-12 to 1.8e-12).
+PB1 FALSIFIED (both runs within the gate thresholds of the exact state; np8 has the smaller L1; neither is away from the exact state);
+PB2, PB3, PB4 FALSIFIED / not testable: no face with |alpha_f - exact| > 1e-10 exists in either run (Linf maximum 4.03e-11), so there is
+no faulty face to dump or to follow into a second decomposition; B2 and B3 were not run (no build, no solve job). No defect in the flux
+or the ring code is located; the difference lies in the identity clause of the post-processing (a relative comparison of round-off-level
+errors). Decision: C followed in the same turn.
+
+TASK C, the pieces rows recomputed (nine studies diag2_c_*, setting recommended, new CCS keys, the ranks of Stage B; deformation3D N 128
+and shear3D N 128 with a limit of 30 h on the long partition). Jobs: shear2D N 64 56405672 56405651 56405650 (Co 0.2, 0.5, 0.95), N 128
+56405642 56405644 56405643, N 256 56405639 56405640 56405641; shear3D N 32 56405688 56405689 56405690, N 64 56405662 56405637 56405638,
+N 128 56405800 56405801 56405799; deformation3D N 32 56405653 56405652 56405682, N 64 56405629 56405630 56405631, N 128 56405671 56405670
+56405669; PC2 dump reruns (shear3D N 32, 64, 128 at Co 0.95) 56409888 56409921 56410247.
+PC1 HOLDS: 27 of 27 complete, no abort.
+PC2 FALSIFIED in 5 shear3D cases (run extremes of alpha before the conservative bounding outside [-1e-3, 1 + 1e-3]): N 32 Co 0.5 [-1.612e-03,
++1.824e-03]; N 64 Co 0.5 [-1.085e-03, +1.353e-03]; N 32 Co 0.95 [-5.941e-03, +6.378e-03]; N 64 Co 0.95 [-3.299e-03, +3.930e-03]; N 128 Co 0.95
+[-3.099e-03, +2.899e-03]. The three dump reruns (the largest, Co 0.95 at N 32, 64, 128; the trigger |unscaled liquid| > 10 x swept volume and
+> 1e-3 V_donor from step 1) fired on no face: no face has an unscaled liquid volume above 10 times its swept volume in these runs. The
+other 22 cases stay within [-1e-3, 1 + 1e-3] (deformation3D, shear2D: [-1e-9, 1e-9] for shear2D; deformation3D N 32 Co 0.95 [-1.10e-04, +5.83e-05]).
+PC3: E_shape of 26 cases within 1.5 times plicRDF; shear3D N 128 Co 0.2 is 1.503 times (4.970284e-04 against 3.307001e-04), reported only.
+The E_shape of the pieces row equals the old-keys standing value (shear2D N 128 Co 0.5 1.91646e-05 against 1.90237e-05 old is the one
+difference in the first digits; deformation3D N 128 Co 0.2 7.53e-04 = 7.52588e-04; shear3D N 128 Co 0.2 4.970284e-04 = 4.9702836744e-04).
+The tables with all columns are /work/scratch/tm83tomy/davof/agents/diag2/stageC_tables.md (the generator workflow/scripts/davof_diag2/stageC_an.py).
+Pieces rows (E_shape; its ratio to the stored plicRDF; wall clock in s at the ranks shown and its ratio to plicRDF; alpha extremes before / after the conservative bounding, min | max - 1; E_mass in %):
+| family N (ranks) | Co | steps | E_shape | E/plicRDF | wall (s) | wall/plicRDF | min alpha before / after | max alpha - 1 before / after | E_mass (%) |
+|---|---|---|---|---|---|---|---|---|---|
+| shear2D 64 (1) | 0.2 | 3328 | 1.82e-04 | 0.58 | 284 | 21.8 | -9.86e-10 / -6.16e-13 | 2.05e-10 / 3.66e-14 | 6.3e-13 |
+| shear2D 128 (1) | 0.2 | 6656 | 2.39e-05 | 1.05 | 1242 | 20.4 | -8.71e-10 / -7.65e-13 | 9.48e-10 / 1.26e-13 | 1.5e-12 |
+| shear2D 256 (8) | 0.2 | 13312 | 2.14e-06 | 0.86 | 1224 | 14.1 | -9.97e-10 / -7.19e-13 | 9.88e-10 / 2.05e-13 | 6.3e-13 |
+| shear2D 64 (1) | 0.5 | 1331 | 1.48e-04 | 0.71 | 100 | 12.5 | -8.90e-10 / -2.40e-13 | 4.12e-10 / 5.22e-14 | 7.8e-14 |
+| shear2D 128 (1) | 0.5 | 2662 | 1.92e-05 | 0.85 | 524 | 16.9 | -4.01e-10 / -9.15e-13 | 5.45e-10 / 8.93e-14 | -2.2e-13 |
+| shear2D 256 (8) | 0.5 | 5325 | 2.68e-06 | 1.03 | 453 | 8.7 | -7.91e-10 / -5.57e-13 | 5.76e-10 / 1.79e-13 | -6.0e-13 |
+| shear2D 64 (1) | 0.95 | 699 | 8.95e-05 | 0.68 | 68 | 9.7 | -5.13e-10 / -3.38e-13 | 9.37e-14 / 9.37e-14 | 1.2e-13 |
+| shear2D 128 (1) | 0.95 | 1400 | 1.52e-05 | 0.74 | 275 | 13.8 | -7.69e-10 / -2.88e-13 | 8.98e-10 / 5.48e-14 | 9.7e-13 |
+| shear2D 256 (8) | 0.95 | 2800 | 3.01e-06 | 0.88 | 284 | 11.4 | -7.30e-10 / -1.45e-13 | 9.82e-10 / 3.76e-13 | 1.4e-12 |
+| shear3D 32 (1) | 0.2 | 720 | 6.16e-03 | 1.31 | 548 | 28.8 | -2.36e-04 / -1.06e-07 | 2.99e-04 / 5.43e-13 | 1.2e-10 |
+| shear3D 64 (8) | 0.2 | 1440 | 1.85e-03 | 1.38 | 2181 | 18.8 | -1.56e-04 / -6.59e-07 | 1.54e-04 / 1.58e-09 | -5.3e-10 |
+| shear3D 128 (64) | 0.2 | 2880 | 4.97e-04 | 1.50 | 8475 | 20.2 | -9.59e-05 / -6.39e-06 | 1.21e-04 / 3.12e-06 | -1.7e-10 |
+| shear3D 32 (1) | 0.5 | 288 | 6.01e-03 | 1.31 | 214 | 16.5 | -1.61e-03 / -6.40e-05 | 1.82e-03 / 5.89e-06 | -4.3e-06 |
+| shear3D 64 (8) | 0.5 | 576 | 1.80e-03 | 1.37 | 1134 | 24.1 | -1.09e-03 / -1.40e-04 | 1.35e-03 / 6.90e-06 | -1.6e-07 |
+| shear3D 128 (64) | 0.5 | 1152 | 4.80e-04 | 1.46 | 5982 | 31.2 | -8.56e-04 / -1.34e-04 | 6.73e-04 / 6.39e-05 | -1.0e-07 |
+| shear3D 32 (1) | 0.95 | 164 | 5.80e-03 | 1.30 | 135 | 22.5 | -5.94e-03 / -1.31e-04 | 6.38e-03 / 1.86e-04 | -1.1e-05 |
+| shear3D 64 (8) | 0.95 | 329 | 1.73e-03 | 1.35 | 531 | 18.3 | -3.30e-03 / -4.49e-04 | 3.93e-03 / 3.50e-04 | -2.2e-06 |
+| shear3D 128 (64) | 0.95 | 658 | 4.62e-04 | 1.41 | 1944 | 14.0 | -3.10e-03 / -5.94e-04 | 2.90e-03 / 3.18e-04 | -9.3e-07 |
+| deformation3D 32 (1) | 0.2 | 1200 | 9.65e-03 | 1.22 | 1926 | 52.1 | -1.04e-05 / -2.25e-10 | 5.99e-07 / 2.51e-12 | 2.0e-12 |
+| deformation3D 64 (8) | 0.2 | 2400 | 3.92e-03 | 1.28 | 3091 | 17.9 | -4.16e-07 / -1.88e-08 | 2.85e-07 / 2.86e-10 | 1.0e-12 |
+| deformation3D 128 (64) | 0.2 | 4800 | 7.53e-04 | 1.09 | 16684 | 19.7 | -7.72e-08 / -7.92e-09 | 7.49e-08 / 1.63e-09 | 2.2e-13 |
+| deformation3D 32 (1) | 0.5 | 480 | 9.31e-03 | 1.20 | 741 | 35.3 | -2.31e-05 / -8.93e-07 | 1.19e-05 / 1.00e-07 | 1.9e-12 |
+| deformation3D 64 (8) | 0.5 | 960 | 3.88e-03 | 1.30 | 1137 | 16.2 | -9.46e-06 / -9.71e-08 | 4.39e-06 / 6.29e-08 | 1.2e-12 |
+| deformation3D 128 (64) | 0.5 | 1920 | 7.35e-04 | 1.07 | 6569 | 18.8 | -1.22e-06 / -8.98e-08 | 1.17e-06 / 3.10e-08 | 5.8e-13 |
+| deformation3D 32 (1) | 0.95 | 249 | 9.39e-03 | 1.17 | 348 | 29.0 | -1.10e-04 / -2.17e-06 | 5.83e-05 / 8.68e-07 | -6.9e-13 |
+| deformation3D 64 (8) | 0.95 | 500 | 3.51e-03 | 1.13 | 665 | 16.2 | -3.23e-05 / -1.84e-06 | 3.17e-05 / 2.14e-06 | -1.6e-12 |
+| deformation3D 128 (64) | 0.95 | 1002 | 7.64e-04 | 1.04 | 3366 | 15.6 | -8.94e-06 / -6.55e-07 | 7.65e-06 / 6.30e-07 | -8.4e-13 |
+Orders over N of E_shape (least squares; pairwise): shear2D Co 0.2 3.20 (2.93, 3.48), Co 0.5 2.89 (2.95, 2.84), Co 0.95 2.45 (2.56, 2.34); shear3D 1.82
+(1.74, 1.90) at Co 0.2 and 0.5, 1.83 (1.74, 1.91) at Co 0.95; deformation3D 1.84 (1.30, 2.38), 1.83 (1.26, 2.40), 1.81 (1.42, 2.20). plicRDF: shear2D
+3.48, 3.17, 2.64; shear3D 1.92, 1.90, 1.88; deformation3D 1.76, 1.75, 1.72. L1 abs(n - n_e) and L1 (1 - n.n_e) with their orders are in the generated
+tables. Wall clock at equal ranks against Stage B (pieces, before the change): shear3D N 128 Co 0.2 8475 s (12959), deformation3D N 128 Co 0.95 3366 s (5101);
+the other Stage B pieces walls of completed cases are within the run-to-run spread of shared nodes.
