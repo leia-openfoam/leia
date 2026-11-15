@@ -7101,3 +7101,43 @@ before the classification and before the crossing: `if (mag(s0) <= tol) s0 = 0; 
 the rest unchanged; the coverage clips take the same change. Plane gate: the four studies of Stage B (planeTranslation3D normal / oblique,
 np 1 / 8, N 20 to 160, OF Co 0.2 to 1) with the pieces row only (`recommended`), the thresholds of kiss_an.py `ccsplane`. Budget: 2 builds
 (library, test app), the gate pieces rows, 5 solve jobs and at most 2 dump reruns.
+
+
+#### Pieces path: the coplanar rule made consistent, results (2026-11-15)
+
+Commits: f55af7fd (pre-registration, before the change), 112c284a (the change in `clipOne`). Jobs: library and test-app build with the
+change 56372395 (one job: Allwmake rc 0, test app compiled, G1 run); step-1 trace test 56372303 (earlier compile jobs 56372187 and
+56372282 failed on an `operator<<` of the trace line); G3 56372549; shear2D N 128 56372561 (Co 0.2) and 56372551 (Co 0.5); shear2D N 256
+56372577; deformation3D N 128 56372604 (timed out at 7 h); the 80 pieces cases of the plane gate (studies `ccs_plane_*` of this clone,
+configs `diag2_gate_*`). Solve jobs outside the gate: 5. No dump rerun was needed.
+
+G1 PASSES (job 56372395, `davofTestPieceClip`, the change on): N 256 cell 1878 tet 6: V after the PLIC clip 3.5142295756722936e-28 (exact
+0; before the change -1.1001853062195708e-05), |V|/V_tet 1.0e-16; N 128 cell 6548 tet 5: 0 (before 1.9317707577216788e-06). Both with and
+without the axis-aligned cell planes. The cell-plane results are unchanged to the last digit (2.9455011076077115e-12,
+4.0039914299033936e-12).
+G2 PASSES: the 80 pieces cases of the plane gate (4 studies x N 20 to 160 x OF Co 0.2 to 1), the thresholds of kiss_an.py `ccsplane`
+(L1(alpha_f) < 5e-12, Linf < 5e-10, E_shape < 1e-15, min alpha > -1e-12, limiter volume, completed): 80 of 80 `P1 ok`, as in Stage B (80 of
+80). Maxima: L1(alpha_f) 1.076e-12 (Stage B 1.821e-12), Linf 4.03e-11 (1.56e-10), E_shape 1.55e-22 (1.64e-22), min alpha -3.69e-13
+(-4.19e-13). The np 1 against np 8 identity of the pieces rows (1e-10): 39 of 40 pairs identical, one pair (oblique N 160 Co 1) differs,
+L1(alpha_f) 7.04e-03; Stage B: 37 of 40 identical, three differ (normal N 160 Co 0.2, oblique N 160 Co 0.95 and 1). Sum of the wall clocks
+36921 s against 30471 s in Stage B (shared nodes).
+G3 FAILS: shear2D N 64 Co 0.5 (1 rank, new keys, the change on): E_shape 1.47640133473927727e-04 against 1.46401538395666859e-04, relative
+difference 8.5e-03 (the threshold was 1e-06). The old-key standing value of the same case is 1.47640133473866253e-04: the new-keys run with
+the change agrees with the OLD-keys run to 4e-13 relative, min alpha -2.4e-13 (-2.9e-15 old).
+P5: shear2D N 128 Co 0.2 COMPLETES (6656 steps, E_shape 2.38642989394507257e-05, wall 1022 s; before: abort at step 5062 with both key sets);
+shear2D N 128 Co 0.5 COMPLETES (2662 steps, E_shape 1.91646345650415395e-05, 433 s; before: abort at 1789 with the new keys; old keys
+1.90237e-05); deformation3D N 128 Co 0.2 (64 ranks) does NOT complete within the limit: the job timed out at 7 h at step 4246 of 4800 (the
+run was 1.9 times slower per step than in Stage B, 5.9 against 3.0 s) with no abort, past the step 4150 / t = 2.59375 of the earlier abort;
+the extremes before the bounding to step 4246 are -7.625e-08 [452] and +6.142e-08 [66]. Completion is therefore not confirmed; the abort is
+absent.
+P6 HOLDS in all four: run extremes of alpha before the conservative bounding: shear2D N 128 Co 0.2 [-8.705e-10, 9.480e-10]; Co 0.5 [-4.007e-10,
+5.447e-10]; shear2D N 256 Co 0.2 [-9.966e-10, 9.882e-10] (before: -183.6 / +183.6 at step 5040); deformation3D N 128 to step 4246 [-7.6e-08, 6.1e-08];
+shear2D N 64 Co 0.5 [-8.9e-10, 4.1e-10].
+E_shape and wall clock against Stage B (new keys, before the change) and plicRDF (stored Stage B / standing values):
+| case | change on: E_shape | wall (s) | Stage B: E_shape | wall (s) | plicRDF: E_shape | wall (s) |
+|---|---|---|---|---|---|---|
+| shear2D N 64 Co 0.5, 1 rank | 1.47640e-04 | 102 | 1.46402e-04 | 80 | 2.09e-04 | 8 |
+| shear2D N 128 Co 0.2, 1 rank | 2.38643e-05 | 1022 | aborted at 5062 | 785 | 2.28e-05 | 61 |
+| shear2D N 128 Co 0.5, 1 rank | 1.91646e-05 | 433 | aborted at 1789 | 267 | 2.24e-05 | 31 |
+| shear2D N 256 Co 0.2, 8 ranks | 2.14342e-06 | 1010 | 2.08169e-06 | 1033 | 2.49e-06 | 87 |
+| deformation3D N 128 Co 0.2, 64 ranks | not completed (4246 of 4800 steps, 25200 s) | 25200 (limit) | aborted at 4150 | 20367 | 6.89e-04 | 848 |

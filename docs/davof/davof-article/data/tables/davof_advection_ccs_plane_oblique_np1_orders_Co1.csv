@@ -1,9 +1,9 @@
 row,metric,N=20,N=40,N=80,N=160,p_ls,p_pairwise
-davof-planeSurf-ringArea,L1_alphaf_end,1.45e-13,2.69e-13,4.95e-13,1.81e-12,-1.18,-0.89 / -0.88 / -1.87
-davof-planeSurf-ringArea,L1_alphaf_max,1.45e-13,2.69e-13,4.95e-13,1.81e-12,-1.18,-0.89 / -0.88 / -1.87
-davof-planeSurf-ringArea,L1_n_end,1.35e-13,2.20e-13,3.58e-13,1.29e-12,-1.05,-0.70 / -0.71 / -1.85
-davof-planeSurf-ringArea,L1_x_end,1.75e-16,1.20e-16,1.34e-16,3.50e-16,-0.32,0.55 / -0.16 / -1.38
-davof-planeSurf-ringArea,Eshape_end,1.74e-22,1.52e-22,1.03e-22,1.11e-22,0.25,0.20 / 0.57 / -0.12
-davof-planeSurf-ringArea,Ebound_end,2.75e-14,9.90e-14,4.16e-13,3.21e-12,,
-davof-planeSurf-ringArea,minAlpha_run,-6.5e-15,-6.6e-14,-1.8e-13,-4.2e-13,,
+davof-planeSurf-ringArea,L1_alphaf_end,1.10e-13,2.63e-13,4.11e-13,1.08e-12,-1.05,-1.26 / -0.64 / -1.39
+davof-planeSurf-ringArea,L1_alphaf_max,1.10e-13,2.63e-13,4.12e-13,1.08e-12,-1.05,-1.26 / -0.65 / -1.38
+davof-planeSurf-ringArea,L1_n_end,9.56e-14,2.00e-13,2.84e-13,6.94e-13,-0.91,-1.07 / -0.50 / -1.29
+davof-planeSurf-ringArea,L1_x_end,1.13e-16,8.23e-17,7.37e-17,8.27e-17,0.15,0.46 / 0.16 / -0.17
+davof-planeSurf-ringArea,Eshape_end,1.54e-22,1.53e-22,8.78e-23,4.89e-23,0.58,0.01 / 0.80 / 0.84
+davof-planeSurf-ringArea,Ebound_end,1.15e-14,4.55e-14,1.14e-13,3.65e-13,,
+davof-planeSurf-ringArea,minAlpha_run,-4.6e-15,-5.0e-14,-7.2e-14,-2.9e-13,,
 davof-planeSurf-ringArea,status,ok,ok,ok,ok,,
