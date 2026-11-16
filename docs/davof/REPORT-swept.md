@@ -6794,3 +6794,32 @@ interface cells; the transport path is not touched (identity of the fields with 
 before the runs are read).
 
 Verdicts H1/H2/H3 by the numbers only.
+
+## One plane per face: the switch experiment (Tomislav approved, 2026-11-16; leia branch `davof-ccs-oneplane`)
+
+PRE-REGISTERED before the first run. Two experiment keys of `sweptClip onePlane`, default off (all off is identical
+to the digit to the present path); no other rule, tolerance or fallback.
+
+- S1, key `sweptZeroFluxFace`: a face with phi_f == 0 (exactly) carries no wet flux, dVf = 0. Nothing else changes
+  (alpha_f^{n+1} as now).
+- S2, key `sweptUpwindNoPlane none|low|all`: for a face whose adjacent upwind cell (by the sign of phi_f) has no plane
+  of its own, the wet flux is isoAdvector's upwind flux, dVf = alpha_up phi_f dt, instead of the clip with a
+  neighbour's plane. `low`: only when alpha_up < 0.5. `all`: for every upwind cell without an own plane.
+  alpha_f^{n+1} as now.
+
+Variants: base (all off), S1, S2low, S2all, S1+S2low, S1+S2all.
+
+Pre-registered (the coordinator's guesses; verdict by numbers):
+- PS1: S1 alone removes every SIGFPE (the boundFlux division, davofSweptAdvectionTemplates.C:456) and does not stop
+  the growth of the violation before the limiting.
+- PS2: with S1+S2low the three cases complete and the violation of [0, 1] before the limiting stays below 1e-2 V_k
+  over the whole run. Falsifier: an abort, a crash or a larger violation.
+- PS3: S2low and S2all give E_shape within 1 % of each other on the three cases.
+- PS4: on the plane, S2 costs exactness at high Courant number: some oblique or normal-arm case at Co 0.95 leaves the
+  gate (L1(alpha_f) > 5e-12). Falsifier: all plane cases pass.
+
+Steps: (1) keys, all-off identity on a plane case and the first 50 steps of shear3D N 32 OF Co 0.5; (2) shear2D N 64,
+shear3D N 32, deformation3D N 32, six variants each; (3) the plane gate of Stage B (both arms, all N, Co up to 0.95,
+np 1 and 8) for the variants that complete all three cases, at most 3; (4) only if one variant completes the three
+cases, the Stage B one-plane matrix once with the best variant (completes most cases, then passes most plane cases,
+then fewest switches). Budget: 2 builds, 18 runs in step 2.
