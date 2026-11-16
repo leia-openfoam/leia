@@ -786,6 +786,17 @@ class davofSweptAdvection
             //  enters the transport. sweptOnePlaneCompareSteps: at the listed
             //  time indices the pieces path's flux of the same state is
             //  evaluated for every one-plane face and only compared.
+            //- EXPERIMENT KEYS of sweptClip onePlane (2026-11-16, REPORT-swept.md
+            //  "One plane per face: the switch experiment"), default off.
+            //  S1 sweptZeroFluxFace: a face with phi_f == 0 carries no wet flux.
+            //  S2 sweptUpwindNoPlane none|low|all: a face whose upwind cell has
+            //  no plane of its own carries alpha_up phi_f dt (low: only for
+            //  alpha_up < 0.5). alpha_f^(n+1) is left as the clip gives it.
+            bool sweptZeroFluxFace_;
+            label sweptUpwindNoPlane_;   // 0 none, 1 low, 2 all
+            label nSwitchS1_;
+            label nSwitchS2Low_;
+            label nSwitchS2High_;
             bool onePlaneDiag_;
             label onePlaneDiagCells_;
             labelList onePlaneCompareSteps_;

@@ -288,6 +288,16 @@ Foam::davofSweptAdvection::davofSweptAdvection
     nOnePlaneLimCells_(0),
     onePlaneLimVolume_(0),
     nOnePlaneOffFaces_(0),
+    sweptZeroFluxFace_(modelDict().getOrDefault<bool>("sweptZeroFluxFace", false)),
+    sweptUpwindNoPlane_
+    (
+        modelDict().getOrDefault<word>("sweptUpwindNoPlane", "none") == "none" ? 0
+      : modelDict().getOrDefault<word>("sweptUpwindNoPlane", "none") == "low" ? 1
+      : modelDict().getOrDefault<word>("sweptUpwindNoPlane", "none") == "all" ? 2 : -1
+    ),
+    nSwitchS1_(0),
+    nSwitchS2Low_(0),
+    nSwitchS2High_(0),
     onePlaneDiag_(modelDict().getOrDefault<bool>("sweptOnePlaneDiag", false)),
     onePlaneDiagCells_(modelDict().getOrDefault<label>("sweptOnePlaneDiagCells", 20)),
     onePlaneCompareSteps_(modelDict().getOrDefault<labelList>("sweptOnePlaneCompareSteps", labelList())),

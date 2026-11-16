@@ -1131,6 +1131,12 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
     nOnePlaneNoPlane_ = nOnePlaneNoPlaneCut_ = nOnePlaneNoPlaneDumped_ = nOnePlaneOutOfRange_ = 0;
     // DIAGNOSTIC ONLY (sweptOnePlaneDiag): the per-face records of the step
     onePlaneCompareNow_ = false;
+    nSwitchS1_ = nSwitchS2Low_ = nSwitchS2High_ = 0;
+    if (sweptUpwindNoPlane_ < 0)
+    {
+        FatalErrorInFunction
+            << "sweptUpwindNoPlane: none | low | all" << exit(FatalError);
+    }
     if (onePlaneDiag_ && sweptOnePlane_)
     {
         const label nF = mesh_.nFaces();
@@ -1922,6 +1928,22 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
                 facei, local, up, other, dt, phiF, sweeps, boundary,
                 UInterp, *UpPtr, af, aWet, vSwept
             );
+            // EXPERIMENT KEYS (default off): S1 zero-flux face, S2 the
+            // upwind flux of a face whose upwind cell has no plane of its own
+            if (sweptZeroFluxFace_ && phiF == 0)
+            {
+                if (vSwept != 0) ++nSwitchS1_;
+                vSwept = 0;
+            }
+            else if (sweptUpwindNoPlane_ > 0 && up >= 0 && !hasSurface_.test(up))
+            {
+                const scalar aUp = alpha1_.oldTime().primitiveField()[up];
+                if (sweptUpwindNoPlane_ == 2 || aUp < 0.5)
+                {
+                    vSwept = aUp*mag(phiF)*dt;
+                    if (aUp < 0.5) ++nSwitchS2Low_; else ++nSwitchS2High_;
+                }
+            }
             if (onePlaneDiag_)
             {
                 dgOne_[facei] = vSwept;

@@ -336,6 +336,16 @@ ENRIGHT_SETTINGS = OrderedDict([
     ("onePlaneDiag",       ("signedTets",      "false", "none",    "normalAndAlpha",     "false", "onePlane")),
     ("onePlaneDiagCmp1",   ("signedTets",      "false", "none",    "normalAndAlpha",     "false", "onePlane")),
     ("onePlaneDiagCmp10",  ("signedTets",      "false", "none",    "normalAndAlpha",     "false", "onePlane")),
+    ("onePlaneS1", ("signedTets", "false", "none", "normalAndAlpha", "false", "onePlane")),
+    ("onePlaneS1D", ("signedTets", "false", "none", "normalAndAlpha", "false", "onePlane")),
+    ("onePlaneS2low", ("signedTets", "false", "none", "normalAndAlpha", "false", "onePlane")),
+    ("onePlaneS2lowD", ("signedTets", "false", "none", "normalAndAlpha", "false", "onePlane")),
+    ("onePlaneS2all", ("signedTets", "false", "none", "normalAndAlpha", "false", "onePlane")),
+    ("onePlaneS2allD", ("signedTets", "false", "none", "normalAndAlpha", "false", "onePlane")),
+    ("onePlaneS1S2low", ("signedTets", "false", "none", "normalAndAlpha", "false", "onePlane")),
+    ("onePlaneS1S2lowD", ("signedTets", "false", "none", "normalAndAlpha", "false", "onePlane")),
+    ("onePlaneS1S2all", ("signedTets", "false", "none", "normalAndAlpha", "false", "onePlane")),
+    ("onePlaneS1S2allD", ("signedTets", "false", "none", "normalAndAlpha", "false", "onePlane")),
 ])
 ENRIGHT_TOKENS = ("TPF_SWEPT_PIECE_VOLUME", "TPF_SWEPT_PIECE_VALIDATE",
                   "TPF_SWEPT_BOUNDED_FACE_FRACTION", "TPF_INTERFACE_CELL_RULE",
@@ -355,6 +365,16 @@ ENRIGHT_LABELS = OrderedDict([
     ("onePlaneDiag", "one plane per face (KISS), diagnostics"),
     ("onePlaneDiagCmp1", "one plane per face (KISS), diagnostics, pieces comparison every step"),
     ("onePlaneDiagCmp10", "one plane per face (KISS), diagnostics, pieces comparison every 10th step"),
+    ("onePlaneS1", "one plane per face (KISS), switch experiment S1"),
+    ("onePlaneS1D", "one plane per face (KISS), switch experiment S1D"),
+    ("onePlaneS2low", "one plane per face (KISS), switch experiment S2low"),
+    ("onePlaneS2lowD", "one plane per face (KISS), switch experiment S2lowD"),
+    ("onePlaneS2all", "one plane per face (KISS), switch experiment S2all"),
+    ("onePlaneS2allD", "one plane per face (KISS), switch experiment S2allD"),
+    ("onePlaneS1S2low", "one plane per face (KISS), switch experiment S1S2low"),
+    ("onePlaneS1S2lowD", "one plane per face (KISS), switch experiment S1S2lowD"),
+    ("onePlaneS1S2all", "one plane per face (KISS), switch experiment S1S2all"),
+    ("onePlaneS1S2allD", "one plane per face (KISS), switch experiment S1S2allD"),
 ])
 
 
@@ -389,6 +409,18 @@ def enright_setting_tokens(name):
                 "\n        sweptClip onePlane;")
         if name in ("onePlaneDiag", "onePlaneDiagCmp1", "onePlaneDiagCmp10"):
             out["TPF_ENRIGHT_KEYS"] += "\n        sweptOnePlaneDiag true;"
+        if name.startswith("onePlane") and name[8:9] == "S":
+            # the switch experiment (2026-11-16): S1 / S2low / S2all / S1S2low / S1S2all, trailing D = diagnostics
+            sw = name[8:]
+            if sw.endswith("D"):
+                out["TPF_ENRIGHT_KEYS"] += "\n        sweptOnePlaneDiag true;"
+                sw = sw[:-1]
+            if sw.startswith("S1"):
+                out["TPF_ENRIGHT_KEYS"] += "\n        sweptZeroFluxFace true;"
+            if sw.endswith("S2low"):
+                out["TPF_ENRIGHT_KEYS"] += "\n        sweptUpwindNoPlane low;"
+            if sw.endswith("S2all"):
+                out["TPF_ENRIGHT_KEYS"] += "\n        sweptUpwindNoPlane all;"
         if name == "onePlaneDiagCmp1":
             out["TPF_ENRIGHT_KEYS"] += "\n        sweptOnePlaneCompareEvery 1;"
         if name == "onePlaneDiagCmp10":

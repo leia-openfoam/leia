@@ -2512,6 +2512,17 @@ void Foam::davofSweptAdvection::onePlaneCountOffFaces()
     Info<< "davofSwept: one plane: limiter faces changed " << nLf << ", cells " << nLc
         << ", volume moved " << vL
         << "; faces of 0/1 cells with alphaf off 0/1 by more than 1e-12: " << nOff << endl;
+    if (sweptZeroFluxFace_ || sweptUpwindNoPlane_ > 0)
+    {
+        label s1 = nSwitchS1_, s2l = nSwitchS2Low_, s2h = nSwitchS2High_;
+        if (Pstream::parRun())
+        {
+            reduce(s1, sumOp<label>()); reduce(s2l, sumOp<label>()); reduce(s2h, sumOp<label>());
+        }
+        Info<< "davofSwept: one plane: switches acted on faces: S1 " << s1
+            << ", S2 " << (s2l + s2h) << " (upwind alpha < 0.5: " << s2l
+            << ", >= 0.5: " << s2h << ")" << endl;
+    }
 }
 
 
