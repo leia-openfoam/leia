@@ -7245,3 +7245,24 @@ Orders over N of E_shape (least squares; pairwise): shear2D Co 0.2 3.20 (2.93, 3
 3.48, 3.17, 2.64; shear3D 1.92, 1.90, 1.88; deformation3D 1.76, 1.75, 1.72. L1 abs(n - n_e) and L1 (1 - n.n_e) with their orders are in the generated
 tables. Wall clock at equal ranks against Stage B (pieces, before the change): shear3D N 128 Co 0.2 8475 s (12959), deformation3D N 128 Co 0.95 3366 s (5101);
 the other Stage B pieces walls of completed cases are within the run-to-run spread of shared nodes.
+
+
+### Pieces path: HPCToolkit profile, serial and parallel bottlenecks (diag2, follow-up, 2026-11-16)
+
+PRE-REGISTERED before the first run. Measurement only: no optimisation, no change of the library besides the build flags. Set-up as the
+profile of 2026-11-04 (workflow/scripts/davof_prof, FINDINGS "HPCToolkit profile of the swept-face advection"): HPCToolkit 2025.0.1
+(spack, ~/spack/opt/spack/linux-x86_64/hpctoolkit-2025.0.1-*), a detached worktree of this branch (HEAD d50f9d96, library code of
+112c284a) built with -O3 (the default WM_COMPILE_OPTION) plus FOAM_EXTRA_CXXFLAGS="-g -fno-omit-frame-pointer" in its own platforms/
+(workflow/scripts/davof_diag2/hp-build-leia.sbatch); hpcrun with CPUTIME@1000 and, where the pair is accepted, REALTIME@1000;
+hpcstruct, hpcprof; the tables with hpdb.py and hpan.py of workflow/scripts/davof_prof (hpan.py with a --metric argument added)
+and the rules of rules_pieces.py (workflow/scripts/davof_diag2). Setting recommended, new CCS keys, phaseProfile off.
+Runs (deformation3D, OF Co 0.5, scotch): serial N 64 on 1 rank, first 100 steps, for the pieces row, plicRDF and isoAlpha; parallel N 64
+on 8 ranks and N 128 on 64 ranks, first 200 steps, pieces and plicRDF; shear2D N 128 on 1 rank, first 500 steps, pieces. The first 20
+steps of the profiled build (pieces, serial) are compared with the production build (the log quantities per step: sum(alpha V), the
+extremes of alpha before and after the bounding, the mass changes, the interface cells).
+- PH1 sweptPieceExactVolume with its inlined lambdas is at least 80 % of the serial step in 3D.
+- PH2 inside it the polygon copies and clipOne together exceed half of its time and the cap construction exceeds 10 %.
+- PH3 at 64 ranks at least 85 % of the summed real time is wait in the processor-patch sync and compute max/mean exceeds 10.
+- PH4 plicRDF's compute max/mean at 64 ranks is below 3.
+- PH5 the balanced-compute bound at 64 ranks (sum of compute / ranks + exchange proper) is at least 5 times below the measured step.
+Falsifiers: the opposite observation in each. Budget: 1 profiled build, the 8 runs above, at most 3 repetitions.
