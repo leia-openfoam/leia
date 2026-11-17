@@ -35,10 +35,11 @@ def main():
     for study in sys.argv[1:]:
         fam = study.split("_")[1]
         N = int(re.search(r"N(\d+)", study).group(1))
-        errs = {r["caseDir"]: r for r in csv.DictReader(open(f"{S}{study}/{study}_errors.csv"))}
+        ef = f"{S}{study}/{study}_errors.csv"
+        errs = {r["caseDir"]: r for r in csv.DictReader(open(ef))} if os.path.isfile(ef) else {}
         dbs = {r["index"]: r for r in csv.DictReader(open(f"{S}{study}/{study}_database.csv"))}
         print(f"\n### {study} (OF Co 0.2; diagnostics on; 6 cases concurrently on 6 cores)\n")
-        print("| variant | status | steps | first step with violation > 1e-3 V_k | run max violation before limiting (V_k) | run max violation after limiting (V_k) | S1 faces/step mean (max) | S2 faces/step mean (max) [alpha_up<0.5 / >=0.5 mean] | limiter faces/step mean (max) | limiter cells/step mean (max) | limiter volume total (cell volumes) | limiter passes max | E_shape | E_mass (%) | wall clock (s) | ranks |")
+        print("| variant | status | steps | first step with violation > 1e-3 V_k | run max violation before limiting (V_k) | run max violation after limiting (V_k) | S1 faces/step mean (max) | S2 faces/step mean (max) [alpha_up<0.5 / >=0.5 mean] | limiter faces/step mean (max) | limiter cells/step mean (max) | limiter volume total (cell volumes) | limiter passes max | E_shape | Emass (csv) | wall clock (s) | ranks |")
         print("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
         for k, v in enumerate(VAR):
             cd = sorted(d for d in os.listdir(S + study) if d.endswith("_%05d" % k))
@@ -70,7 +71,9 @@ def main():
             cp = cdir + "/advectorVoF.csv"
             if os.path.isfile(cp) and os.path.getsize(cp):
                 rows = list(csv.DictReader(open(cp)))
-                if rows: emass = rows[-1].get("Emass", "n/a")
+                if rows:
+                    emass = rows[-1].get("Emass", "n/a")
+                    if status == "completed": E = rows[-1].get("Eshape", "n/a")
             def fe(x):
                 try: return "%.3g" % float(x)
                 except Exception: return x
