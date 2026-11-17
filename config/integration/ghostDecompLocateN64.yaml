@@ -1,0 +1,96 @@
+# ============================================================================
+# LOCATE the decomposition dependence of ghostCellQuadraticWeightedLeastSquares (2026-11-14)
+#
+# A MEASUREMENT. No source file changes. The N = 64 rung of
+# config/gates/ghostCellRefinedBox3D.yaml with the ghost class only, in serial mode. The
+# workflow stops after the pre-processing (`--until preprocess`): it builds ONE mesh and
+# ONE 0/ (0.org plus leiaSetFields plus the end reference). No solver runs in this case.
+# workflow/scripts/integration/ghost_locate.sbatch then copies the prepared case twice,
+# runs the solver in serial and on 4 ranks with psi written at every step, and
+# workflow/scripts/integration/ghost_locate_compare.py compares psi cell by cell.
+#
+# PRE-REGISTERED READ-OUT (coordinator, 2026-11-14, before the runs).
+#   Known, not measured again: at N = 64 the ghost class differs between serial and np 4 by
+#   5.2e-5 relative in the volume error, the original class by 1.4e-10. The count of ghost
+#   data is 17932 in serial and 17948 on 4 ranks on the N = 32 mesh.
+#   HYPOTHESIS (from fitCell(), ghostCellQuadraticWeightedLeastSquaresReconstruction.C lines
+#   354-395): a ghost position q = x0 + d is accepted when it is not occupied and
+#   dA < magSqr(xA - x0). For a fine cell that touches the transition and a boundary patch, a
+#   tangential q lies outside the domain, is not occupied, and dA can equal magSqr(xA - x0)
+#   exactly. Round-off of the cell centres then decides the test, and the centres differ in
+#   the last digit between decompositions.
+#   A cell DIFFERS when |psi_serial - psi_np4| > 1e-10 * max|psi_serial|.
+#   H1 (wall tie) HOLDS if, after step 1, every differing cell is a level-1 cell that touches
+#      the transition and lies within 2 fine cells of a boundary patch. H1 is FALSIFIED if any
+#      differing cell lies more than 2 fine cells from every boundary patch.
+#   H2 (processor boundary) HOLDS if the differing cells after step 1 lie within 2 cells of a
+#      processor boundary of the 4-rank decomposition and away from the boundary patches.
+#   Both are reported; they are not exclusive. If neither holds, the report gives the level,
+#   the distance to the transition, to the boundary patches and to the processor boundaries,
+#   without an interpretation.
+#   SECOND QUESTION: at which step does a difference above the threshold first appear in a
+#   cell of the interface band (|psi| < 3 h, h the size of the cell), and where?
+#   L1 and counts only. The largest difference is a locator, not a verdict. No L_inf verdict.
+#
+# RESULT of the measurement (2026-11-15, merged clone at 31c4a032, jobs 56369947, 56370868).
+#   Ghost data: 73122 in serial, 73143 on 4 ranks. After step 1, 101 cells differ; all touch
+#   the transition; 93 lie within 2 fine cells of a boundary patch, 8 lie 2 to 3 fine cells
+#   from one; 84 lie within 2 cells of a processor boundary; none is in the interface band.
+#   H1 as written is FALSIFIED (the 8 cells). H2 does not hold (the cells are at the patches).
+#   The first difference in the interface band is at step 65 (t = 0.170).
+#   Reading (DERIVED): for a fine cell at the transition and at a boundary patch, with
+#   x0 = (h/2, h/2, z0) and the coarser centre xA = (-h, h, z0 +- h/2), the ghost position
+#   q = (-h/2, -h/2, z0) is outside the domain and |q - xA|^2 = |x0 - xA|^2 = 2.75 h^2
+#   exactly. The test `dA >= magSqr(xA - x0)` is then decided by round-off.
+#
+# SECOND RUN, with the tie guard (commit of this text; dA >= (1 - 1e-8) |xA - x0|^2 rejects).
+# PRE-REGISTERED READ-OUT (2026-11-17, before the run):
+#   T1 HOLDS if the count of ghost data is equal in serial and on 4 ranks, AND no cell
+#      differs after step 1 at the threshold above, AND at t = 1 the mean absolute difference
+#      of psi over all cells is below 1e-12 (it is 1.2e-5 without the guard at step 158).
+#   T1 is FALSIFIED if the counts differ or a cell differs after step 1. Then the tie is not
+#      the cause, or not the only cause, and the report gives the cells as before.
+#   The guard changes the scheme at boundary patches. A pass here does not replace the
+#   four-rung gate config/gates/ghostCellRefinedBox3D.yaml, which must run again.
+# ============================================================================
+study_name: ghostDecompLocateN64
+case: 3Dtranslation
+mesh: hexRefined
+mode: serial
+np: 1
+solver: leiaSemiLagrangeLevelSetFoam
+theme: semi-lagrangian-level-set
+solve_runtime: 7200
+setfields_args: "-alphaName alpha"
+axes_override:
+  # The domain is [0,2] x [0,1] x [0,1]; the sphere starts at (0.5 0.5 0.5) with radius 0.15
+  # and travels to x = 1.5 at U = 1, T = 1. The box spans x in [0.8, 1.2] and the full cross
+  # section, so the sphere meets a coarse -> fine transition at x = 0.8 and a fine -> coarse
+  # one at x = 1.2, and starts and ends well clear of both.
+  REFINE_SOURCE: ["box"]
+  REFINE_LEVELS: ['1']
+  REFINE_BOX_MIN: ["(0.8 -0.1 -0.1)"]
+  REFINE_BOX_MAX: ["(1.2 1.1 1.1)"]
+  N_CELLS: ['64']
+  CFL: ['0.5']
+  END_TIME: ['1.0']
+  OSCILLATION: ['off']
+  END_REFERENCE: ['translate']
+  ADVECTION: [semiLagrangian]
+  PHASE_INDICATOR: [detrixheAslam]
+  PROFILE: [signedDistance]
+  # The one variable: the reconstruction. Everything else is the production transport.
+  SL_SCHEME: [pointValue]
+  SL_RECONSTRUCTION: [ghostCellQuadraticWeightedLeastSquares]
+  SL_VALUE_BOUND: ["none"]
+  SL_LIMITER: ["none"]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_STENCIL: ["point"]
+  SL_CLIP: ["false"]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_SOURCE: [none]
+  FLUX_PROJECTION: ["none"]
+  SDPLS_SOURCE: [noSource]
+  SOURCE_SCHEME: [explicit]
+collapse_other_axes: true
+export_slides: false

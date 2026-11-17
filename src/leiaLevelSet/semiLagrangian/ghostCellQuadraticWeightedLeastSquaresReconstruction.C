@@ -387,7 +387,13 @@ void Foam::ghostCellQuadraticWeightedLeastSquaresReconstruction::fitCell
                 if (dj < dA) { dA = dj; iA = coarse[j]; }
             }
             const point xA = stencilC(c, iA);
-            if (dA >= magSqr(xA - x0)) { continue; }     // q is not in that cell
+            // q is in that cell only if it is closer to the centre of the cell
+            // than the own centre is. The two distances are EQUAL by symmetry for
+            // a q outside the domain, next to a boundary patch at the transition
+            // (2.75 h^2 in 3D, 2.5 h^2 in 2D). Round-off of the cell centres then
+            // decided the test, and the result depended on the decomposition
+            // (STATUS 11.36 item 6). A tie is a rejection.
+            if (dA >= (1 - tieTol_)*magSqr(xA - x0)) { continue; }
             X.append(q);
             V.append(poly(stCoeff_[c][raw(c, iA)], s[iA], q - xA));
             ++nGhost_;

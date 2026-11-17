@@ -96,6 +96,11 @@ class ghostCellQuadraticWeightedLeastSquaresReconstruction
 
     bool built_;
 
+    //- Relative margin of the test "the ghost position is in the coarser cell".
+    //  A round-off guard, one value for every case: a tie of the two distances
+    //  is a rejection, independent of the last digit of the cell centres.
+    static constexpr scalar tieTol_ = 1e-8;
+
     //- Counters of the last update, for the one-off report.
     label nGhost_, nRestricted_, nLinear_, nConstant_;
     bool reported_;
