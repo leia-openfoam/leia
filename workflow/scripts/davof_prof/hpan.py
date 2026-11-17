@@ -28,11 +28,12 @@ def main():
     ap.add_argument("--src", default=r"TwoPhaseFlow")
     ap.add_argument("--tree-min", type=float, default=0.3)
     ap.add_argument("--tree-depth", type=int, default=16)
+    ap.add_argument("--metric", default="CPUTIME", help="the metric of the time: CPUTIME or REALTIME (diag2, 2026-11-16)")
     a = ap.parse_args()
     db = hpdb.Database(a.db)
     profs = db.profiles()
     met = {n: d for n, d in db.metrics.items()}
-    cpu = [n for n in met if n.startswith("CPUTIME")][0]
+    cpu = [n for n in met if n.startswith(a.metric)][0]
     llc = [n for n in met if "LLC" in n]
     llc = llc[0] if llc else None
     N = db.nCtx
