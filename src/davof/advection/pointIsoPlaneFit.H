@@ -49,6 +49,7 @@ Description
 #define pointIsoPlaneFit_H
 
 #include "vector.H"
+#include "point.H"
 #include "DynamicList.H"
 #include <cmath>
 
