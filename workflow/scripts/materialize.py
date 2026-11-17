@@ -196,7 +196,8 @@ def _with_derived_tokens(tokens):
             recon = str(out.get("TPF_RECON_SCHEME", "davof"))
             out.setdefault("DAVOF_APP", solver)
             out.setdefault("DAVOF_ADVECTION_SCHEME",
-                           (("davofSwept" if recon == "davof" else "isoAdvector")
+                           (("davofSwept" if recon == "davof" else
+                             ("pointIsoAdvector" if str(out.get("TPF_ROW", "")) == "pointIso" else "isoAdvector"))
                             if leia else "isoAdvection"))
             out.setdefault("DAVOF_FO_LIBS",
                            '"libleiaDavofFunctionObjects.so"' if leia else '"libpostProcess.so"')

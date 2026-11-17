@@ -10,6 +10,8 @@ advection/davofSweptAdvection.C
 advection/davofSweptAdvectionFlux.C
 advection/davofSweptAdvectionSurfaces.C
 advection/isoAdvectorScheme.C
+advection/pointIsoAdvection.C
+advection/pointIsoAdvectorScheme.C
 init/davofInit.C
 normalModels/cellLocalNormal.C
 normalModels/davofNormalModel.C

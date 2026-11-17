@@ -115,6 +115,9 @@ ROWS = OrderedDict([
     ("davof-planeSurf-ringArea",       ("davof", "ringArea",  "all",   "0",    "15",  "keep", "plane", "plane",      "volume", "none")),
     ("plicRDF",                  ("plicRDF",  "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
     ("isoAlpha",                 ("isoAlpha", "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
+    # pointIso (2026-11-16, leia davof-point-iso): plicRDF reconstruction advected by pointIsoAdvection
+    # (advectionScheme pointIsoAdvector, selected by materialize.py); the davof keys are inert
+    ("pointIso",                 ("plicRDF",  "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
     # The eleventh element (2026-11-06, the fork branch davof-isoAdvector fab3805):
     # the plane positioning, the key `positioning` of the alpha dictionary, which
     # the davof scheme reads since 2026-11-04 and surfaceIteratorPLIC (plicRDF,
@@ -221,6 +224,7 @@ LABELS = OrderedDict([
     ("davof-planeSurf-ringArea",       "DAVOF, plane surface by volume, ring-area normal"),
     ("plicRDF",             "plicRDF"),
     ("isoAlpha",            "isoAlpha"),
+    ("pointIso",            "plicRDF + pointIsoAdvection"),
 ])
 
 COLORS = {
@@ -258,6 +262,7 @@ COLORS = {
     "davof-planeSurf-ringArea":       "#f72585",  # pink: the plane surface with the ring normal
     "plicRDF":             "#eb6834",   # plicRDF's orange (make_davof_normal_table.COLORS)
     "isoAlpha":            "#eda100",   # isoAlpha's yellow (make_davof_normal_table.COLORS)
+    "pointIso":            "#6a3d9a",
 }
 
 MARKERS = {
@@ -276,7 +281,7 @@ MARKERS = {
     "davof-paraboloidRing-ringFit": "p",
     "davof-paraboloidOne-exact": "+", "davof-paraboloidOne-cellLocal": "1",
     "davof-planeSurf-exact": "x", "davof-planeSurf-ringArea": "D",
-    "plicRDF": "^", "isoAlpha": "v",
+    "plicRDF": "^", "isoAlpha": "v", "pointIso": "o",
     "plicRDF-ccs": "<", "davof-ringArea-vofCutCell": ">",
 }
 
@@ -333,6 +338,10 @@ ENRIGHT_SETTINGS = OrderedDict([
     # diag2 (2026-11-14, leia davof-ccs-pieces): `recommended` plus ONE print-only key
     # (phaseProfile: per-step phase timers and counts; alphaDump: the cell of the largest
     # max(alpha) after the bounding); no result changes, every other setting renders as before
+    # pointIsoAdvection (2026-11-16): the reference values (inert for isoAdvector-type schemes), the key
+    # pointVelocity edgeLinear; pointIsoCompare adds the print-only comparison with isoAdvection's face flux
+    ("pointIso",           ("closure",         "false", "none",    "normalOnly",         "false")),
+    ("pointIsoCompare",    ("closure",         "false", "none",    "normalOnly",         "false")),
     ("recommendedProfile", ("signedTets",      "false", "scale",   "normalAndAlpha",     "false")),
     ("recommendedDump",    ("signedTets",      "false", "scale",   "normalAndAlpha",     "false")),
     ("recommendedPieceDump5035", ("signedTets", "false", "scale",   "normalAndAlpha",     "false")),
@@ -356,6 +365,8 @@ ENRIGHT_LABELS = OrderedDict([
     ("fragmentLog", "fragment log"),
     ("recommended", "signedTets + scale + normalAndAlpha"),
     ("onePlane", "one plane per face (KISS)"),
+    ("pointIso", "pointIsoAdvection"),
+    ("pointIsoCompare", "pointIsoAdvection, comparison with isoAdvection"),
     ("recommendedProfile", "signedTets + scale + normalAndAlpha, phase timers"),
     ("recommendedDump", "signedTets + scale + normalAndAlpha, alpha dump"),
     ("recommendedPieceDump5035", "signedTets + scale + normalAndAlpha, piece dump"),
@@ -399,6 +410,12 @@ def enright_setting_tokens(name):
                 "\n        // diag2 (2026-11-15; leia davof-ccs-pieces): print-only face dump"
                 "\n        sweptPieceDump true;"
                 "\n        sweptPieceDumpStep " + name[len("recommendedPieceDump"):] + ";")
+        if name in ("pointIso", "pointIsoCompare"):
+            out["TPF_ENRIGHT_KEYS"] = (
+                "\n        // pointIsoAdvection (leia davof-point-iso, 2026-11-16)"
+                "\n        pointVelocity edgeLinear;")
+            if name == "pointIsoCompare":
+                out["TPF_ENRIGHT_KEYS"] += "\n        pointIsoCompare true;"
         if name in DIAG_KEYS:
             out["TPF_ENRIGHT_KEYS"] += (
                 "\n        // diag2 (2026-11-14; leia davof-ccs-pieces): print-only diagnostic key"
