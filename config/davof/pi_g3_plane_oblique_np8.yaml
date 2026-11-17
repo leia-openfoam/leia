@@ -1,0 +1,48 @@
+# pointIsoAdvector (2026-11-16; docs/davof/REPORT-swept.md 'pointIsoAdvector'): G1/G3 plane oblique arm, N 20, OF Co 0.5, 50 steps, np 8, alpha written at the end (G3)
+# sbatch -J pi_g3_plane_oblique_np8 --export=ALL,STUDY=davof/pi_g3_plane_oblique_np8 run-studies.sbatch
+study_name: pi_g3_plane_oblique_np8
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: parallel
+np: 8
+solver: davofAdvectorFoam
+theme:  davof
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+axes_override:
+  TPF_SURF_CELL_TOL: ["1e-8"]
+  TPF_RECON_WISP_TOL: ["1e-3"]
+  TPF_ENRIGHT_SETTING: [pointIso]
+  TPF_GRAZING_CUT: [openfoam]
+  TPF_CCS_END_INTERVAL: [cubic]
+  TPF_CCS_TOLERANCE: [relative]
+  TPF_POSITIONING_TOL: ["1e-12"]
+  N_CELLS: [20]
+  TARGET_ADVECTIVE_CO: [0.5]
+  TPF_VELOCITY_ARM: [oblique]
+  TPF_ROW: [pointIso]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_AXIS_PLANES: ["true"]
+  TPF_SWEPT_TET_CACHE: ["true"]
+  TPF_SWEPT_POINT_VELOCITY_LAZY: ["true"]
+  TPF_SWEPT_PRE_TEST_COPLANAR_SIDE: ["true"]
+  TPF_WRITE_PRECISION: ["17"]
+  TPF_RECON_ERROR_EVERY_STEP: ["false"]
+  END_TIME: [5e-3]
+  TPF_WRITE_INTERVAL: [5e-3]
+  TPF_PROFILING: ["false"]
+collapse_other_axes: true
+solve_mem_mb: 16000
+solve_runtime: 60
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
