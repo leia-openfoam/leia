@@ -342,6 +342,7 @@ ENRIGHT_SETTINGS = OrderedDict([
     # pointVelocity edgeLinear; pointIsoCompare adds the print-only comparison with isoAdvection's face flux
     ("pointIso",           ("closure",         "false", "none",    "normalOnly",         "false")),
     ("pointIsoCompare",    ("closure",         "false", "none",    "normalOnly",         "false")),
+    ("pointIsoPoints",     ("closure",         "false", "none",    "normalOnly",         "false")),
     ("recommendedProfile", ("signedTets",      "false", "scale",   "normalAndAlpha",     "false")),
     ("recommendedDump",    ("signedTets",      "false", "scale",   "normalAndAlpha",     "false")),
     ("recommendedPieceDump5035", ("signedTets", "false", "scale",   "normalAndAlpha",     "false")),
@@ -367,6 +368,7 @@ ENRIGHT_LABELS = OrderedDict([
     ("onePlane", "one plane per face (KISS)"),
     ("pointIso", "pointIsoAdvection"),
     ("pointIsoCompare", "pointIsoAdvection, comparison with isoAdvection"),
+    ("pointIsoPoints", "pointIsoAdvection, polygon points printed"),
     ("recommendedProfile", "signedTets + scale + normalAndAlpha, phase timers"),
     ("recommendedDump", "signedTets + scale + normalAndAlpha, alpha dump"),
     ("recommendedPieceDump5035", "signedTets + scale + normalAndAlpha, piece dump"),
@@ -410,12 +412,14 @@ def enright_setting_tokens(name):
                 "\n        // diag2 (2026-11-15; leia davof-ccs-pieces): print-only face dump"
                 "\n        sweptPieceDump true;"
                 "\n        sweptPieceDumpStep " + name[len("recommendedPieceDump"):] + ";")
-        if name in ("pointIso", "pointIsoCompare"):
+        if name in ("pointIso", "pointIsoCompare", "pointIsoPoints"):
             out["TPF_ENRIGHT_KEYS"] = (
                 "\n        // pointIsoAdvection (leia davof-point-iso, 2026-11-16)"
                 "\n        pointVelocity edgeLinear;")
             if name == "pointIsoCompare":
                 out["TPF_ENRIGHT_KEYS"] += "\n        pointIsoCompare true;"
+            if name == "pointIsoPoints":
+                out["TPF_ENRIGHT_KEYS"] += "\n        pointIsoPrintPoints true;"
         if name in DIAG_KEYS:
             out["TPF_ENRIGHT_KEYS"] += (
                 "\n        // diag2 (2026-11-14; leia davof-ccs-pieces): print-only diagnostic key"

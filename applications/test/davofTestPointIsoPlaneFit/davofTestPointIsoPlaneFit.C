@@ -40,6 +40,10 @@ Description
 #include <vector>
 #include <cstdio>
 #include <cmath>
+#include <cfenv>
+#include <fstream>
+#include <sstream>
+#include <string>
 
 using namespace Foam;
 
@@ -89,8 +93,101 @@ static double rmsResidual
     return std::sqrt(s/double(q.size()));
 }
 
-int main()
+static void report(const char* tag, const std::vector<point>& qv, const std::vector<bool>& bv, const vector& nk)
 {
+    List<point> q(qv.size());
+    List<bool> b(qv.size(), false);
+    forAll(q, i) { q[i] = qv[i]; b[i] = bv[i]; }
+    const pointIso::fit f = pointIso::fitPlane(q, b, nk);
+    std::printf
+    (
+        "%s: points %d, boundary %d, n' = (%.17g %.17g %.17g), n'.nk = %.17g, rms = %.3e, finite %d\n",
+        tag, int(qv.size()), int(f.nBoundary), f.n.x(), f.n.y(), f.n.z(),
+        double(f.n & nk), f.rms,
+        int(std::isfinite(f.n.x()) && std::isfinite(f.n.y()) && std::isfinite(f.n.z()))
+    );
+}
+
+static void robustness()
+{
+    std::vector<bool> nob(16, false);
+    // exactly coplanar, general plane
+    {
+        const vector n = randomUnit();
+        vector e1, e2;
+        basis(n, e1, e2);
+        std::vector<point> q;
+        for (int i = 0; i < 6; ++i) q.push_back(point(0.3, 0.2, 0.1) + uni(-1, 1)*e1 + uni(-1, 1)*e2);
+        report("R1 exactly coplanar", q, nob, n);
+    }
+    // coplanar in an axis plane (x = const): two covariance entries exactly zero
+    {
+        std::vector<point> q;
+        for (int i = 0; i < 6; ++i) q.push_back(point(0.25, uni(-1, 1), uni(-1, 1)));
+        report("R2 axis plane x = const", q, nob, vector(1, 0, 0));
+        std::vector<point> q2;
+        for (int i = 0; i < 6; ++i) q2.push_back(point(uni(-1, 1), 0.5, uni(-1, 1)));
+        report("R2 axis plane y = const", q2, nob, vector(0, 1, 0));
+        std::vector<point> q3;
+        for (int i = 0; i < 4; ++i) q3.push_back(point(uni(-1e-4, 1e-4), uni(-1e-4, 1e-4), 0.5));
+        report("R2 axis plane z = const, 1e-4 extent", q3, nob, vector(0, 0, 1));
+    }
+    // three points only
+    {
+        std::vector<point> q;
+        for (int i = 0; i < 3; ++i) q.push_back(point(uni(-1, 1), uni(-1, 1), uni(-1, 1)));
+        report("R3 three points", q, nob, vector(0, 0, 1));
+    }
+    // all points equal up to 1e-16
+    {
+        std::vector<point> q;
+        for (int i = 0; i < 5; ++i) q.push_back(point(0.1 + uni(-1e-16, 1e-16), 0.2 + uni(-1e-16, 1e-16), 0.3 + uni(-1e-16, 1e-16)));
+        report("R4 points equal up to 1e-16", q, nob, vector(0, 0, 1));
+        std::vector<point> q2(5, point(0.1, 0.2, 0.3));
+        report("R4 points exactly equal", q2, nob, vector(0, 0, 1));
+    }
+}
+
+// the points printed by pointIsoAdvection (key pointIsoPrintPoints)
+static void fromFile(const char* name)
+{
+    std::ifstream in(name);
+    std::string line;
+    int n = 0;
+    while (std::getline(in, line))
+    {
+        const std::size_t p = line.find("pointIsoPoints cell ");
+        if (p == std::string::npos) continue;
+        std::istringstream is(line.substr(p));
+        std::string w1, w2, w3, colon;
+        long cell;
+        double nx, ny, nz;
+        is >> w1 >> w2 >> cell >> w3 >> nx >> ny >> nz >> colon;
+        std::vector<point> q;
+        std::vector<bool> b;
+        double x, y, z;
+        int bb;
+        while (is >> x >> y >> z >> bb) { q.push_back(point(x, y, z)); b.push_back(bb != 0); }
+        char tag[64];
+        std::snprintf(tag, sizeof(tag), "file cell %ld", cell);
+        std::printf("about to fit %s (%d points)\n", tag, int(q.size()));
+        std::fflush(stdout);
+        report(tag, q, b, vector(nx, ny, nz));
+        ++n;
+    }
+    std::printf("file: %d cells fitted without a trap\n", n);
+}
+
+int main(int argc, char* argv[])
+{
+    // the trapping of the solvers (FOAM_SIGFPE): invalid, division by zero, overflow
+    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+    if (argc > 1)
+    {
+        fromFile(argv[1]);
+        return 0;
+    }
+    robustness();
     bool pass = true;
 
     // (a) coplanar points
@@ -137,6 +234,7 @@ int main()
         int nViol = 0, nWrongSide = 0;
         double worstDist = 0, worstQual = 0, maxThroughWell = 0, maxScaled = 0;
         int nAbove = 0, nWell = 0;
+        double maxScaledRel = 0;
         for (int t = 0; t < nTrials; ++t)
         {
             const vector n = randomUnit();
@@ -186,6 +284,7 @@ int main()
                 }
                 // the distance scaled by the round-off amplification 1/quality
                 maxScaled = std::max(maxScaled, dd*qual);
+                maxScaledRel = std::max(maxScaledRel, dd*qual/lg);
             }
             for (int i = 0; i < nb; ++i)
             {
@@ -226,16 +325,20 @@ int main()
             maxExcess = std::max(maxExcess, rFit - rMin);
             if (rFit > rMin + 1e-14) ++nViol;
         }
-        const bool ok = (maxThrough <= 1e-14 && nViol == 0 && nWrongSide == 0);
+        const bool ok =
+            (
+                (nb == 3 ? maxScaledRel <= 1e-14 : maxThrough <= 1e-14)
+             && nViol == 0 && nWrongSide == 0
+            );
         if (nb == 3)
         {
             std::printf
             (
-                "G2b diagnostic, triples: %d of %d trials above 1e-14; worst "
+                "G2b triples, amended clause (distance x conditioning / longest edge) max = %.3e (<= 1e-14); %d of %d trials above 1e-14; worst "
                 "distance %.3e at conditioning %.3e; %d trials with "
                 "conditioning > 0.1, their max distance %.3e; max of "
                 "distance x conditioning %.3e\n",
-                nAbove, nTrials, worstDist, worstQual, nWell, maxThroughWell,
+                maxScaledRel, nAbove, nTrials, worstDist, worstQual, nWell, maxThroughWell,
                 maxScaled
             );
         }

@@ -1,6 +1,7 @@
 /* G2 of pointIsoAdvection: OpenFOAM v2606 only. */
 EXE_INC = \
     -std=c++17 \
+    -g -O0 \
     -I../../../src/davof/advection
 EXE_LIBS = \
     -lOpenFOAM

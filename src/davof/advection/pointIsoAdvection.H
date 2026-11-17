@@ -237,6 +237,10 @@ class pointIsoAdvection
             //  flux on the same plane and print the largest difference
             bool compareIso_;
 
+            //- Print-only key pointIsoPrintPoints: print the displaced
+            //  polygon points of every interface cell before its fit
+            bool printPoints_;
+
             //- Points on boundary faces of patches that prescribe a velocity
             bitSet bndPoint_;
 

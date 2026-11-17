@@ -44,6 +44,7 @@ License
 #include "pointIsoPlaneFit.H"
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 #include "addToRunTimeSelectionTable.H"
 
@@ -124,6 +125,7 @@ Foam::pointIsoAdvection::pointIsoAdvection
     // pointIsoAdvection
     pointVelocity_(dict_.getOrDefault<word>("pointVelocity", "edgeLinear")),
     compareIso_(dict_.getOrDefault<bool>("pointIsoCompare", false)),
+    printPoints_(dict_.getOrDefault<bool>("pointIsoPrintPoints", false)),
     bndPoint_(mesh_.nPoints()),
     bndEdge_(mesh_.nEdges()),
     wetFraction_
@@ -587,6 +589,24 @@ void Foam::pointIsoAdvection::timeIntegratedFlux()
                     << qPts.size() << " PLIC polygon points, 3 are needed"
                     << " for the plane fit"
                     << exit(FatalError);
+            }
+
+            if (printPoints_)
+            {
+                Pout<< "pointIsoPoints cell " << celli << " n_k " << n0.x()
+                    << ' ' << n0.y() << ' ' << n0.z() << " :";
+                forAll(qPts, k)
+                {
+                    char buf[160];
+                    std::snprintf
+                    (
+                        buf, sizeof(buf), " %.17g %.17g %.17g %d",
+                        qPts[k].x(), qPts[k].y(), qPts[k].z(),
+                        int(qBnd[k])
+                    );
+                    Pout<< buf;
+                }
+                Pout<< endl;
             }
 
             const pointIso::fit fit =

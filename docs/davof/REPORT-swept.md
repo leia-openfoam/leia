@@ -7169,3 +7169,25 @@ the plane, in units of V_k^(1/3)), the maximum angle between n' and n_k, the cou
 ### Budget
 
 3 builds, the gates, the 18 cases once, at most 3 repetitions or diagnostic reruns.
+
+
+### POST HOC 1 (2026-11-17, decisions of the main session after the first gate round; recorded as revisions, not as predictions)
+
+The first gate round (builds 56526973 failed on a missing include, 56527464, G2 test 56527743; G1/G3 studies 56527744 to 56527747)
+gave: G2 (a), (b) with one and two boundary points pass; (b) with three boundary points fails the clause (5.7e-14 against 1e-14,
+one of 300 near-collinear random triples, conditioning 1.2e-4, distance x conditioning 1.9e-16); the four G1/G3 runs trap SIGFPE
+inside pointIso::fitPlane after 2 to 3 steps (the compared steps agree with isoAdvection to 4e-15 of max |phi dt|).
+1. Budget: 3 further builds (6 in total).
+2. The crash: first CONFIRM the line that traps (standalone test with FOAM_SIGFPE-type trapping on exactly coplanar points, on an
+   axis plane, on three points, on points equal up to 1e-16, and on the points of the crashing cell printed behind the print-only key
+   pointIsoPrintPoints in one rerun of the oblique np 1 gate case). Then replace the Jacobi rotation by the standard robust form
+   (W. H. Press, S. A. Teukolsky, W. T. Vetterling, B. P. Flannery, Numerical Recipes, 3rd ed., Cambridge University Press 2007,
+   Sec. 11.1): a rotation is skipped when A_pq is exactly zero or |A_pq| <= machine epsilon sqrt(|A_pp A_qq|) (then A_pq = 0);
+   otherwise theta = (A_qq - A_pp)/(2 A_pq), t = sgn(theta)/(|theta| + sqrt(theta^2 + 1)), and t = 1/(2 theta) when |theta| > 1e150.
+   No other change. If the confirmed cause is another line, stop and report it instead.
+3. G2, three boundary points (the clause did not account for conditioning): the clause becomes "the distance of each boundary point to
+   the fitted plane times the conditioning 2|cross|/(longest edge)^2 is <= 1e-14 times the longest edge". The other G2 clauses stay.
+   Accepted as specified: the collinearity threshold (the largest distance of a boundary point from the line through the two farthest
+   apart is <= 1e-12 of their distance) and the boundary point b being the displaced polygon point p_i'.
+4. Then G1 (50 steps, all four runs), G3 and, if the gates pass, the 18-case study. A gate failure stops the work.
+5. The generated gate tables under docs/davof/davof-article/data/tables/ are not committed.
