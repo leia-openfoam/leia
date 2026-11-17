@@ -7191,3 +7191,21 @@ inside pointIso::fitPlane after 2 to 3 steps (the compared steps agree with isoA
    apart is <= 1e-12 of their distance) and the boundary point b being the displaced polygon point p_i'.
 4. Then G1 (50 steps, all four runs), G3 and, if the gates pass, the 18-case study. A gate failure stops the work.
 5. The generated gate tables under docs/davof/davof-article/data/tables/ are not committed.
+#### The crash confirmed and the rotation replaced (2026-11-17; builds 56529116 and 56529576, debug run 56529294, test output in the logs of the workspace)
+
+- Cause confirmed. The oblique np 1 gate case with the print-only key pointIsoPrintPoints (56529294) printed the displaced polygon points of
+  every interface cell before its fit and died in step 2 at cell 7799 (4 points, n_k (-0.3032, -0.5043, -0.8085), exactly coplanar to
+  rms 2.9e-19). The standalone test (`davofTestPointIsoPlaneFit`, -g -O0, SIGFPE trapping on invalid, division by zero and overflow) fed with
+  these points the verbatim first version of the rotation in a child process: cell 7799 traps, the other 357 cells do not; the trap is at
+  `const scalar theta = (A[q][q] - A[p][p])/(2*A[p][q]);` (addr2line of the backtrace: davofTestPointIsoPlaneFit.C:117, the copy of the
+  line of the first pointIsoPlaneFit.H): the quotient overflows for a denormal off-diagonal element. The synthetic cases (exactly coplanar,
+  axis planes x, y, z = const, three points, points equal up to 1e-16 and exactly equal) do not trap with the old rotation; they are
+  not the cases that trap.
+- The rotation is replaced by the form of POST HOC 1 item 2 (implemented without forming the overflowing quotient: for |A_qq - A_pp| >
+  1e-150 * 2 |A_pq| the value t = A_pq/(A_qq - A_pp) = 1/(2 theta) is used, which is the specified t = 1/(2 theta) for |theta| > 1e150).
+  With it: cell 7799 and the 357 other cells fit without a trap; the synthetic cases return finite normals (all points exactly equal:
+  n' = (1, 0, 0), the smallest eigenvector of the zero matrix by the identity of V, n'.nk = 0, rms 0; points equal up to 1e-16: a unit
+  vector from the round-off of the covariance, rms 1.8e-17).
+- G2 with the amended three-boundary-point clause (POST HOC 1 item 3): G2a max |n' - n| 1.56e-15, max |n.(x' - x)| 2.3e-16; G2b one boundary
+  point 0, two 3.3e-16, three: distance x conditioning / longest edge 1.6e-16 (<= 1e-14; the unscaled maximum is 5.7e-14 at conditioning
+  1.2e-4), in no trial a residual above that of 1000 random planes (max excess 1.6e-16), orientation n'.nk > 0 in all trials: G2 PASS.
