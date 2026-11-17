@@ -7266,3 +7266,97 @@ extremes of alpha before and after the bounding, the mass changes, the interface
 - PH4 plicRDF's compute max/mean at 64 ranks is below 3.
 - PH5 the balanced-compute bound at 64 ranks (sum of compute / ranks + exchange proper) is at least 5 times below the measured step.
 Falsifiers: the opposite observation in each. Budget: 1 profiled build, the 8 runs above, at most 3 repetitions.
+
+
+#### Pieces path: HPCToolkit profile, results (2026-11-17)
+
+Set-up as pre-registered. Profiled build: detached worktree prof/leia at 2de74886 (library code of 112c284a), -O3 plus `-g -fno-omit-frame-pointer`,
+job 56466270 (libleiaDavof.so with debug_line). Runs (jobs 56526744 serial with the identity check, 56526745 shear2D, 56526746 par8,
+56526747 par64; hpcrun CPUTIME@1000, hpcstruct, hpcprof; REALTIME together with CPUTIME was not accepted by hpcrun, so CPUTIME only: the
+busy-wait of the OpenMPI vader transport is sampled as CPU time inside libmpi/libopen-pal, which is how the wait is attributed). Tables
+with workflow/scripts/davof_prof/hpdb.py and hpan.py (the readers of the 2026-11-04 profile; `--metric` added) and
+workflow/scripts/davof_diag2/rules_pieces.py, hp_all_pieces.sh. Databases: /work/scratch/tm83tomy/davof/agents/diag2/prof/runs/<mode>/<case>/hpctoolkit-database
+(serial/{pieces,rdf,iso}_deformation3D_N64_100, par8/{pieces,rdf}_deformation3D_N64_200, par64/{pieces,rdf}_deformation3D_N128_200,
+s2d/pieces_shear2D_N128_500; 4 to 114 MB each); tables /work/scratch/tm83tomy/davof/agents/diag2/prof/an/*.CPUTIME.{summary.txt,flat.csv,lines.csv,cat.csv,ranks.csv,tree.txt,callers.txt}.
+Identity of the profiled build: the log quantities of the first 20 steps (sum(alpha V), the extremes of alpha before and after the
+bounding, the mass changes, the interface cells; 100 lines) are identical in the production build, the profiled build without hpcrun and the
+profiled build under hpcrun (100 of 100 lines each); step time 3.43 s (production), 3.47 s (profiled), 3.38 s (profiled with hpcrun): the
+sampling overhead is below the run-to-run spread.
+
+SERIAL, deformation3D N 64, Co 0.5, 1 rank, first 100 steps, 1814 interface cells on average: 3.39 s per step (pieces), 0.265 s (plicRDF),
+0.238 s (isoAlpha).
+1. Top-down, inclusive share of the pieces step: advect 93.2 %; curvedFlux 91.2 %; the face loop 89.8 %; sweptFaceCellsFlux 89.5 %;
+   sweptPieceVolume -> sweptPieceExactVolume 82.3 %; area clips (sweptPieceArea) 1.7 %; trace (sweptTriangles) 1.6 % (+ velocity
+   interpolation 1.7 %); ring search, pre-image fan, ring state, pre-test 3.5 % (own lines of sweptFaceCellsFlux 1.0 % + categories); surface build
+   0.8 %; reconstruction 0.95 %; limiter 0.2 %; the solver's own work (setFlow function object 4.5 %, error function objects, I/O) about 6 %.
+   shear2D N 128 (1 rank, 500 steps, 334 interface cells, 0.178 s per step): advect 99.2 %, curvedFlux 96.2 %, sweptFaceCellsFlux 93.8 %,
+   sweptPieceExactVolume 85.9 %, area clips 1.6 %, trace 2.5 %, reconstruction 1.8 %.
+2. Bottom-up, exclusive top (share of the step; scope: the function's own lexical subtree; source file:line):
+   15.29 % std::__copy_move::__copy_m<Vector> (copy of a FixedList<point, 24>, stl_algobase.h:431); 15.12 % sweptPieceExactVolume own lines
+   (davofSweptPieces.H:444); 11.20 % FixedList<Vector, 24>::operator[] (FixedListI.H:404); 7.82 % halfSpace::dist (davofSweptPieces.H:147);
+   7.48 % sweptPieceExactVolume (H:550, the entry of clipAll); 4.65 % minusOp (ops.H:209); 3.27 % mag(double); 2.44 % Vector::cross; 1.88 %
+   sweptPieceExactVolume (H:417); 1.70 % (H:416); 1.37 % Vector::inner; 1.05 % sweptFaceCellsFlux (davofSweptAdvectionFlux.C:684); 0.90 % atan2;
+   0.84 % operator*(double, Vector); 0.62 % plusEqMagSqrOp2; 0.61 % Vector::operator+=; 0.60 % divideEqOp2; 0.59 % magSqr; 0.57 % clipWith
+   (H:244); 0.49 % FixedList::operator[]; 0.46 % sweptPieceExactVolume (H:479); 0.41 % max; 0.39 % operator*(double, UList); 0.35 % plusOp; 0.35 % libm.
+3. Inside sweptPieceExactVolume (82.3 % of the step; call tree, inlining makes the line attribution approximate): the clipAll lambda
+   62.8 % (own entry 7.5 %: the zero initialisation of `cross[48]` and `poly out`, H:550 to 556); clipOne inside clipAll 30.9 % (own lines 11.3 %,
+   FixedList::operator[] 9.0 %, halfSpace::dist 6.8 %, mag 2.2 %); clipOne in the coverage clips of the triangle 9.1 % (350 coverage clips per face
+   against 1252 polygon clips); the polygon copies `q = out` (FixedList<point, 24>::operator= -> std::copy, 576 bytes per polygon) 12.2 % plus
+   3.1 % in a second copy site (cap polygons), 15.3 % in all; the cap (atan2 6.5 %, cross 1.0 %, the insertion sort and orientation, the
+   centroid and frame) 13.3 % by the line categories (frame and centroid 2.25 %, atan2 7.14 %, insertion sort 1.36 %, copy and orientation 2.55 %);
+   tet set-up 0.5 %; volume sums and areaOf 4.4 %; the rest (the part outside clipAll) about 19 %. Instruction level: not resolved (hpcprof
+   gives the source line of the sample): the copies are the `rep movs`/memmove of the std::copy over 24 Vector<double> (576 B) and the operator[]
+   share is the load of the polygon points inside the distance loop.
+4. plicRDF and isoAlpha (serial, same 100 steps, step 0.265 and 0.238 s): top exclusive 3.7 % / 4.6 % Foam::operator*(double, UList) (finiteVolume,
+   the setFlow field arithmetic), 2.5 % / 3.4 % memcpy, 2.1 % / 2.2 % cellToCellStencil::merge, 2.0 % cutFacePLIC::calcSubFace (plicRDF), 2.0 % / 2.2 %
+   multiply / sin of Field, 1.8 % cutFace::calcSubFace, 1.5 % volPointInterpolation (both), 1.5 % / 1.4 % _int_free. Inclusive: setFlow::execute 49.7 %
+   (plicRDF) and 57.1 % (isoAlpha) of the step (the analytic velocity and flux of the test case); advect 28.3 % / 19.1 %; reconstruct 18.6 % / 8.1 %;
+   timeIntegratedFlux 4.3 % / 4.7 %; limitFluxes 1.7 % / 1.9 %.
+5. The three largest serial bottlenecks (share of the pieces step; the step if that part cost nothing, 3.39 s):
+   (1) clipOne, the Sutherland-Hodgman distance, crossing and copy loop of the tet clips and the coverage clips: 40.0 % (30.9 % + 9.1 %); 2.03 s.
+   (2) the polygon copies (`q = out`, std::copy of 24 points per polygon clip): 15.3 %; 2.87 s.
+   (3) the cap construction (centroid, atan2 ordering, sort, orientation): 13.3 % (atan2 alone 7.1 %); 2.94 s. Together (1) to (3): 68.6 %; the whole
+   sweptPieceExactVolume at no cost: 0.60 s (0.178 times of the step; plicRDF 0.265 s).
+
+PARALLEL (CPUTIME of every rank; compute = the rank's time outside libmpi/libopen-pal; wait = the rest, spin included).
+| run | step (s, hpcrun) | interface cells (end state, per rank max / mean) | compute per rank mean / max / min (s over the run) | max/mean | max/min | MPI share of the summed time |
+|---|---|---|---|---|---|---|
+| pieces N 64, 8 ranks, 200 steps | 2.155 | 1381 / 467 | 105.4 / 310.7 / 7.9 | 2.95 | 39 | 75.4 % |
+| plicRDF N 64, 8 ranks | 0.0731 | 1346 / 456 | 7.82 / 12.21 / 5.88 | 1.56 | 2.1 | 47.4 % |
+| pieces N 128, 64 ranks, 200 steps | 5.152 | 3369 / 124 (51 ranks with none) | 47.6 / 880.3 / 7.0 | 18.5 | 125 | 95.3 % |
+| plicRDF N 128, 64 ranks | 0.1653 | 3352 / 125 | 9.05 / 25.27 / 5.59 | 2.79 | 4.5 | 72.4 % |
+6. Per rank, pieces 64 ranks, compute (s): 58 of 64 ranks between 7 and 56 s, the others 67, 80, 130, 143, 209, 270, 506 and 880 s (the rank with 880 s holds
+   28.9 % of the summed compute 3049 s); wait per rank mean 982 s (4.9 s per step), minimum 147 s on the most loaded rank (0.74 s per step). Per rank, 8 ranks:
+   compute 202, 36, 175, 311, 8, 59, 44, 9 s; wait 228, 395, 255, 119, 423, 371, 387, 422 s. The numbers of swept faces per rank were not sampled by
+   hpcrun; the compute per rank follows the partial cells per rank (0: 51 of 64 ranks, 1043, 436, 943, 600, 712, 554 and 3369).
+7. The wait: MPI_Alltoall (ompi_coll_tuned_alltoall_intra_dec_fixed -> ompi_coll_base_alltoall_intra_bruck, Foam::UPstream::allToAll of int lists, the size
+   exchange of the processor-patch sync) called from davofSweptAdvection::syncProcPatches (davofSweptAdvection.C:1181-1289, called from curvedFlux at
+   davofSweptAdvectionSurfaces.C:2166): 61359 s = 93.0 % of the summed time at 64 ranks (73.9 % at 8 ranks: 2550 s of 3449 s), by the call site 93.1 % (61390 s).
+   Other MPI time by call site at 64 ranks: sweptExchange 906 s (1.4 %; davofSweptAdvection::sweptExchange), reconstruct 220 s (0.3 %), the face loop
+   140 s, advect (alpha update, reports) 81 s, function objects 71 s, solver loop 26 s. plicRDF at 64 ranks: sweptExchange / zoneDistribute 748 s,
+   plicRDF reconstruct 620 s, function objects 64 s, timeIntegratedFlux 81 s (72.4 % MPI in all). Exchange proper against the wait: the exchange phases
+   measured by the in-code timers (phaseProfile, runs prof2) are 0.014 s per step at N 64 and 0.034 s at N 128 (exchange 1, exchange 2, swept exchange) and
+   1e-4 s for the sync on the most loaded rank; the minimum MPI time over the ranks (an upper bound of the exchange proper, it includes waits of the
+   most loaded rank for the others) is 0.60 s per step at 8 ranks and 0.74 s at 64 ranks. Exchange rounds issued by the davof code: 17.5 per rank and
+   step (phaseProfile, runs prof2; the collectives of the reductions are not counted).
+8. Balanced-compute step (sum of compute / ranks + exchange proper) against the measured step (hpcrun):
+   pieces 8 ranks: 0.527 s + (0.014 to 0.60) = 0.54 to 1.13 s against 2.155 s (1.9 to 4.0 times); plicRDF 8 ranks: 0.039 s + (0.014 .. 0.014) = 0.05 s
+   against 0.0731 s; pieces 64 ranks: 0.238 s + (0.034 to 0.74) = 0.27 to 0.98 s against 5.152 s (5.3 to 19 times); plicRDF 64 ranks: 0.045 s + 0.040 s =
+   0.085 s against 0.1653 s (1.9 times). The balanced pieces step at 64 ranks (0.27 to 0.98 s) against the measured plicRDF step (0.165 s): 1.6 to 5.9 times.
+9. The three largest parallel bottlenecks (share of the summed time at 64 ranks): (1) the wait in the size exchange allToAll of syncProcPatches, 93.0 %,
+   produced by (2) the unbalanced compute of the face loop (max/mean 18.5; one rank 28.9 % of the compute; 51 of 64 ranks without interface cells), whose
+   own work is 4.6 % of the summed time (sweptPieceExactVolume on that rank 880 s); (3) the remote exchange (sweptExchange, 1.4 %) and the reconstruction's
+   MPI (0.3 %).
+
+VERDICTS. PH1 HOLDS: sweptPieceExactVolume with its inlined lambdas is 82.3 % of the serial 3D step (85.9 % in the 2D case).
+PH2 HOLDS: the polygon copies (15.3 % of the step) and clipOne (40.0 %) together are 55.3 % of the step = 67 % of sweptPieceExactVolume; the cap is 13.3 % of the
+step = 16 % of it (above 10 %).
+PH3 HOLDS: at 64 ranks 95.3 % of the summed time is in MPI, 93.0 % of it in the processor-patch sync; compute max/mean 18.5.
+PH4 HOLDS narrowly: plicRDF compute max/mean at 64 ranks is 2.79 (below 3); 1.56 at 8 ranks.
+PH5 HOLDS: the balanced bound is 5.3 times (with the whole minimum MPI time as exchange proper) to 19 times (with the timer-measured exchange proper) below the
+measured step.
+LIMITATIONS: one run per case (no repetition); CPUTIME only (REALTIME with CPUTIME not accepted, no REALTIME-only run); the first 100 or 200 steps (the interface
+grows from 1694 to 3631 cells in 200 steps at N 64, 6836 to 7745 at N 128); the swept faces per rank and the exchange rounds per rank were not sampled by hpcrun
+(rounds and exchange proper from the in-code timers of the earlier runs at Co 0.2 and 0.95); line attribution under inlining is approximate (the clipAll own
+share of 7.5 % is the zero initialisation of the 1152-byte `cross` array and of `poly out` by the ranges and the call tree, not resolved to instructions);
+the plicRDF and isoAlpha cases are the stored standing and Stage B cases at Co 0.5.

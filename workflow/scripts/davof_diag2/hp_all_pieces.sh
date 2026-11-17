@@ -9,7 +9,7 @@ for mode in ${1:-serial par8 par64 s2d}; do
     tag=$(basename $c); db=$c/hpctoolkit-database
     [ -f $db/profile.db ] || continue
     n=$(grep -c '^Time = ' $c/log.solver)
-    for met in CPUTIME REALTIME; do
+    for met in ${METRICS:-CPUTIME}; do
       out=$P/an/${mode}_${tag}.$met
       echo "== $mode/$tag steps $n $met"
       /usr/bin/python3 -I $R/davof_prof/hpan.py --db $db --out $out --metric $met --steps $n --rules $R/davof_diag2/rules_pieces.py --src 'leia|OpenFOAM' --tree-min 0.4 > $out.log 2>&1 || { echo "FAILED"; tail -3 $out.log; }
