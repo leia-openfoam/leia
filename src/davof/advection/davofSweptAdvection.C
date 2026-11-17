@@ -298,6 +298,23 @@ Foam::davofSweptAdvection::davofSweptAdvection
     nSwitchS1_(0),
     nSwitchS2Low_(0),
     nSwitchS2High_(0),
+    sweptContentScale_
+    (
+        modelDict().getOrDefault<word>("sweptContentScale", "none") == "none" ? 0
+      : modelDict().getOrDefault<word>("sweptContentScale", "none") == "upwind" ? 1 : -1
+    ),
+    csLastPlane_(false),
+    csLastN_(Zero),
+    csLastX0_(Zero),
+    nCsExamined_(0),
+    nCsScaled_(0),
+    nCsNeg_(0),
+    nCsBig_(0),
+    nCsBigScaledOff_(0),
+    csMinFactor_(1),
+    csRemoved_(0),
+    csBigMin_(GREAT),
+    csBigMax_(-GREAT),
     onePlaneDiag_(modelDict().getOrDefault<bool>("sweptOnePlaneDiag", false)),
     onePlaneDiagCells_(modelDict().getOrDefault<label>("sweptOnePlaneDiagCells", 20)),
     onePlaneCompareSteps_(modelDict().getOrDefault<labelList>("sweptOnePlaneCompareSteps", labelList())),

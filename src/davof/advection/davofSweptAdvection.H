@@ -797,6 +797,16 @@ class davofSweptAdvection
             label nSwitchS1_;
             label nSwitchS2Low_;
             label nSwitchS2High_;
+            //- sweptContentScale none|upwind (2026-11-18, REPORT docs/davof/
+            //  ccs_oneplane_switches/PREREG-contentscale.md): the one-plane flux
+            //  of a face whose upwind cell has no plane of its own, clipped with
+            //  a donor plane, is scaled by what the upwind cell holds
+            label sweptContentScale_;   // 0 none, 1 upwind
+            bool csLastPlane_;          // the last one-plane face used a donor plane
+            vector csLastN_;
+            point csLastX0_;
+            label nCsExamined_, nCsScaled_, nCsNeg_, nCsBig_, nCsBigScaledOff_;
+            scalar csMinFactor_, csRemoved_, csBigMin_, csBigMax_;
             bool onePlaneDiag_;
             label onePlaneDiagCells_;
             labelList onePlaneCompareSteps_;
@@ -1369,6 +1379,15 @@ public:
             //  more than 1e-12 (never reset), printed with the limiter's
             //  counters (davofSweptAdvectionFlux.C)
             void onePlaneCountOffFaces();
+
+            //- Volume of cell celli on the negative side of the plane
+            //  (x - x0) . n = 0 (closed form, the fan-triangulated boundary)
+            scalar cellVolumeUnderPlane
+            (
+                const label celli,
+                const vector& n,
+                const point& x0
+            ) const;
 
             //- DIAGNOSTIC ONLY (sweptOnePlaneDiag): the report of the step
             //  after the unlimited update, before limitFluxes

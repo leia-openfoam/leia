@@ -1132,6 +1132,13 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
     // DIAGNOSTIC ONLY (sweptOnePlaneDiag): the per-face records of the step
     onePlaneCompareNow_ = false;
     nSwitchS1_ = nSwitchS2Low_ = nSwitchS2High_ = 0;
+    nCsExamined_ = nCsScaled_ = nCsNeg_ = nCsBig_ = nCsBigScaledOff_ = 0;
+    csMinFactor_ = 1; csRemoved_ = 0; csBigMin_ = GREAT; csBigMax_ = -GREAT;
+    if (sweptContentScale_ < 0)
+    {
+        FatalErrorInFunction
+            << "sweptContentScale: none | upwind" << exit(FatalError);
+    }
     if (sweptUpwindNoPlane_ < 0)
     {
         FatalErrorInFunction
@@ -1942,6 +1949,54 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
                 {
                     vSwept = aUp*mag(phiF)*dt;
                     if (aUp < 0.5) ++nSwitchS2Low_; else ++nSwitchS2High_;
+                }
+            }
+            // sweptContentScale upwind: the clip's flux of a face whose upwind
+            // cell has no plane of its own is limited by what that cell holds
+            if (sweptContentScale_ == 1 && csLastPlane_ && up >= 0 && !hasSurface_.test(up))
+            {
+                const scalar aU = alpha1_.oldTime().primitiveField()[up];
+                const scalar VU = mesh_.V()[up];
+                const scalar vD = cellVolumeUnderPlane(up, csLastN_, csLastX0_);
+                const scalar LU = aU*VU, GU = (1 - aU)*VU;
+                const scalar Q = mag(phiF)*dt;
+                scalar fac = 1;
+                scalar vNew = vSwept;
+                ++nCsExamined_;
+                if (vD > 0)
+                {
+                    const scalar ratio = LU/vD;
+                    if (LU > 1e-12*VU && vD > 1e-12*VU)   // diagnostic filter of the unit check only
+                    {
+                        ++nCsBig_;
+                        csBigMin_ = min(csBigMin_, ratio);
+                        csBigMax_ = max(csBigMax_, ratio);
+                    }
+                    if (ratio < 1)
+                    {
+                        fac = ratio;
+                        vNew = vSwept*fac;
+                        af *= fac;
+                    }
+                }
+                if (fac == 1 && VU - vD > 0)
+                {
+                    const scalar g = GU/(VU - vD);
+                    if (g < 1)
+                    {
+                        fac = g;
+                        vNew = Q - (Q - vSwept)*fac;
+                        af = 1 - (1 - af)*fac;
+                    }
+                }
+                if (fac != 1)
+                {
+                    ++nCsScaled_;
+                    if (fac < 0) ++nCsNeg_;
+                    if (fac < 1 - 1e-12 && LU > 1e-12*VU && vD > 1e-12*VU) ++nCsBigScaledOff_;
+                    csMinFactor_ = min(csMinFactor_, fac);
+                    csRemoved_ += mag(vSwept - vNew)/VU;
+                    vSwept = vNew;
                 }
             }
             if (onePlaneDiag_)

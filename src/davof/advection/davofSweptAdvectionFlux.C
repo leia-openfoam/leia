@@ -2331,6 +2331,8 @@ void Foam::davofSweptAdvection::sweptOnePlaneFlux
         ++nOnePlaneDonorNearest_;
     }
 
+    csLastPlane_ = hasPlane;
+    if (hasPlane) { csLastN_ = nRaw; csLastX0_ = x0; }
     if (hasPlane)
     {
         // 3. ONE CLIP of P_f by the donor plane (x - x0) . nRaw = 0, liquid on
@@ -2469,6 +2471,56 @@ void Foam::davofSweptAdvection::sweptOnePlaneFlux
 }
 
 
+Foam::scalar Foam::davofSweptAdvection::cellVolumeUnderPlane
+(
+    const label celli,
+    const vector& n,
+    const point& x0
+) const
+{
+    // the closed-form wet volume (1/3) sum (x_T - x_0) . a_T over the wet
+    // polygons of the cell boundary (outward fan triangles); the cap on the
+    // plane contributes nothing (x - x_0 lies in the plane, a_cap along n)
+    const pointField& P = mesh_.points();
+    const vectorField& Cf = mesh_.faceCentres();
+    const labelList& own = mesh_.faceOwner();
+    scalar threeV = 0;
+    for (const label facei : mesh_.cells()[celli])
+    {
+        const face& f = mesh_.faces()[facei];
+        const bool outward = (own[facei] == celli);
+        forAll(f, i)
+        {
+            FixedList<point, 3> t;
+            t[0] = Cf[facei];
+            if (outward)
+            {
+                t[1] = P[f[i]]; t[2] = P[f[f.fcIndex(i)]];
+            }
+            else
+            {
+                t[1] = P[f[f.fcIndex(i)]]; t[2] = P[f[i]];
+            }
+            const scalar s0 = (t[0] - x0) & n;
+            const scalar s1 = (t[1] - x0) & n;
+            const scalar s2 = (t[2] - x0) & n;
+            vector aw(Zero);
+            if (s0 <= 0 && s1 <= 0 && s2 <= 0)
+            {
+                aw = 0.5*((t[1] - t[0]) ^ (t[2] - t[0]));
+            }
+            else if (!(s0 > 0 && s1 > 0 && s2 > 0))
+            {
+                point xw;
+                davof::triNegativePolygon(t[0], t[1], t[2], s0, s1, s2, aw, xw);
+            }
+            threeV += (t[0] - x0) & aw;
+        }
+    }
+    return threeV/3;
+}
+
+
 void Foam::davofSweptAdvection::onePlaneCountOffFaces()
 {
     // the faces of the cells at 0 or 1 to round-off (1e-12) after the step
@@ -2512,6 +2564,24 @@ void Foam::davofSweptAdvection::onePlaneCountOffFaces()
     Info<< "davofSwept: one plane: limiter faces changed " << nLf << ", cells " << nLc
         << ", volume moved " << vL
         << "; faces of 0/1 cells with alphaf off 0/1 by more than 1e-12: " << nOff << endl;
+    if (sweptContentScale_ == 1)
+    {
+        label ne = nCsExamined_, ns = nCsScaled_, nn = nCsNeg_, nb = nCsBig_, nbo = nCsBigScaledOff_;
+        scalar mf = csMinFactor_, rem = csRemoved_, bmin = csBigMin_, bmax = csBigMax_;
+        if (Pstream::parRun())
+        {
+            reduce(ne, sumOp<label>()); reduce(ns, sumOp<label>()); reduce(nn, sumOp<label>());
+            reduce(nb, sumOp<label>()); reduce(nbo, sumOp<label>());
+            reduce(mf, minOp<scalar>()); reduce(rem, sumOp<scalar>());
+            reduce(bmin, minOp<scalar>()); reduce(bmax, maxOp<scalar>());
+        }
+        Info<< "davofSwept: one plane: contentScale upwind: faces examined " << ne
+            << ", scaled " << ns << " (negative factor " << nn << "), min factor " << mf
+            << ", removed volume / V_k " << rem
+            << "; unit check, faces with L_U and V_D(U) above 1e-12 V_U: " << nb
+            << ", raw ratio L_U/V_D(U) min " << bmin << " max " << bmax
+            << ", of them scaled by more than 1e-12: " << nbo << endl;
+    }
     if (sweptZeroFluxFace_ || sweptUpwindNoPlane_ > 0)
     {
         label s1 = nSwitchS1_, s2l = nSwitchS2Low_, s2h = nSwitchS2High_;
