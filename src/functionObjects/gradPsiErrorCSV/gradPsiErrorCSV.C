@@ -28,6 +28,7 @@ License
 
 #include "gradPsiErrorCSV.H"
 #include "addToRunTimeSelectionTable.H"
+#include "processorFvPatch.H"
 
 #include <limits>
 #include <fstream>
@@ -153,8 +154,29 @@ bool Foam::functionObjects::gradPsiErrorCSV::write()
     const Time& runTime = mesh.time();
 
     const auto deltaX = pow(mesh.deltaCoeffs(),-1).cref();
-    const auto max_deltaX = gMax(deltaX);
-    const auto mean_deltaX = gAverage(deltaX);
+    // The cell-to-cell distance over the internal faces of the GLOBAL mesh. A
+    // face on a processor patch is an internal face of the global mesh and is
+    // seen by two ranks, so each rank counts it with the weight 1/2. Without
+    // these faces the mean depended on the decomposition (2.8e-4 relative
+    // between 1 and 4 ranks, STATUS 11.36 item 6). One rank: unchanged.
+    scalar sum_deltaX = sum(deltaX.primitiveField());
+    scalar n_deltaX = deltaX.primitiveField().size();
+    scalar max_deltaX = deltaX.primitiveField().size()
+      ? max(deltaX.primitiveField()) : -GREAT;
+    forAll(deltaX.boundaryField(), patchi)
+    {
+        const fvsPatchScalarField& pd = deltaX.boundaryField()[patchi];
+        if (isA<processorFvPatch>(pd.patch()) && pd.size())
+        {
+            sum_deltaX += 0.5*sum(pd);
+            n_deltaX += 0.5*pd.size();
+            max_deltaX = max(max_deltaX, max(pd));
+        }
+    }
+    reduce(sum_deltaX, sumOp<scalar>());
+    reduce(n_deltaX, sumOp<scalar>());
+    reduce(max_deltaX, maxOp<scalar>());
+    const scalar mean_deltaX = sum_deltaX/n_deltaX;
     const auto gradPsiError = field_;
     const auto max_gradPsiError = gMax(gradPsiError);
     const auto mean_gradPsiError = gAverage(gradPsiError);
