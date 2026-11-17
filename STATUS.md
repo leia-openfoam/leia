@@ -8077,6 +8077,9 @@ No source file was changed.
    of the ghost class is not a reference value. A second, separate defect: the column
    `MEAN_DELTA_X` of the gradient function object differs by 2.8e-4 between serial and
    4 ranks at time 0 in both classes (a metric, not the solver).
+   RESOLVED 2026-11-17: the cause is found and removed on the branch
+   `fix/ghost-decomposition`, section 11.38. The HYPOTHESIS above was right in its second
+   form (a stencil entry that one side sees as a different thing).
 7. **Proposed changes, not made.** (a) Fit the cells that need no coarser coefficients first,
    exchange once, then fit the transition cells. (b) Exchange and store coefficients only for
    stencil entries coarser than their cell. (c) Remove the heap allocation from `fitCell`.
@@ -8154,3 +8157,70 @@ exits 0 in serial and on 4 ranks with the numbers of round 1.
    without modification").
 5. `compare_metrics_csv.py` does not detect a difference between two non-numeric cells or two
    NaN cells. The identity script adds the text comparison for this reason.
+
+### 11.38 Ghost-cell class: the cause of the decomposition dependence, and the fix (2026-11-17, Lichtenberg, special00005)
+
+Branch `fix/ghost-decomposition` (not in `development`). Code commits 6c935a0a, 555042d4,
+adc0e01e. Clone `/work/scratch/tm83tomy/leia-integration`, OpenFOAM-v2606. The read-outs were
+written into `config/integration/ghostDecompLocateN64.yaml` and
+`config/gates/ghostCellRefinedBoxFix3D.yaml` before each run.
+
+1. **The measurement (MEASURED).** Case: the N = 64 rung of the refined-box gate (11.35), one
+   prepared case, run in serial and on 4 ranks, psi compared cell by cell
+   (`workflow/scripts/integration/ghost_locate.sbatch`, `ghost_locate_compare.py`). Before the
+   fix the class built 73122 ghost data in serial and 73143 on 4 ranks. 101 cells differed
+   after step 1. All of them are at the transition; 93 are within 2 fine cells of a boundary
+   patch and 84 are within 2 cells of a processor boundary. The first difference in the
+   interface band appears at step 65 (t = 0.17). The mean of |psi(serial) - psi(4 ranks)| over
+   all cells at t = 1 was 1.4e-5.
+2. **The cause (MEASURED).** `slReconstruction::stencilIsBoundaryFace()` tests the stencil
+   index against the boundary faces of the own rank only. A physical patch face that another
+   rank owns is also in the stencil of a cell near a processor boundary. The ghost class read
+   a refinement level for this entry from its level field, which had zeroGradient patches, and
+   treated the patch face as a cell: a fine cell took the patch face of a coarser cell for a
+   coarser cell and replaced it with a ghost value, and a coarse cell took the patch face of a
+   finer cell for a finer cell and replaced it with a restricted value. The defect acts only
+   where a boundary patch, a processor boundary and the transition meet.
+3. **Three attempts, two falsified.**
+
+   | attempt | change | ghost data, serial / 4 ranks | cells that differ after step 1 | read-out |
+   |---|---|---|---|---|
+   | before | - | 73122 / 73143 | 101 | - |
+   | T1 | a guard for the equal-distance tie of the nearest coarser cell | 72696 / 72723 | not zero | FALSIFIED, withdrawn |
+   | T2 | a ghost position is used only if a coarser stencil cell contains it (lattice coordinates, no tolerance) | 72200 / 72217 | 86 | FALSIFIED as the cause; the change is kept |
+   | T3 | the level field has the value -1 on every physical patch; an entry with this level is a boundary-face datum | 72200 / 72200 | 0 | HOLDS |
+
+   T2 is kept because it removes the ghost positions outside the domain (922 at N = 64 in
+   serial) and has no tie and no tolerance.
+4. **The result of T3 (MEASURED, jobs 56530011 and 56530012).** No cell differs at the
+   threshold at any written step (0, 1, 2, 10, 65, 100, 172). At t = 1 the mean absolute
+   difference of psi over all cells is 1.1e-16 and the largest is 1.1e-14; in the interface
+   band the mean is 1.5e-16. The condition of the negative-log line of 2026-11-14 ("identical
+   to round-off") is met for psi.
+5. **The gate re-run (MEASURED, driver job 56530725, study `ghostCellRefinedBoxFix3D`, 8 ranks,
+   T = 1).** The fix changes the scheme in serial too (item 3, T2), so the ghost arm of 11.35
+   ran again. All four rungs completed.
+
+   | N | L1 shape error | ratio to uniform N/2 | relative volume error | ratio to uniform N/2 | L1 shape error before the fix |
+   |---|---|---|---|---|---|
+   | 32 | 5.692e-3 | 0.89 | 1.349e-1 | 0.60 | 5.695e-3 |
+   | 64 | 2.287e-3 | 0.83 | 3.213e-2 | 0.92 | 2.287e-3 |
+   | 128 | 3.488e-4 | 0.61 | 4.529e-3 | 1.27 | 3.488e-4 |
+   | 256 | 1.122e-4 | 0.82 | 7.370e-4 | 0.91 | 1.122e-4 |
+
+   Fitted order over the four rungs: shape 1.97 (pairwise 1.32, 2.71, 1.64), volume 2.54
+   (pairwise 2.07, 2.83, 2.62). The band gradient error at T/2 is 1.141e-1, 1.039e-1,
+   2.219e-2, 7.981e-3 (fitted order 1.37; ratio to the control 0.61 to 1.07). **G2 PASSES**:
+   every ratio is at most 2 and the shape order is at least 1.5. The PREDICTION holds: the L1
+   shape error changes by 0.05 % at N = 32 and by less than 0.01 % at the other rungs, and
+   the volume error by at most 0.15 %. The numbers of 11.35 are therefore confirmed to this
+   accuracy, and this table supersedes them. Table:
+   `docs/semi-lagrangian-level-set/sl-level-set-article/data/tables/ghostCellRefinedBoxFix3D_errors.csv`.
+6. **Not measured.** (a) The unit gate `leiaTestGhostCellReconstruction` on the fixed class.
+   (b) A serial against 4 ranks comparison of the metric CSVs; item 4 compares psi itself.
+   (c) The identity check of 11.37 on this branch; the original class does not use the changed
+   code. (d) Any decomposition other than 4 ranks at N = 64.
+7. **Open, a base-class defect.** The option that excludes boundary faces from the stencil
+   (`slReconstruction.C`, not the default) uses the same index test. In parallel it misses the
+   patch faces of another rank. The fix belongs in the base class and needs its own
+   bit-identity gate. The `MEAN_DELTA_X` defect of 11.36 item 6 is also open.

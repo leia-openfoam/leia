@@ -23,6 +23,11 @@
 #   PREDICTION: the sphere stays 0.35 from the boundary patches, so the L1 shape error
 #      changes by less than 1 % against STATUS 11.35 at every rung (5.695e-3, 2.287e-3,
 #      3.488e-4, 1.122e-4). A larger change does not fail the gate; it is reported.
+#   RESULT 2026-11-17 (driver job 56530725, STATUS 11.38): every rung completed. L1 shape
+#   error 5.692e-3, 2.287e-3, 3.488e-4, 1.122e-4; ratio to the uniform N/2 control 0.89,
+#   0.83, 0.61, 0.82. Relative volume error 1.349e-1, 3.213e-2, 4.529e-3, 7.370e-4; ratio
+#   0.60, 0.92, 1.27, 0.91. Fitted shape order 1.97. G2 PASSES. The PREDICTION holds: the
+#   shape error changes by 0.05 % at N = 32 and by less than 0.01 % at the other rungs.
 # ============================================================================
 study_name: ghostCellRefinedBoxFix3D
 case: 3Dtranslation
