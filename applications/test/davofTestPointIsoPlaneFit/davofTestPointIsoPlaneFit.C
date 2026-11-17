@@ -44,6 +44,10 @@ Description
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <csignal>
+#include <execinfo.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 using namespace Foam;
 
@@ -93,11 +97,103 @@ static double rmsResidual
     return std::sqrt(s/double(q.size()));
 }
 
+// ---- the Jacobi rotation of the first version of pointIsoPlaneFit.H, verbatim, to locate the trap
+static void oldJacobi(scalar (&A)[3][3], scalar (&V)[3][3], scalar (&ev)[3])
+{
+    const int N = 3;
+    for (int i = 0; i < N; ++i)
+        for (int j = 0; j < N; ++j) V[i][j] = (i == j) ? 1.0 : 0.0;
+    for (int sweep = 0; sweep < 100; ++sweep)
+    {
+        scalar off = 0;
+        for (int p = 0; p < N - 1; ++p)
+            for (int q = p + 1; q < N; ++q) off += A[p][q]*A[p][q];
+        if (off == 0) break;
+        for (int p = 0; p < N - 1; ++p)
+        {
+            for (int q = p + 1; q < N; ++q)
+            {
+                if (A[p][q] == 0) continue;
+                const scalar theta = (A[q][q] - A[p][p])/(2*A[p][q]);          // LINE-THETA
+                const scalar t =
+                    (theta >= 0 ? 1.0 : -1.0)
+                   /(std::fabs(theta) + std::hypot(theta, 1.0));              // LINE-T
+                const scalar c = 1.0/std::sqrt(t*t + 1.0);
+                const scalar s = t*c;
+                const scalar Apq = A[p][q];
+                A[p][p] -= t*Apq;
+                A[q][q] += t*Apq;
+                A[p][q] = 0;
+                A[q][p] = 0;
+                for (int r = 0; r < N; ++r)
+                {
+                    if (r == p || r == q) continue;
+                    const scalar Arp = A[r][p];
+                    const scalar Arq = A[r][q];
+                    A[r][p] = c*Arp - s*Arq;
+                    A[p][r] = A[r][p];
+                    A[r][q] = c*Arq + s*Arp;
+                    A[q][r] = A[r][q];
+                }
+                for (int r = 0; r < N; ++r)
+                {
+                    const scalar Vrp = V[r][p];
+                    const scalar Vrq = V[r][q];
+                    V[r][p] = c*Vrp - s*Vrq;
+                    V[r][q] = s*Vrp + c*Vrq;
+                }
+            }
+        }
+    }
+    for (int i = 0; i < N; ++i) ev[i] = A[i][i];
+}
+
+static void onFpe(int)
+{
+    void* b[40];
+    const int n = backtrace(b, 40);
+    backtrace_symbols_fd(b, n, 2);
+    _exit(99);
+}
+
+// the no-boundary fit with the old rotation, in a child process; a trap is reported with its backtrace
+static void runOld(const char* tag, const std::vector<point>& qv)
+{
+    std::fflush(stdout);
+    const pid_t pid = fork();
+    if (pid == 0)
+    {
+        signal(SIGFPE, onFpe);
+        point c(Zero);
+        for (const point& p : qv) c += p;
+        c /= double(qv.size());
+        scalar A[3][3] = {{0,0,0},{0,0,0},{0,0,0}};
+        scalar V[3][3];
+        scalar ev[3];
+        for (const point& p : qv)
+        {
+            const vector d(p - c);
+            for (int a = 0; a < 3; ++a) for (int b = 0; b < 3; ++b) A[a][b] += d[a]*d[b];
+        }
+        oldJacobi(A, V, ev);
+        _exit(0);
+    }
+    int st = 0;
+    waitpid(pid, &st, 0);
+    if (WIFEXITED(st) && WEXITSTATUS(st) == 0) std::printf("OLD rotation, %s: no trap\n", tag);
+    else if (WIFEXITED(st) && WEXITSTATUS(st) == 99) std::printf("OLD rotation, %s: TRAP (SIGFPE), backtrace on stderr\n", tag);
+    else std::printf("OLD rotation, %s: abnormal end, status %d\n", tag, st);
+    std::fflush(stdout);
+}
+
 static void report(const char* tag, const std::vector<point>& qv, const std::vector<bool>& bv, const vector& nk)
 {
     List<point> q(qv.size());
     List<bool> b(qv.size(), false);
     forAll(q, i) { q[i] = qv[i]; b[i] = bv[i]; }
+    bool anyB = false;
+    for (bool x : bv) anyB = anyB || x;
+    if (!anyB) runOld(tag, qv);
     const pointIso::fit f = pointIso::fitPlane(q, b, nk);
     std::printf
     (
@@ -182,6 +278,8 @@ int main(int argc, char* argv[])
 {
     // the trapping of the solvers (FOAM_SIGFPE): invalid, division by zero, overflow
     feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+    signal(SIGFPE, onFpe);
+    setvbuf(stdout, nullptr, _IONBF, 0);
     if (argc > 1)
     {
         fromFile(argv[1]);

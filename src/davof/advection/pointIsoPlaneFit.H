@@ -12,7 +12,9 @@ License
 Description
     The plane fitted to the displaced points of a PLIC polygon in
     pointIsoAdvection (linear least squares, eigenvectors by Jacobi
-    rotations; OpenFOAM's eigenVectors returned a wrong vector on a
+    rotations in the standard robust form (W. H. Press, S. A. Teukolsky,
+    W. T. Vetterling, B. P. Flannery, Numerical Recipes, 3rd ed., Cambridge
+    University Press 2007, Sec. 11.1); OpenFOAM's eigenVectors returned a wrong vector on a
     near-degenerate covariance in this project and is not used).
 
     - No boundary point: the plane through the mean c' of the points, the
@@ -52,6 +54,7 @@ Description
 #include "point.H"
 #include "DynamicList.H"
 #include <cmath>
+#include <limits>
 
 namespace Foam
 {
@@ -87,15 +90,41 @@ inline void jacobiEigen(scalar (&A)[N][N], scalar (&V)[N][N], scalar (&ev)[N])
         {
             for (int q = p + 1; q < N; ++q)
             {
-                if (A[p][q] == 0) continue;
+                const scalar Apq = A[p][q];
+                if (Apq == 0) continue;
 
-                const scalar theta = (A[q][q] - A[p][p])/(2*A[p][q]);
-                const scalar t =
-                    (theta >= 0 ? 1.0 : -1.0)
-                   /(std::fabs(theta) + std::hypot(theta, 1.0));
+                // A rotation is skipped when |A_pq| is at most the machine
+                // epsilon times sqrt(|A_pp A_qq|) (A_pq is then set to zero)
+                if
+                (
+                    std::fabs(Apq)
+                 <= std::numeric_limits<scalar>::epsilon()
+                   *std::sqrt(std::fabs(A[p][p]*A[q][q]))
+                )
+                {
+                    A[p][q] = 0;
+                    A[q][p] = 0;
+                    continue;
+                }
+
+                // theta = (A_qq - A_pp)/(2 A_pq); t = 1/(2 theta) when
+                // |theta| > 1e150 (written without forming the overflowing
+                // quotient: t = A_pq/(A_qq - A_pp))
+                const scalar dqp = A[q][q] - A[p][p];
+                scalar t;
+                if (std::fabs(dqp) > 1e150*2*std::fabs(Apq))
+                {
+                    t = Apq/dqp;
+                }
+                else
+                {
+                    const scalar theta = dqp/(2*Apq);
+                    t =
+                        (theta >= 0 ? 1.0 : -1.0)
+                       /(std::fabs(theta) + std::sqrt(theta*theta + 1.0));
+                }
                 const scalar c = 1.0/std::sqrt(t*t + 1.0);
                 const scalar s = t*c;
-                const scalar Apq = A[p][q];
 
                 A[p][p] -= t*Apq;
                 A[q][q] += t*Apq;
