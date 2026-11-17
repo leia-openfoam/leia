@@ -7221,3 +7221,193 @@ inside pointIso::fitPlane after 2 to 3 steps (the compared steps agree with isoA
   1.5e-14 (step 20, 48), 1.3e-14 (step 30, 10 interface cells), <= 6.7e-17 afterwards; clause <= 1e-12: PASS. A first G3 with alpha written only at the
   end (56575437 to 56575440, 56576456 to 56576459) compared fields without an interface (all |alpha| <= 1.4e-16) and is not used.
 - G2: see above (PASS with the amended clause).
+#### Study results (2026-11-17; 18 cases of studies/davof/pointIso_*, jobs 56577914 to 56577919; tables by workflow/scripts/davof_pointiso/pointiso_an.py)
+
+Stored rows (plicRDF at Co 0.2 and 0.5 from the standing studies, plicRDF at 0.95, isoAlpha and pieces from Stage B) are read from stageB_cells.csv; their wall clocks come from other runs, other nodes, so the wall ratios carry that noise (not repeated). The PP2 comparison takes the magnitudes and counts a pair as within when both are <= 1e-12 or their ratio lies in [0.5, 2].
+
+##### shear2D, OpenFOAM Co 0.2
+
+| method | N | ranks | OF Co | steps | status | E_shape | E_mass (%) | min alpha | max alpha - 1 | wall clock (s) | E_shape / plicRDF | wall / plicRDF | source |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| pointIso | 64 | 1 | 0.200 | 3328 | completed | 3.11e-04 | 8.67e-19 | -1.54e-04 | 4.44e-16 | 21 | 0.998 | 1.615 | pointIso_shear2D_N64 |
+| pointIso | 128 | 1 | 0.200 | 6656 | completed | 2.08e-05 | 7.59e-18 | -5.57e-05 | 2.02e-05 | 79 | 0.912 | 1.295 | pointIso_shear2D_N128 |
+| pointIso | 256 | 8 | 0.200 | 13312 | completed | 2.46e-06 | 6.72e-18 | -1.15e-04 | 4.66e-05 | 62 | 0.988 | 0.713 | pointIso_shear2D_N256 |
+| plicRDF | 64 | 1 | 0.200 | 3328 | completed | 3.12e-04 | 4.44e-14 | -1.73e-17 | 2.22e-16 | 13 | - | - | standing_shear2D_N64 (stored) |
+| plicRDF | 128 | 1 | 0.200 | 6656 | completed | 2.28e-05 | 6.33e-13 | -2.06e-05 | 2.22e-16 | 61 | - | - | standing_shear2D_N128 (stored) |
+| plicRDF | 256 | 8 | 0.200 | 13312 | completed | 2.49e-06 | 2.79e-12 | -8.91e-05 | 5.65e-05 | 87 | - | - | standing_shear2D_N256 (stored) |
+| isoAlpha | 64 | 1 | 0.200 | 3328 | completed | 2.41e-04 | 2.78e-13 | -8.24e-18 | 2.22e-16 | 6 | - | - | ccsB_shear2D_N64_iso |
+| isoAlpha | 128 | 1 | 0.200 | 6656 | completed | 1.63e-05 | 1.08e-12 | -2.42e-05 | 9.07e-06 | 59 | - | - | ccsB_shear2D_N128_iso |
+| isoAlpha | 256 | 8 | 0.200 | 13312 | completed | 1.88e-06 | 2.22e-12 | -2.87e-05 | 1.36e-05 | 43 | - | - | ccsB_shear2D_N256_iso |
+| pieces | 64 | 1 | 0.200 | 3328 | completed | 1.82e-04 | 7.11e-13 | -6.92e-13 | 3.64e-14 | 203 | - | - | ccsB_shear2D_N64_davof |
+| pieces | 128 | 1 | 0.200 | 5062 | aborted | - | 1.97e-12 | -5.50e-01 | 8.21e+00 | 785 | - | - | ccsB_shear2D_N128_davof |
+| pieces | 256 | 8 | 0.200 | 13312 | completed | 2.08e-06 | 6.88e-13 | -3.68e-03 | 1.84e+02 | 1033 | - | - | ccsB_shear2D_N256_davof |
+
+Orders of E_shape over N (least squares; pairwise in brackets), completed rungs only:
+
+| method | E_shape order |
+|---|---|
+| pointIso | 3.49 (3.91, 3.08) |
+| plicRDF | 3.48 (3.78, 3.19) |
+| isoAlpha | 3.50 (3.88, 3.12) |
+| pieces | 3.23 (3.23) |
+
+##### shear2D, OpenFOAM Co 0.5
+
+| method | N | ranks | OF Co | steps | status | E_shape | E_mass (%) | min alpha | max alpha - 1 | wall clock (s) | E_shape / plicRDF | wall / plicRDF | source |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| pointIso | 64 | 1 | 0.499 | 1331 | completed | 2.22e-04 | 1.30e-18 | -1.82e-07 | 4.44e-16 | 9 | 1.060 | 1.125 | pointIso_shear2D_N64 |
+| pointIso | 128 | 1 | 0.499 | 2662 | completed | 2.22e-05 | 2.49e-18 | -1.52e-03 | 9.86e-04 | 39 | 0.990 | 1.258 | pointIso_shear2D_N128 |
+| pointIso | 256 | 8 | 0.500 | 5325 | completed | 2.58e-06 | 5.42e-20 | -1.28e-03 | 1.46e-03 | 37 | 0.995 | 0.712 | pointIso_shear2D_N256 |
+| plicRDF | 64 | 1 | 0.499 | 1331 | completed | 2.09e-04 | 4.44e-14 | -1.22e-04 | 8.49e-05 | 8 | - | - | standing_shear2D_N64 (stored) |
+| plicRDF | 128 | 1 | 0.499 | 2662 | completed | 2.24e-05 | 5.11e-13 | -5.08e-04 | 5.51e-04 | 31 | - | - | standing_shear2D_N128 (stored) |
+| plicRDF | 256 | 8 | 0.500 | 5325 | completed | 2.59e-06 | -3.11e-13 | -1.65e-03 | 5.09e-04 | 52 | - | - | standing_shear2D_N256 (stored) |
+| isoAlpha | 64 | 1 | 0.499 | 1331 | completed | 1.99e-04 | -1.33e-13 | -1.34e-04 | 4.61e-05 | 3 | - | - | ccsB_shear2D_N64_iso |
+| isoAlpha | 128 | 1 | 0.499 | 2662 | completed | 1.66e-05 | 3.55e-13 | -3.51e-04 | 2.20e-04 | 17 | - | - | ccsB_shear2D_N128_iso |
+| isoAlpha | 256 | 8 | 0.500 | 5325 | completed | 2.33e-06 | -2.00e-13 | -2.75e-04 | 1.78e-04 | 19 | - | - | ccsB_shear2D_N256_iso |
+| pieces | 64 | 1 | 0.499 | 1331 | completed | 1.46e-04 | 9.99e-14 | -2.50e-13 | 4.12e-10 | 80 | - | - | ccsB_shear2D_N64_davof |
+| pieces | 128 | 1 | 0.499 | 1789 | aborted | - | 2.22e-14 | -1.13e+00 | 1.40e+00 | 267 | - | - | ccsB_shear2D_N128_davof |
+| pieces | 256 | 8 | 0.500 | 5325 | completed | 2.68e-06 | -6.00e-13 | -7.48e-13 | 5.76e-10 | 452 | - | - | ccsB_shear2D_N256_davof |
+
+Orders of E_shape over N (least squares; pairwise in brackets), completed rungs only:
+
+| method | E_shape order |
+|---|---|
+| pointIso | 3.21 (3.32, 3.11) |
+| plicRDF | 3.17 (3.22, 3.12) |
+| isoAlpha | 3.21 (3.58, 2.83) |
+| pieces | 2.89 (2.89) |
+
+##### shear2D, OpenFOAM Co 0.95
+
+| method | N | ranks | OF Co | steps | status | E_shape | E_mass (%) | min alpha | max alpha - 1 | wall clock (s) | E_shape / plicRDF | wall / plicRDF | source |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| pointIso | 64 | 1 | 0.950 | 699 | completed | 1.28e-04 | 1.73e-18 | -4.16e-03 | 6.94e-03 | 5 | 0.962 | 0.714 | pointIso_shear2D_N64 |
+| pointIso | 128 | 1 | 0.950 | 1400 | completed | 1.88e-05 | 3.79e-18 | -7.41e-03 | 1.04e-02 | 24 | 0.919 | 1.200 | pointIso_shear2D_N128 |
+| pointIso | 256 | 8 | 0.950 | 2800 | completed | 3.43e-06 | 8.67e-19 | -6.87e-03 | 5.88e-03 | 46 | 1.004 | 1.840 | pointIso_shear2D_N256 |
+| plicRDF | 64 | 1 | 0.950 | 699 | completed | 1.33e-04 | 3.00e-13 | -2.55e-03 | 1.91e-02 | 7 | - | - | ccsB_shear2D_N64_plic |
+| plicRDF | 128 | 1 | 0.950 | 1400 | completed | 2.05e-05 | 6.44e-13 | -7.96e-03 | 1.14e-02 | 20 | - | - | ccsB_shear2D_N128_plic |
+| plicRDF | 256 | 8 | 0.950 | 2800 | completed | 3.42e-06 | 6.44e-13 | -1.10e-02 | 8.70e-03 | 25 | - | - | ccsB_shear2D_N256_plic |
+| isoAlpha | 64 | 1 | 0.950 | 699 | completed | 1.45e-04 | 2.78e-13 | -1.48e-03 | 1.32e-03 | 2 | - | - | ccsB_shear2D_N64_iso |
+| isoAlpha | 128 | 1 | 0.950 | 1400 | completed | 1.61e-05 | 1.55e-13 | -3.19e-03 | 2.27e-03 | 10 | - | - | ccsB_shear2D_N128_iso |
+| isoAlpha | 256 | 8 | 0.950 | 2800 | completed | 3.05e-06 | 2.78e-13 | -3.50e-03 | 3.86e-03 | 15 | - | - | ccsB_shear2D_N256_iso |
+| pieces | 64 | 1 | 0.950 | 699 | completed | 9.00e-05 | 2.11e-13 | -7.27e-13 | 1.67e-02 | 59 | - | - | ccsB_shear2D_N64_davof |
+| pieces | 128 | 1 | 0.950 | 1400 | completed | 1.52e-05 | 1.33e-13 | -7.39e-13 | 4.18e-02 | 268 | - | - | ccsB_shear2D_N128_davof |
+| pieces | 256 | 8 | 0.950 | 2800 | completed | 3.01e-06 | 1.38e-12 | -2.80e-13 | 9.82e-10 | 191 | - | - | ccsB_shear2D_N256_davof |
+
+Orders of E_shape over N (least squares; pairwise in brackets), completed rungs only:
+
+| method | E_shape order |
+|---|---|
+| pointIso | 2.61 (2.76, 2.46) |
+| plicRDF | 2.64 (2.70, 2.58) |
+| isoAlpha | 2.78 (3.17, 2.40) |
+| pieces | 2.45 (2.56, 2.34) |
+
+##### deformation3D, OpenFOAM Co 0.2
+
+| method | N | ranks | OF Co | steps | status | E_shape | E_mass (%) | min alpha | max alpha - 1 | wall clock (s) | E_shape / plicRDF | wall / plicRDF | source |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| pointIso | 32 | 1 | 0.197 | 1200 | completed | 7.93e-03 | 4.15e-16 | -2.22e-18 | 4.44e-16 | 56 | 1.000 | 1.514 | pointIso_deformation3D_N32 |
+| pointIso | 64 | 8 | 0.198 | 2400 | completed | 3.13e-03 | 1.06e-16 | -6.86e-05 | 4.44e-16 | 141 | 1.020 | 0.815 | pointIso_deformation3D_N64 |
+| pointIso | 128 | 64 | 0.198 | 4800 | completed | 6.88e-04 | 1.61e-16 | -2.88e-05 | 5.96e-06 | 508 | 0.998 | 0.599 | pointIso_deformation3D_N128 |
+| plicRDF | 32 | 1 | 0.197 | 1200 | completed | 7.93e-03 | 2.78e-12 | -1.15e-08 | 4.44e-16 | 37 | - | - | standing_deformation3D_N32 (stored) |
+| plicRDF | 64 | 8 | 0.198 | 2400 | completed | 3.07e-03 | -1.27e-12 | -5.93e-05 | 4.44e-16 | 173 | - | - | standing_deformation3D_N64 (stored) |
+| plicRDF | 128 | 64 | 0.198 | 4800 | completed | 6.89e-04 | -8.88e-14 | -2.44e-05 | 1.63e-06 | 848 | - | - | standing_deformation3D_N128 (stored) |
+| isoAlpha | 32 | 1 | 0.197 | 1200 | completed | 9.13e-03 | 3.22e-12 | -2.43e-17 | 4.44e-16 | 46 | - | - | ccsB_deformation3D_N32_iso |
+| isoAlpha | 64 | 8 | 0.198 | 2400 | completed | 3.21e-03 | 2.01e-12 | -2.57e-07 | 1.01e-03 | 72 | - | - | ccsB_deformation3D_N64_iso |
+| isoAlpha | 128 | 64 | 0.198 | 4800 | completed | 5.46e-04 | 3.89e-13 | -2.36e-05 | 5.60e-04 | 428 | - | - | ccsB_deformation3D_N128_iso |
+| pieces | 32 | 1 | 0.197 | 1200 | completed | 9.65e-03 | 1.21e-12 | -8.71e-10 | 5.99e-07 | 1727 | - | - | ccsB_deformation3D_N32_davof |
+| pieces | 64 | 8 | 0.198 | 2400 | completed | 3.92e-03 | 1.32e-12 | -5.68e-06 | 2.85e-07 | 2946 | - | - | ccsB_deformation3D_N64_davof |
+| pieces | 128 | 64 | 0.198 | 4150 | aborted | - | 2.38e-12 | -8.30e-01 | 8.47e-06 | 20367 | - | - | ccsB_deformation3D_N128_davof |
+
+Orders of E_shape over N (least squares; pairwise in brackets), completed rungs only:
+
+| method | E_shape order |
+|---|---|
+| pointIso | 1.76 (1.34, 2.19) |
+| plicRDF | 1.76 (1.37, 2.16) |
+| isoAlpha | 2.03 (1.51, 2.56) |
+| pieces | 1.30 (1.30) |
+
+##### deformation3D, OpenFOAM Co 0.5
+
+| method | N | ranks | OF Co | steps | status | E_shape | E_mass (%) | min alpha | max alpha - 1 | wall clock (s) | E_shape / plicRDF | wall / plicRDF | source |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| pointIso | 32 | 1 | 0.492 | 480 | completed | 7.88e-03 | 1.73e-18 | -2.49e-04 | 4.44e-16 | 22 | 1.013 | 1.048 | pointIso_deformation3D_N32 |
+| pointIso | 64 | 8 | 0.495 | 960 | completed | 3.15e-03 | 1.09e-16 | -2.58e-04 | 1.57e-04 | 50 | 1.059 | 0.714 | pointIso_deformation3D_N64 |
+| pointIso | 128 | 64 | 0.496 | 1920 | completed | 6.86e-04 | 1.39e-17 | -3.13e-04 | 1.48e-04 | 217 | 0.996 | 0.622 | pointIso_deformation3D_N128 |
+| plicRDF | 32 | 1 | 0.492 | 480 | completed | 7.78e-03 | -2.13e-12 | -1.60e-04 | 4.44e-16 | 21 | - | - | standing_deformation3D_N32 (stored) |
+| plicRDF | 64 | 8 | 0.495 | 960 | completed | 2.98e-03 | -7.77e-13 | -2.05e-04 | 3.09e-04 | 70 | - | - | standing_deformation3D_N64 (stored) |
+| plicRDF | 128 | 64 | 0.496 | 1920 | completed | 6.89e-04 | -2.22e-14 | -2.30e-04 | 8.10e-05 | 349 | - | - | standing_deformation3D_N128 (stored) |
+| isoAlpha | 32 | 1 | 0.492 | 480 | completed | 9.00e-03 | 2.48e-12 | -3.61e-07 | 4.44e-16 | 14 | - | - | ccsB_deformation3D_N32_iso |
+| isoAlpha | 64 | 8 | 0.495 | 960 | completed | 3.42e-03 | -5.77e-13 | -6.38e-02 | 5.39e-04 | 37 | - | - | ccsB_deformation3D_N64_iso |
+| isoAlpha | 128 | 64 | 0.496 | 1920 | completed | 5.38e-04 | -1.11e-13 | -5.23e-04 | 1.71e-03 | 165 | - | - | ccsB_deformation3D_N128_iso |
+| pieces | 32 | 1 | 0.492 | 480 | completed | 9.31e-03 | 1.85e-12 | -1.34e-07 | 1.19e-05 | 808 | - | - | ccsB_deformation3D_N32_davof |
+| pieces | 64 | 8 | 0.495 | 960 | completed | 3.88e-03 | 1.40e-12 | -9.71e-08 | 4.39e-06 | 1169 | - | - | ccsB_deformation3D_N64_davof |
+| pieces | 128 | 64 | 0.496 | 1920 | completed | 7.35e-04 | 1.02e-12 | -1.60e-02 | 5.39e-04 | 9764 | - | - | ccsB_deformation3D_N128_davof |
+
+Orders of E_shape over N (least squares; pairwise in brackets), completed rungs only:
+
+| method | E_shape order |
+|---|---|
+| pointIso | 1.76 (1.32, 2.20) |
+| plicRDF | 1.75 (1.38, 2.11) |
+| isoAlpha | 2.03 (1.40, 2.67) |
+| pieces | 1.83 (1.26, 2.40) |
+
+##### deformation3D, OpenFOAM Co 0.95
+
+| method | N | ranks | OF Co | steps | status | E_shape | E_mass (%) | min alpha | max alpha - 1 | wall clock (s) | E_shape / plicRDF | wall / plicRDF | source |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| pointIso | 32 | 1 | 0.950 | 249 | completed | 8.14e-03 | 2.50e-16 | -2.09e-03 | 5.28e-06 | 15 | 1.016 | 1.250 | pointIso_deformation3D_N32 |
+| pointIso | 64 | 8 | 0.950 | 500 | completed | 3.18e-03 | 9.54e-17 | -4.21e-03 | 1.86e-03 | 30 | 1.023 | 0.732 | pointIso_deformation3D_N64 |
+| pointIso | 128 | 64 | 0.950 | 1002 | completed | 7.39e-04 | 5.72e-17 | -5.35e-03 | 8.08e-04 | 142 | 1.006 | 0.657 | pointIso_deformation3D_N128 |
+| plicRDF | 32 | 1 | 0.950 | 249 | completed | 8.02e-03 | -8.66e-13 | -1.65e-03 | 4.79e-08 | 12 | - | - | ccsB_deformation3D_N32_plic |
+| plicRDF | 64 | 8 | 0.950 | 500 | completed | 3.11e-03 | -1.02e-12 | -3.07e-03 | 2.27e-03 | 41 | - | - | ccsB_deformation3D_N64_plic |
+| plicRDF | 128 | 64 | 0.950 | 1002 | completed | 7.34e-04 | -3.77e-13 | -4.47e-03 | 4.47e-03 | 216 | - | - | ccsB_deformation3D_N128_plic |
+| isoAlpha | 32 | 1 | 0.950 | 249 | completed | 8.78e-03 | -1.22e-12 | -3.66e-03 | 6.16e-06 | 7 | - | - | ccsB_deformation3D_N32_iso |
+| isoAlpha | 64 | 8 | 0.950 | 500 | completed | 3.29e-03 | -9.77e-13 | -6.95e-04 | 8.36e-03 | 24 | - | - | ccsB_deformation3D_N64_iso |
+| isoAlpha | 128 | 64 | 0.950 | 1002 | completed | 5.86e-04 | -3.33e-13 | -1.66e-03 | 2.89e-03 | 94 | - | - | ccsB_deformation3D_N128_iso |
+| pieces | 32 | 1 | 0.950 | 249 | completed | 9.39e-03 | -5.55e-13 | -2.20e-05 | 5.83e-05 | 227 | - | - | ccsB_deformation3D_N32_davof |
+| pieces | 64 | 8 | 0.950 | 500 | completed | 3.51e-03 | -1.42e-12 | -1.27e-05 | 3.17e-05 | 626 | - | - | ccsB_deformation3D_N64_davof |
+| pieces | 128 | 64 | 0.950 | 1002 | completed | 7.64e-04 | -3.55e-13 | -6.55e-07 | 4.49e-03 | 5101 | - | - | ccsB_deformation3D_N128_davof |
+
+Orders of E_shape over N (least squares; pairwise in brackets), completed rungs only:
+
+| method | E_shape order |
+|---|---|
+| pointIso | 1.73 (1.36, 2.11) |
+| plicRDF | 1.72 (1.37, 2.08) |
+| isoAlpha | 1.95 (1.42, 2.49) |
+| pieces | 1.81 (1.42, 2.20) |
+
+##### Fitted planes per case (pointIso)
+
+| family | N | OF Co | steps with the line | planes/step mean (max) | fit residual mean / max (rms/V^(1/3)) | max angle(n', n_k) (deg) | max cells with boundary points | max cells with >3 non-collinear |
+|---|---|---|---|---|---|---|---|---|
+| deformation3D | 32 | 0.197 | 1200 | 990.3 (1474) | 5.72e-05 / 1.23e-03 | 1.49e+00 | 0 | 0 |
+| deformation3D | 64 | 0.198 | 2400 | 4326.7 (6608) | 1.23e-05 / 3.25e-04 | 7.55e-01 | 0 | 0 |
+| deformation3D | 128 | 0.198 | 4800 | 17512.9 (28118) | 2.33e-06 / 7.97e-05 | 3.78e-01 | 0 | 0 |
+| deformation3D | 32 | 0.492 | 480 | 998.4 (1480) | 1.43e-04 / 3.09e-03 | 3.72e+00 | 8 | 0 |
+| deformation3D | 64 | 0.495 | 960 | 4330.0 (6601) | 3.11e-05 / 7.98e-04 | 1.88e+00 | 0 | 0 |
+| deformation3D | 128 | 0.496 | 1920 | 17539.9 (28125) | 5.77e-06 / 1.99e-04 | 9.46e-01 | 0 | 0 |
+| deformation3D | 32 | 0.950 | 249 | 1000.2 (1465) | 2.82e-04 / 5.94e-03 | 7.26e+00 | 0 | 0 |
+| deformation3D | 64 | 0.950 | 500 | 4369.3 (6658) | 5.80e-05 / 1.53e-03 | 3.62e+00 | 0 | 0 |
+| deformation3D | 128 | 0.950 | 1002 | 17683.1 (28081) | 1.10e-05 / 3.82e-04 | 1.99e+00 | 8 | 0 |
+| shear2D | 64 | 0.200 | 3328 | 309.1 (459) | 1.54e-15 / 1.00e-14 | 8.20e-01 | 0 | 0 |
+| shear2D | 128 | 0.200 | 6656 | 659.2 (1005) | 2.99e-15 / 2.01e-14 | 4.13e-01 | 0 | 0 |
+| shear2D | 256 | 0.200 | 13312 | 1336.7 (2028) | 5.87e-15 / 4.02e-14 | 2.06e-01 | 0 | 0 |
+| shear2D | 64 | 0.499 | 1331 | 319.7 (461) | 1.54e-15 / 1.00e-14 | 2.06e+00 | 0 | 0 |
+| shear2D | 128 | 0.499 | 2662 | 665.8 (1008) | 2.99e-15 / 2.01e-14 | 1.03e+00 | 0 | 0 |
+| shear2D | 256 | 0.500 | 5325 | 1347.1 (2035) | 5.87e-15 / 4.02e-14 | 5.15e-01 | 0 | 0 |
+| shear2D | 64 | 0.950 | 699 | 330.0 (452) | 1.54e-15 / 1.02e-14 | 4.06e+00 | 0 | 0 |
+| shear2D | 128 | 0.950 | 1400 | 679.5 (1001) | 2.99e-15 / 2.01e-14 | 1.96e+00 | 0 | 0 |
+| shear2D | 256 | 0.950 | 2800 | 1368.3 (2038) | 5.88e-15 / 4.02e-14 | 9.80e-01 | 0 | 0 |
+
+##### Verdicts
+
+- PP1: 18 of 18 completed (abort or crash is the falsifier).
+- PP2: bounds within a factor 2 of plicRDF's: 24 of 36 comparisons within; outside: shear2D N64 Co0.2 minAlpha -1.54e-04 vs -1.73e-17; shear2D N128 Co0.2 minAlpha -5.57e-05 vs -2.06e-05; shear2D N128 Co0.2 excess 2.02e-05 vs 2.22e-16; shear2D N64 Co0.5 minAlpha -1.82e-07 vs -1.22e-04; shear2D N64 Co0.5 excess 4.44e-16 vs 8.49e-05; shear2D N128 Co0.5 minAlpha -1.52e-03 vs -5.08e-04; shear2D N256 Co0.5 excess 1.46e-03 vs 5.09e-04; shear2D N64 Co0.95 excess 6.94e-03 vs 1.91e-02; deformation3D N32 Co0.2 minAlpha -2.22e-18 vs -1.15e-08; deformation3D N128 Co0.2 excess 5.96e-06 vs 1.63e-06; deformation3D N32 Co0.95 excess 5.28e-06 vs 4.79e-08; deformation3D N128 Co0.95 excess 8.08e-04 vs 4.47e-03
+- PP3: E_shape below plicRDF's in 10 of 18 compared cases (>= 12 of 18 required); at Co 0.5 and 0.95 above plicRDF's in: shear2D N64 Co0.5 ratio 1.060; shear2D N256 Co0.95 ratio 1.004; deformation3D N32 Co0.5 ratio 1.013; deformation3D N64 Co0.5 ratio 1.059; deformation3D N32 Co0.95 ratio 1.016; deformation3D N64 Co0.95 ratio 1.023; deformation3D N128 Co0.95 ratio 1.006
+- PP4: order(pointIso) - order(plicRDF) per family and Co: shear2D Co0.2: 0.01 (3.49 vs 3.48); shear2D Co0.5: 0.05 (3.21 vs 3.17); shear2D Co0.95: -0.03 (2.61 vs 2.64); deformation3D Co0.2: 0.00 (1.76 vs 1.76); deformation3D Co0.5: 0.01 (1.76 vs 1.75); deformation3D Co0.95: 0.01 (1.73 vs 1.72); falsified where the difference is below -0.1
+- PP5: wall clock ratio to plicRDF at the same ranks: shear2D N64 Co0.2 1.62; shear2D N128 Co0.2 1.30; shear2D N256 Co0.2 0.71; shear2D N64 Co0.5 1.12; shear2D N128 Co0.5 1.26; shear2D N256 Co0.5 0.71; shear2D N64 Co0.95 0.71; shear2D N128 Co0.95 1.20; shear2D N256 Co0.95 1.84; deformation3D N32 Co0.2 1.51; deformation3D N64 Co0.2 0.82; deformation3D N128 Co0.2 0.60; deformation3D N32 Co0.5 1.05; deformation3D N64 Co0.5 0.71; deformation3D N128 Co0.5 0.62; deformation3D N32 Co0.95 1.25; deformation3D N64 Co0.95 0.73; deformation3D N128 Co0.95 0.66; above 1.3 in 3 of 18
