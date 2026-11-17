@@ -12,6 +12,7 @@ License
 #include "ghostCellQuadraticWeightedLeastSquaresReconstruction.H"
 #include "addToRunTimeSelectionTable.H"
 #include "zeroGradientFvPatchFields.H"
+#include "calculatedFvPatchFields.H"
 #include "syncTools.H"
 #include "cellModel.H"
 #include "labelIOList.H"
@@ -279,6 +280,17 @@ void Foam::ghostCellQuadraticWeightedLeastSquaresReconstruction::build()
         parentCentreFld_.primitiveFieldRef()[c] =
             parentPoint_[c] >= 0 ? pts[parentPoint_[c]] : mesh_.C()[c];
     }
+    // A physical patch face has the level -1. This marks a boundary-face entry
+    // of the stencil on every rank: the index test stencilIsBoundaryFace() finds
+    // only the faces of the own rank, and a patch face of another rank looked
+    // like a cell with the level of its cell (STATUS 11.36 item 6).
+    forAll(levelFld_.boundaryField(), patchi)
+    {
+        if (!levelFld_.boundaryField()[patchi].coupled())
+        {
+            levelFld_.boundaryFieldRef()[patchi] == scalar(-1);
+        }
+    }
     levelFld_.correctBoundaryConditions();
     parentCentreFld_.correctBoundaryConditions();
     stencil_.collectData(levelFld_, stLevel_);
@@ -322,7 +334,7 @@ void Foam::ghostCellQuadraticWeightedLeastSquaresReconstruction::fitCell
     {
         const label r = raw(c, i);
         const point xi = stencilC(c, i);
-        if (stencilIsBoundaryFace(c, i))
+        if (stencilIsBoundaryFace(c, i) || stLevel_[c][r] < -0.5)
         {
             X.append(xi); V.append(s[i]);
             continue;
@@ -478,7 +490,7 @@ ghostCellQuadraticWeightedLeastSquaresReconstruction
         ),
         mesh,
         dimensionedScalar(dimless, Zero),
-        zeroGradientFvPatchScalarField::typeName
+        calculatedFvPatchScalarField::typeName
     ),
     parentCentreFld_
     (

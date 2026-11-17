@@ -75,6 +75,30 @@
 #   T2 is FALSIFIED if the counts differ or a cell differs after step 1.
 #   Expected side effect: no ghost datum outside the domain remains, so the count falls
 #   below 72696 in both runs.
+#
+# RESULT of the third run (2026-11-17, commit 555042d4, jobs 56529526, 56529527): T2 is
+#   FALSIFIED. Ghost data 72200 in serial and 72217 on 4 ranks; 86 cells differ after
+#   step 1. The containment test removed the ghost data outside the domain (about 500 in
+#   both runs) and stays, because it has no tie and no tolerance. It is not the cause.
+#
+# FOURTH RUN, patch faces of another rank (commit of this text).
+#   Reading (from the code): slReconstruction::stencilIsBoundaryFace() tests the stencil
+#   index against the boundary faces of the OWN rank. A physical patch face that another
+#   rank owns is in the stencil too, and the test calls it a cell. The original class is not
+#   affected: a datum is a datum. The ghost class reads a level for every entry; the level
+#   field was zeroGradient, so such a face had the level of its cell. A fine cell then took
+#   the patch face of a coarser cell for a coarser CELL (dropped the datum, used the face
+#   centre as a cell centre), and a coarse cell replaced the patch face of a finer cell with
+#   a parent mean. This is possible only at a boundary patch, at a processor boundary and at
+#   the transition, which is where the differing cells are.
+#   The change: the level field has the value -1 on every physical patch, and an entry with
+#   the level -1 is a boundary-face datum.
+# PRE-REGISTERED READ-OUT (2026-11-17, before the run):
+#   T3 HOLDS if the count of ghost data is equal in serial and on 4 ranks, AND no cell
+#      differs after step 1 at the threshold above, AND at t = 1 the mean absolute difference
+#      of psi over all cells is below 1e-12.
+#   T3 is FALSIFIED if the counts differ or a cell differs after step 1.
+#   The serial count must stay 72200: the change acts only on entries of another rank.
 # ============================================================================
 study_name: ghostDecompLocateN64
 case: 3Dtranslation
