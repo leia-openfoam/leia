@@ -17,6 +17,21 @@
 # similar size, the dependence is not specific to ghost cells. If the original class is
 # identical at tolerance 0 and the ghost class differs, the ghost class adds it.
 # ============================================================================
+# ----------------------------------------------------------------------------
+# PRE-MERGE CONTROL of the branch fix/ghost-decomposition (2026-11-17, written before the
+# runs). The only code difference to the tree of round 3 (31c4a032) is the ghost-cell class.
+#   C1 identity: the studies of README step 3 and the nine polyhedral arms, run with the
+#      binaries of the branch, against the round-3 studies of the same clone. PASS if all
+#      144 metric CSV pairs are identical at tolerance 0 (154 of round 3 without the 10 of
+#      the ghost rung, which changes by design). FALSIFIED by one differing pair.
+#   C2 unit gate leiaTestGhostCellReconstruction in serial and on 4 ranks: PASS if rc = 0
+#      and E1 to E3 pass in both, and the ghost data counts are equal in both.
+#   C3 this study and its serial twin with the fixed class: PASS if the largest relative
+#      difference serial against 4 ranks of every metric of the ghost class is at most
+#      1e-9 (the original class gave 1.4e-10 before the fix; the ghost class 5.2e-5).
+#      The column MEAN_DELTA_X is excluded (a known metric defect, STATUS 11.36 item 6).
+#   The merge into development follows only if C1, C2 and C3 pass.
+# ============================================================================
 study_name: ghostDecompN64np4
 case: 3Dtranslation
 mesh: hexRefined
