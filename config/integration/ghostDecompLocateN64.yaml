@@ -99,6 +99,12 @@
 #      of psi over all cells is below 1e-12.
 #   T3 is FALSIFIED if the counts differ or a cell differs after step 1.
 #   The serial count must stay 72200: the change acts only on entries of another rank.
+#
+# RESULT of the fourth run (2026-11-17, commit adc0e01e, jobs 56530011, 56530012): T3 HOLDS.
+#   Ghost data 72200 in serial and 72200 on 4 ranks. No cell differs at the threshold after
+#   step 1 or at any written step. The mean absolute difference of psi over all cells at
+#   t = 1 is 1.1e-16 (1.4e-5 before the change). The cause was the patch face of another
+#   rank that the class took for a cell.
 # ============================================================================
 study_name: ghostDecompLocateN64
 case: 3Dtranslation
