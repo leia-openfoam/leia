@@ -135,6 +135,8 @@ int main()
         double maxThrough = 0;
         double maxExcess = 0;   // max of (rms_fit - min rms_random)
         int nViol = 0, nWrongSide = 0;
+        double worstDist = 0, worstQual = 0, maxThroughWell = 0, maxScaled = 0;
+        int nAbove = 0, nWell = 0;
         for (int t = 0; t < nTrials; ++t)
         {
             const vector n = randomUnit();
@@ -162,6 +164,29 @@ int main()
 
             const pointIso::fit f = pointIso::fitPlane(q, isB, n);
             if ((f.n & n) <= 0) ++nWrongSide;
+            if (nb == 3)
+            {
+                // the conditioning of the triple: 2|cross|/(longest edge)^2
+                const double e01 = mag(q[1] - q[0]);
+                const double e02 = mag(q[2] - q[0]);
+                const double e12 = mag(q[2] - q[1]);
+                const double lg = std::max(e01, std::max(e02, e12));
+                const double qual = 2*mag((q[1] - q[0]) ^ (q[2] - q[0]))/(lg*lg);
+                double dd = 0;
+                for (int i = 0; i < 3; ++i)
+                {
+                    dd = std::max(dd, std::fabs(double(f.n & (q[i] - f.x))));
+                }
+                if (dd > worstDist) { worstDist = dd; worstQual = qual; }
+                if (dd > 1e-14) ++nAbove;
+                if (qual > 0.1)
+                {
+                    ++nWell;
+                    maxThroughWell = std::max(maxThroughWell, dd);
+                }
+                // the distance scaled by the round-off amplification 1/quality
+                maxScaled = std::max(maxScaled, dd*qual);
+            }
             for (int i = 0; i < nb; ++i)
             {
                 maxThrough =
@@ -202,6 +227,18 @@ int main()
             if (rFit > rMin + 1e-14) ++nViol;
         }
         const bool ok = (maxThrough <= 1e-14 && nViol == 0 && nWrongSide == 0);
+        if (nb == 3)
+        {
+            std::printf
+            (
+                "G2b diagnostic, triples: %d of %d trials above 1e-14; worst "
+                "distance %.3e at conditioning %.3e; %d trials with "
+                "conditioning > 0.1, their max distance %.3e; max of "
+                "distance x conditioning %.3e\n",
+                nAbove, nTrials, worstDist, worstQual, nWell, maxThroughWell,
+                maxScaled
+            );
+        }
         pass = pass && ok;
         std::printf
         (
