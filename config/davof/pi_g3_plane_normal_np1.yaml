@@ -39,7 +39,7 @@ axes_override:
   TPF_WRITE_PRECISION: ["17"]
   TPF_RECON_ERROR_EVERY_STEP: ["false"]
   END_TIME: [3.101e-3]
-  TPF_WRITE_INTERVAL: [3.101e-3]
+  TPF_WRITE_STEPS: [50]
   TPF_PROFILING: ["false"]
 collapse_other_axes: true
 solve_mem_mb: 16000
