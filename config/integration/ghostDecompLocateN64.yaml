@@ -52,6 +52,29 @@
 #      the cause, or not the only cause, and the report gives the cells as before.
 #   The guard changes the scheme at boundary patches. A pass here does not replace the
 #   four-rung gate config/gates/ghostCellRefinedBox3D.yaml, which must run again.
+#
+# RESULT of the second run (2026-11-17, commit 6c935a0a, jobs 56528623, 56528673): T1 is
+#   FALSIFIED. Ghost data 72696 in serial and 72723 on 4 ranks; 100 cells differ after
+#   step 1, at the same places. The guard removed about 420 ghost data in both runs: the
+#   equal-distance tie exists, but both runs resolved it the same way. The tie guard is
+#   withdrawn.
+#
+# THIRD RUN, containment test (commit of this text).
+#   Reading (DERIVED): for the same fine cell, the ghost position q = (-h/2, -h/2, z0 + h)
+#   outside the domain has the SAME distance to two coarser centres, (-h, h, z0 + h/2) and
+#   (-h, h, z0 + 3h/2). The nearest-centre search keeps the first one in stencil order. With
+#   the first centre the old test rejects q (2.75 h^2 against 2.75 h^2), with the second it
+#   accepts q (2.75 h^2 against 4.75 h^2). The stencil order depends on the decomposition.
+#   The change: q is used only if a coarser stencil cell CONTAINS it. The offset from that
+#   centre in own lattice coordinates is below 2^n/2 in every direction (n = level
+#   difference). No nearest-centre search, no distance comparison, no tolerance.
+# PRE-REGISTERED READ-OUT (2026-11-17, before the run):
+#   T2 HOLDS if the count of ghost data is equal in serial and on 4 ranks, AND no cell
+#      differs after step 1 at the threshold above, AND at t = 1 the mean absolute difference
+#      of psi over all cells is below 1e-12.
+#   T2 is FALSIFIED if the counts differ or a cell differs after step 1.
+#   Expected side effect: no ghost datum outside the domain remains, so the count falls
+#   below 72696 in both runs.
 # ============================================================================
 study_name: ghostDecompLocateN64
 case: 3Dtranslation

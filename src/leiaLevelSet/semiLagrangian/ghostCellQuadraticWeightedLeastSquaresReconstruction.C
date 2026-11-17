@@ -360,6 +360,7 @@ void Foam::ghostCellQuadraticWeightedLeastSquaresReconstruction::fitCell
         const vector a2 = lattice_[c].z();
         const scalar occ2 = 0.09*min(magSqr(a0), min(magSqr(a1), magSqr(a2)));
         const Vector<label>& sd = mesh_.solutionD();
+        const tensor invLat = inv(lattice_[c]);
         for (label i0 = -1; i0 <= 1; ++i0)
         for (label i1 = -1; i1 <= 1; ++i1)
         for (label i2 = -1; i2 <= 1; ++i2)
@@ -379,21 +380,31 @@ void Foam::ghostCellQuadraticWeightedLeastSquaresReconstruction::fitCell
                 if (magSqr(X[j] - q) < occ2) { occupied = true; break; }
             }
             if (occupied) { continue; }
+            // -- the coarser stencil cell that CONTAINS q. A hexRef8 cell that
+            //    is n levels coarser is the own lattice scaled by 2^n, so q is
+            //    in it if the offset from its centre, in own lattice
+            //    coordinates, is below 2^n/2 in every direction. The offsets are
+            //    odd multiples of 1/2: the test has a margin of half a cell and
+            //    does not depend on round-off or on the order of the stencil.
+            //    A nearest-centre test has exact ties for a q outside the
+            //    domain next to a boundary patch, and the order of the stencil
+            //    then decided it (STATUS 11.36 item 6).
             label iA = -1;
-            scalar dA = GREAT;
             forAll(coarse, j)
             {
-                const scalar dj = magSqr(stencilC(c, coarse[j]) - q);
-                if (dj < dA) { dA = dj; iA = coarse[j]; }
+                const label ij = coarse[j];
+                const label nLev =
+                    Lc - label(stLevel_[c][raw(c, ij)] + 0.5);
+                const scalar half = 0.5*scalar(label(1) << nLev);
+                const vector cc = (q - stencilC(c, ij)) & invLat;
+                if (mag(cc.x()) < half && mag(cc.y()) < half && mag(cc.z()) < half)
+                {
+                    iA = ij;
+                    break;
+                }
             }
+            if (iA < 0) { continue; }             // q is in no coarser stencil cell
             const point xA = stencilC(c, iA);
-            // q is in that cell only if it is closer to the centre of the cell
-            // than the own centre is. The two distances are EQUAL by symmetry for
-            // a q outside the domain, next to a boundary patch at the transition
-            // (2.75 h^2 in 3D, 2.5 h^2 in 2D). Round-off of the cell centres then
-            // decided the test, and the result depended on the decomposition
-            // (STATUS 11.36 item 6). A tie is a rejection.
-            if (dA >= (1 - tieTol_)*magSqr(xA - x0)) { continue; }
             X.append(q);
             V.append(poly(stCoeff_[c][raw(c, iA)], s[iA], q - xA));
             ++nGhost_;
