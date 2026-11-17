@@ -7101,3 +7101,71 @@ before the classification and before the crossing: `if (mag(s0) <= tol) s0 = 0; 
 the rest unchanged; the coverage clips take the same change. Plane gate: the four studies of Stage B (planeTranslation3D normal / oblique,
 np 1 / 8, N 20 to 160, OF Co 0.2 to 1) with the pieces row only (`recommended`), the thresholds of kiss_an.py `ccsplane`. Budget: 2 builds
 (library, test app), the gate pieces rows, 5 solve jobs and at most 2 dump reruns.
+
+
+## pointIsoAdvector (2026-11-16; leia branch `davof-point-iso` off `davof-ccs-pieces` 112c284a)
+
+PRE-REGISTERED before the first solve job of this section (the commit that carries this text precedes every Slurm job that
+runs a case or a test; builds are Slurm jobs and precede it only where the library has to exist).
+
+References (one citation each, the journal version and the arXiv version of the same work where one exists):
+J. Roenby, H. Bredmose, H. Jasak, A computational method for sharp interface advection, R. Soc. Open Sci. 3 (2016) 160405,
+doi:10.1098/rsos.160405 (arXiv:1601.05392); H. Scheufler, J. Roenby, Accurate and efficient surface reconstruction from volume
+fraction data on general meshes, J. Comput. Phys. 383 (2019) 1-23, doi:10.1016/j.jcp.2019.01.009 (arXiv:1801.05382).
+
+### The method (class `pointIsoAdvection`, a copy of OpenFOAM v2606's isoAdvection changed only where stated; `advectionScheme pointIsoAdvector`)
+
+For every interface cell k at t^n with its PLIC plane (unit normal n_k, plane point x_k) and the PLIC polygon's points p_i
+(they lie on the cell's edges):
+1. Point velocity. Mesh-point velocities U_P from volPointInterpolation of the cell velocity field (inverse-distance weights;
+   boundary points carry the boundary condition's value), computed once per step from the same velocity the step's phi belongs
+   to. A polygon point on the mesh edge (a, b) at parameter s takes u_i = (1 - s) U_a + s U_b. (Key pointVelocity edgeLinear;
+   no other variant now.)
+2. Displacement: p_i' = p_i + dt u_i (explicit Euler; no other variant now).
+3. Plane fit to the displaced points, linear least squares, orientation n'.n_k > 0. The eigenvectors by Jacobi rotations.
+   - No boundary point: plane through the mean c' of the p_i', normal the eigenvector of the smallest eigenvalue of
+     sum (p_i' - c')(p_i' - c')^T.
+   - Boundary points are polygon points on mesh edges of boundary faces of patches that prescribe a velocity (walls, inlets,
+     fixedValue and the like); points on empty, wedge, symmetry, cyclic and processor patches are NOT boundary points. One
+     boundary point b: the plane passes through b; normal the smallest eigenvector of sum (p_i' - b)(p_i' - b)^T. Two boundary
+     points (or several collinear ones: the two farthest apart): the plane contains the line through them; the normal is
+     perpendicular to the line and minimises the sum of squared distances in the two-dimensional subspace perpendicular to it.
+     Three non-collinear boundary points: the plane through them. More than three non-collinear: counted and reported; the line
+     through the two farthest apart is used.
+4. The plane during the step: g_tau(x) = (1 - tau) g_0(x) + tau g_1(x), tau in [0, 1], g_0(x) = n_k.(x - x_k), g_1(x) = n'.(x - x').
+5. Flux of each face of cell k that isoAdvection treats as downwind: dVf = phi_f dt (1/|S_f|) integral_0^1 a_f(tau) dtau, a_f(tau)
+   the wetted area of the face under g_tau. Quadrature: break points 0, 1 and the vertex arrival times tau_v = g_0(v)/(g_0(v) -
+   g_1(v)) inside (0, 1), sorted; two-point Gauss-Legendre on every sub-interval. For n' = n_k this equals isoAdvection's integral.
+6. Everything else as in isoAdvection (faces it does not sweep, limitFluxes / boundFlux, bounding, parallel sync). The
+   end-of-step wetted fraction a_f(1)/|S_f| of the swept faces is stored in a surface field (written, not used).
+
+### Unit gates (before any study; a failed gate stops the work)
+
+- G1 translation: Stage B plane-translation cases N 20, both arms, Co 0.5, 50 steps, np 1: per-face dVf of pointIsoAdvection
+  against isoAdvection on the same state at every step (both in one run behind a print-only key): max |difference| <= 1e-12
+  max|phi_f dt|.
+- G2 plane fit (standalone test): (a) coplanar points: recovered plane to 1e-14; (b) one, two and three boundary points with the
+  other points perturbed off the plane: the fitted plane passes through the boundary points to 1e-14 and the residual is not
+  larger than for any of 1000 random planes through the same boundary points.
+- G3: np 1 against np 8 on the plane case of G1: alpha identical to 1e-12 (absolute).
+
+### Study
+
+2D shear and 3D deformation on the equidistant hexahedral meshes of the Stage B standing matrix, the same N (three resolutions
+each), the same OF Co values (0.2, 0.5, 0.95) and the same MPI ranks as Stage B, row `pointIso` (pointIsoAdvection + plicRDF):
+18 cases. Stored values reused, not recomputed: plicRDF and isoAlpha (Stage B), the pieces rows (stageC_tables.md). Per case:
+status, steps, E_shape, mass error, min alpha and max alpha - 1, wall clock and ranks; orders of E_shape over N; ratios to plicRDF
+in E_shape and wall clock; per step the number of fitted planes, the mean and maximum fit residual (rms distance of the p_i' to
+the plane, in units of V_k^(1/3)), the maximum angle between n' and n_k, the count of cells with boundary points (expected 0).
+
+### Pre-registered predictions (the main session's guesses; the verdict is by the numbers)
+
+- PP1: 18 of 18 complete. Falsifier: an abort or crash.
+- PP2: the bounds (min alpha, max alpha - 1) are within a factor 2 of plicRDF's in every case.
+- PP3: E_shape is below plicRDF's in at least 12 of 18 cases, and in every case at the two higher Courant numbers.
+- PP4: the order of E_shape over N is not lower than plicRDF's by more than 0.1 in any family and Co.
+- PP5: wall clock within 1.3 times plicRDF's at the same ranks.
+
+### Budget
+
+3 builds, the gates, the 18 cases once, at most 3 repetitions or diagnostic reruns.
