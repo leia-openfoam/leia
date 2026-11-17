@@ -7209,3 +7209,15 @@ inside pointIso::fitPlane after 2 to 3 steps (the compared steps agree with isoA
 - G2 with the amended three-boundary-point clause (POST HOC 1 item 3): G2a max |n' - n| 1.56e-15, max |n.(x' - x)| 2.3e-16; G2b one boundary
   point 0, two 3.3e-16, three: distance x conditioning / longest edge 1.6e-16 (<= 1e-14; the unscaled maximum is 5.7e-14 at conditioning
   1.2e-4), in no trial a residual above that of 1000 random planes (max excess 1.6e-16), orientation n'.nk > 0 in all trials: G2 PASS.
+#### Gate results (2026-11-17; library with the robust rotation, build 56529576)
+
+- G1 (jobs 56530187 to 56530194, comparison key pointIsoCompare on; plane translation N 20, OF Co 0.5, 50 steps, normal arm dt 6.202e-5, oblique arm dt 1e-4, np 1 and np 8):
+  max over the 50 steps of max |dVf - dVf_isoAdvection| / max|phi dt| = 5.3e-15 (normal np 1), 3.6e-15 (oblique np 1), 5.4e-15 (normal np 8),
+  3.4e-15 (oblique np 8); clause <= 1e-12: PASS. Interface cells fitted per step 211 falling to 0 after 19 (normal) and 38 (oblique) steps
+  (the plane leaves the 20-cell box, which the Stage B END_TIME of 8 steps did not show); fit residual ~1e-15 V^(1/3); cells with boundary
+  points 0 in all runs; no trap.
+- G3 (jobs 56577538 to 56577541; alpha written every 10 steps, the first writes still hold the interface): np 1 against np 8, max |alpha1 - alpha8|:
+  normal arm 4.1e-13 at step 10 (44 interface cells), then <= 1.2e-16 once the interface has left; oblique arm 3.3e-14 (step 10, 115 interface cells),
+  1.5e-14 (step 20, 48), 1.3e-14 (step 30, 10 interface cells), <= 6.7e-17 afterwards; clause <= 1e-12: PASS. A first G3 with alpha written only at the
+  end (56575437 to 56575440, 56576456 to 56576459) compared fields without an interface (all |alpha| <= 1.4e-16) and is not used.
+- G2: see above (PASS with the amended clause).
