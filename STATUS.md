@@ -8216,10 +8216,25 @@ written into `config/integration/ghostDecompLocateN64.yaml` and
    the volume error by at most 0.15 %. The numbers of 11.35 are therefore confirmed to this
    accuracy, and this table supersedes them. Table:
    `docs/semi-lagrangian-level-set/sl-level-set-article/data/tables/ghostCellRefinedBoxFix3D_errors.csv`.
-6. **Not measured.** (a) The unit gate `leiaTestGhostCellReconstruction` on the fixed class.
-   (b) A serial against 4 ranks comparison of the metric CSVs; item 4 compares psi itself.
-   (c) The identity check of 11.37 on this branch; the original class does not use the changed
-   code. (d) Any decomposition other than 4 ranks at N = 64.
+6. **The pre-merge control (MEASURED 2026-11-17; driver job 56566967, polyhedral arms
+   56566968 to 56566977, unit gate 56566978).** The criteria C1 to C3 were written into
+   `config/integration/ghostDecompN64np4.yaml` before the runs. The reference is the round-3
+   tree of 11.37 (31c4a032); the only code difference is the ghost-cell class.
+   - **C1 identity: PASS.** 144 of 144 metric CSV pairs are identical at tolerance 0 in 48
+     case pairs: advConv2Dtranslation 36 of 36, advConv3DshearHex 27 of 27, s0Translation2D
+     48 of 48, a0Identity2Dvortex 6 of 6, advConv3DshearPoly 27 of 27 (shared meshes). The
+     ghost rung is not in this comparison, because the fix changes it by design (item 5).
+   - **C2 unit gate: PASS.** `leiaTestGhostCellReconstruction` returns 0 in serial and on
+     4 ranks on both meshes; E1 to E3 pass with the same error values as in round 3. The
+     ghost data count is 17672 in serial and on 4 ranks (round 3: 17932 and 17948).
+   - **C3 serial against 4 ranks, metric CSVs, N = 64: PASS.** Largest relative difference of
+     the ghost class: 1.4e-10 (volume error), 7.7e-12 (gradient error, L2), 4.2e-12 (gradient
+     error, L1); the shape error is identical. The original class gives 1.5e-10 (volume) as
+     before. Before the fix the ghost class gave 5.2e-5. `MEAN_DELTA_X` still differs by
+     2.8e-4 in both classes (the metric defect of 11.36 item 6).
+   Not measured: a decomposition other than 4 ranks at N = 64 for the cell-by-cell
+   comparison. The branch is merged into `development` after this control (supervisor,
+   2026-11-17).
 7. **Open, a base-class defect.** The option that excludes boundary faces from the stencil
    (`slReconstruction.C`, not the default) uses the same index test. In parallel it misses the
    patch faces of another rank. The fix belongs in the base class and needs its own
