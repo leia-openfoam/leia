@@ -649,16 +649,41 @@ inline scalar sweptPieceExactVolume
             // the clipped faces (and the cap) are in Q: they are the current set
             Swap(P, Q);
         };
+        // the classification of the tetrahedron against a plane (fix F2,
+        // 2026-11-18): its four vertices with the distances snapped as in
+        // clipOne (|s| <= tolL is on the plane, s = 0). All four <= 0: the
+        // tetrahedron, and so every polyhedron clipped from it, lies in the
+        // half-space and the clip would copy every polygon unchanged (no
+        // crossing, no cap): skipped. None < 0: it lies in the closed
+        // outer half-space and the clip leaves at most the vertices, edges
+        // or faces on the plane (zero volume): empty. Otherwise clipped.
+        auto clipPlane = [&](const halfSpace& hs)
+        {
+            bool allIn = true, anyNeg = false;
+            {
+                scalar s = hs.dist(A); if (mag(s) <= tolL) s = 0;
+                if (s > 0) allIn = false; else if (s < 0) anyNeg = true;
+                s = hs.dist(B); if (mag(s) <= tolL) s = 0;
+                if (s > 0) allIn = false; else if (s < 0) anyNeg = true;
+                s = hs.dist(C); if (mag(s) <= tolL) s = 0;
+                if (s > 0) allIn = false; else if (s < 0) anyNeg = true;
+                s = hs.dist(xRef); if (mag(s) <= tolL) s = 0;
+                if (s > 0) allIn = false; else if (s < 0) anyNeg = true;
+            }
+            if (allIn) return;
+            if (!anyNeg) { anyLeft = false; return; }
+            clipAll(hs);
+        };
         for (label i = 0; i < nc && anyLeft; ++i)
         {
             davofProf::clipTag = i;
-            clipAll(cellPlanes[i]);
+            clipPlane(cellPlanes[i]);
         }
         davofProf::clipTag = 99;
         const scalar vCell = (dbg && anyLeft) ? volNow() : 0;
         if (wetPlane && anyLeft)
         {
-            clipAll(plic);
+            clipPlane(plic);
         }
         if (dbg)
         {
