@@ -8301,3 +8301,39 @@ written into `config/integration/ghostDecompLocateN64.yaml` and
     because /work/scratch cannot take new files. The 3D studies (`aStatic3Dr2*`) wait for space on
     /work/scratch (they need about 15 GB). The 3D template identity run (`a6Identity3Dshear`) is
     incomplete for the same reason: one of its two CSVs could not be written.
+
+### 11.40 PDE level set: step B round 1 -- the marker test (2026-11-18, Lichtenberg, special00005)
+
+1. **The change (all new runtime-selectable classes; fc679662).** `gradedSphere` (implicitSurface):
+   psi0 = g(z)(|z| - R), g = 1 + 0.3 (z0^2 - z1^2)/(|z|^2 + 0.01^2), so q0 = g is 0.70 to 1.30 on the
+   circle (the marker test of the Bothe-Maric-Soga manuscript, section 5). `linearFlow` (velocityModel):
+   v = G (x - x0) + b. `interfaceMarkers` (function object, libleiaCore): 720 markers on the initial zero
+   set moved with the prescribed flow by RK4; q_h and psi_h sampled by cell-point interpolation;
+   E_Q = q_h - q0 (without feedback q is constant along the markers for the extension u(Y)) and
+   E_POS = psi_h/q0, L1 and L2. Case `markerTest2D` (problem data only). Configs `bMarker2Dtranslation`,
+   `bMarker2Dstrain`, `bMarker2DstrainPar` (B1 to B8 in the headers, written before the run); read-out
+   `pde_b1_analysis.py`. Clone `$HOME/leia-pde-h` on Lichtenberg (/work/scratch at its file limit,
+   11.39 item 9), jobs 56594964 to 56594969.
+2. **Inertness PASS:** 100 of 100 CSVs of aStatic2Dedge and a0Identity2Dvortex identical to clone
+   `leia-pde-a5`.
+3. **The instrument passes.** t = 0 row: E_Q_L1 9.4e-4 / 2.3e-4 / 5.8e-5 at N 128 / 256 / 512 (orders
+   2.02, 2.00; B5 PASS); every marker found in every row (B6, B7 PASS).
+4. **Translation (the null arm) PASS.** The three arms (none, projectionBlend, closestPoint) agree to
+   1.1e-10 relative (B1); E_Q_L1 and E_POS_L1 converge at orders 1.97 to 2.04 at T/2 and T (B2).
+5. **Pure strain: the baseline behaves as derived (B3 PASS).** Without an extension E_Q_L1(T) = 0.33 at
+   every N (order 0.00): q changes by exp(-T n.G.n) along the markers.
+6. **Pure strain with an extension: B4 FALSIFIED.** projectionBlend E_Q_L1(T) = 1.23e-2 / 2.19e-2 /
+   2.45e-2 at N 128 / 256 / 512 (orders -0.84, -0.16); closestPoint 1.03e-2 / 2.46e-2 / 3.54e-2. The
+   extension reduces the error by a factor 13 to 33 against the baseline, but the error GROWS under
+   refinement. Time history (MEASURED): E_Q_L1 stays at its t = 0 level, then grows by 1.7 to 3.1 % per
+   step; the onset is at a nearly fixed step count (about 67, 58, 44 steps at N 128, 256, 512), so the
+   onset time falls with h. The signed mean stays small: the error is noise, not a bias. E_POS_L1 also
+   degrades at N 512 at T (5.0e-5 against 2.5e-5 at N 256; B2s FAIL). The pre-registered consequence
+   holds: step D does not start until the cause is known.
+7. **np 4 (B7, B8 PASS, read from processor0).** The function object wrote its CSV into `processor0/`
+   (time_.path() in a parallel run; fixed to globalPath in aebad0c7). np 4 equals serial to 4e-6
+   (projectionBlend) and 2.6e-3 (closestPoint): the growth does not depend on the decomposition.
+8. **Next: the discriminators `bDiscr2Dstrain`** (N 256, projectionBlend; CFL, the psi time scheme, the
+   reconstruction gradient of linearUpwind and the flux form; D0 to D4 pre-registered in the header).
+   DERIVED: a linearised continuum analysis of the loop psi -> Y -> u_e gives rates near |G| = 1 per unit
+   time, far below the measured 17 to 30 per unit time at N 512, so the discretisation is suspected.
