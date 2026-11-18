@@ -1,0 +1,48 @@
+# PDE LEVEL SET, STEP B: is the band edge the source of the q growth? (2026-11-18, STATUS 11.40 item 11)
+# MEASURED: the growth is slower and starts later in a wider band (bBand2Dstrain*): the disturbance
+# comes from the band edge (the blend of projectionBlend, w1 h to w2 h) and reaches the interface after
+# a delay that grows with the band width. HYPOTHESIS: with the band of a fixed cell count, the band is
+# physically thinner at a finer mesh, so the error at T grows under refinement (round 1).
+# RESEARCH INSTRUMENT, NOT A METHOD SETTING: the arms below fix the blend at a PHYSICAL width (w1 h = 1/16,
+# w2 h = 1/8), which the rule "No free parameters" forbids in a method. They only locate the defect.
+# Arms (projectionBlend distance first, pure strain, CN, CFL 0.5): fixed physical width at N 128 (w 8/16),
+# N 256 (w 16/32), N 512 (w 32/64): configs bEdge2DstrainN128, N256, N512; and the domain-wide arm at
+# N 256, w 64/128 (blend from 0.25 to 0.5 from the interface: no band edge near the circle; config
+# bEdge2DstrainWide).
+# PRE-REGISTERED (2026-11-18, before any run):
+#   E1 fixed physical width: E_Q_L1 converges at order >= 1.5 at T/2 and at T over N 128-256-512.
+#   E2 domain-wide arm: E_Q_L1(T) <= 0.1 times the (4, 8) arm of bBand2DstrainPB4 (2.19e-2), and no
+#      onset before t = 0.3.
+# FALSIFIED: E1 below order 1 with the band at a fixed physical width: the band edge is not the whole
+# cause, and a disturbance that does not depend on the band position remains.
+# THIS FILE: N 256, w 16/32.
+study_name: bEdge2DstrainN256
+case: markerTest2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaLevelSetFoam
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 240
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [256]
+  VELOCITY_EXTENSION: [projectionBlend]
+  PB_DISTANCE: [first]
+  PB_W1: [16]
+  PB_W2: [32]
+  CP_STEP: [newton]
+  FADE_MODE: [layer]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  ADVECTION: [eulerian]
+  SDPLS_SOURCE: [noSource]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+  REPORT_WRITE_ONLY: ["false"]
+  PSI_DDT: [CrankNicolsonDdt]

@@ -997,6 +997,47 @@ scalar implicitSinc::curvature(const vector& x) const
 
 // ************************************************************************* //
 
+// * * * * * * * * * * * * * * Class gradedSphere * * * * * * * * * * * * * //
+
+defineTypeNameAndDebug(gradedSphere, false);
+addToRunTimeSelectionTable(implicitSurface, gradedSphere, dictionary);
+
+gradedSphere::gradedSphere(const dictionary& dict)
+    :
+        center_(dict.get<vector>("center")),
+        radius_(dict.get<scalar>("radius")),
+        amplitude_(dict.getOrDefault<scalar>("amplitude", 0.3)),
+        epsilon_(dict.getOrDefault<scalar>("epsilon", 0.01))
+{}
+
+scalar gradedSphere::gradeFactor(const vector& x) const
+{
+    const vector z = x - center_;
+    return 1 + amplitude_*(z[0]*z[0] - z[1]*z[1])
+        /(Foam::magSqr(z) + epsilon_*epsilon_);
+}
+
+scalar gradedSphere::value(const vector& x) const
+{
+    return gradeFactor(x)*(Foam::mag(x - center_) - radius_);
+}
+
+vector gradedSphere::grad(const vector& x) const
+{
+    const vector z = x - center_;
+    const scalar r = Foam::mag(z);
+    const scalar D = Foam::magSqr(z) + epsilon_*epsilon_;
+    const scalar s = z[0]*z[0] - z[1]*z[1];
+    const vector dg =
+        amplitude_*(vector(2*z[0], -2*z[1], 0)*D - 2*s*z)/(D*D);
+    return dg*(r - radius_) + gradeFactor(x)*z/Foam::max(r, VSMALL);
+}
+
+scalar gradedSphere::curvature(const vector& x) const
+{
+    return 1/radius_;
+}
+
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

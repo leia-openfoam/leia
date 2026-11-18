@@ -1,0 +1,38 @@
+# PDE LEVEL SET, STEP A ROUND 2 IN 3D (3): aStatic3Dr2 at np 4, inputs scaledDistance and quadratic,
+# N 96 and 128.
+# PRE-REGISTERED (2026-11-18, before any run):
+#   R7 the layer counts N_L0..N_L8 equal the serial counts of aStatic3Dr2 exactly.
+#   R8 projectionBlend/first: every E_*_L0TO3 column within 1e-8 relative of serial.
+#   R9 closestPoint/newton/layer: E_EXT_L1_L0TO3 within 2 % of serial.
+# FALSIFIED: as in aStatic2Dr2Par.
+study_name: aStatic3Dr2Par
+case: 3Dshear
+mesh: hex
+solver: leiaTestVelocityExtension
+solve_runtime: 120
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+mode: parallel
+np: 4
+solve_mem_mb: 8000
+axes_override:
+  N_CELLS: [96, 128]
+  SURFACE_X0: [0.4513]
+  SURFACE_Y0: [0.5487]
+  SURFACE_Z0: [0.4521]
+  VE_TEST_INPUT: [scaledDistance, quadratic]
+  VELOCITY_EXTENSION: [closestPoint, projectionBlend]
+  PB_DISTANCE: [first]
+  PB_W1: [4]
+  PB_W2: [8]
+  CP_STEP: [newton]
+  FADE_MODE: [layer]
+  END_TIME: [1]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  PHASE_INDICATOR: [detrixheAslam]

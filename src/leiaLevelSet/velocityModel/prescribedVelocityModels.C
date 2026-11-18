@@ -205,6 +205,28 @@ vector uniaxialStrain::velocity(const vector& p) const
     return vector(strainRate_*(p.x() - stagnationPoint_.x()), 0, 0);
 }
 
+
+// * * * * * * * * * * * * * * * * linearFlow  * * * * * * * * * * * * * * * //
+
+defineTypeNameAndDebug(linearFlow, 0);
+addToRunTimeSelectionTable(velocityModel, linearFlow, Mesh);
+
+linearFlow::linearFlow(const fvMesh& mesh)
+:
+    velocityModel(mesh),
+    gradient_(velocityDict_.get<tensor>("gradient")),
+    origin_(velocityDict_.getOrDefault<vector>("origin", vector::zero)),
+    offset_(velocityDict_.getOrDefault<vector>("offset", vector::zero))
+{
+    // A bool literal, not a string (see uniaxialStrain): default OFF.
+    isOscillating_ = velocityDict_.getOrDefault<Switch>("oscillation", false);
+}
+
+vector linearFlow::velocity(const vector& p) const
+{
+    return (gradient_ & (p - origin_)) + offset_;
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

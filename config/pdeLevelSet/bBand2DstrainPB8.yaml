@@ -1,0 +1,49 @@
+# PDE LEVEL SET, STEP B: does the q growth scale with the band width? (2026-11-18, STATUS 11.40 items 9-10)
+# MEASURED: the growth acts per unit time (bDiscr2Dstrain D1), rate about 10 at |G| = 1, the same for
+# projectionBlend and closestPoint; the raw velocity transport converges at order 2 against its own exact q
+# (bRaw2Dstrain W2), so the growth belongs to the extension. DERIVED (linearised loop psi -> Y -> u_e ->
+# psi, psi = q d in the band): a perturbation dpsi gets the terms (n.G.n) dpsi and d [(n.G.t) d_t dpsi -
+# (n.G.n) d_n dpsi], an advection whose speed grows with the distance d from the interface; it enters the
+# transport through Y_h (a central gradient) and not through the upwind flux. HYPOTHESIS: the growth rate
+# scales with the band width W in cells (d up to W h, wavenumber up to 1/h, rate ~ |G| W, independent of h
+# and of dt as measured).
+# THIS FILE: projectionBlend (w1, w2) = (8, 16); the other arms are bBand2DstrainPB{2,4,8} and bBand2DstrainCP.
+# Case markerTest2D, pure strain, N 256, CN, CFL 0.5 (round-1 schemes). Arms: projectionBlend (distance
+# first) with (w1, w2) = (2, 4), (4, 8), (8, 16) cells; closestPoint (newton, layer, extendThroughFade)
+# with nLayers 2, 3, 5. Read-out pde_b2_analysis.py style: the growth rate per unit time after the onset.
+# PRE-REGISTERED (2026-11-18, before any run):
+#   H1 projectionBlend: rate(8,16)/rate(4,8) between 1.6 and 2.5 and rate(2,4)/rate(4,8) between 0.4 and
+#      0.65 (the rate scales with the band width).
+#   H2 closestPoint: the rate grows with nLayers (rate(5) > rate(3) > rate(2), each step > 15 %).
+# FALSIFIED: the rates of the three projectionBlend arms within 20 % of each other: the band width is not
+# the mechanism, and the next candidate is the transport of a non-solenoidal extension velocity itself.
+study_name: bBand2DstrainPB8
+case: markerTest2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaLevelSetFoam
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 240
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [256]
+  VELOCITY_EXTENSION: [projectionBlend]
+  PB_DISTANCE: [first]
+  PB_W1: [8]
+  PB_W2: [16]
+  CP_STEP: [newton]
+  FADE_MODE: [layer]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  ADVECTION: [eulerian]
+  SDPLS_SOURCE: [noSource]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+  REPORT_WRITE_ONLY: ["false"]
+  PSI_DDT: [CrankNicolsonDdt]

@@ -1,0 +1,61 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2206                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+functions
+{
+    // The marker read-out of step B (libleiaCore): q = |grad psi| and psi at markers moved
+    // with the prescribed flow by RK4; without feedback q is constant along them.
+    interfaceMarkers
+    {
+        type        interfaceMarkers;
+        libs        ( leiaCore );
+        field       psi;
+        nMarkers    @!MT_MARKERS!@;
+        nSubSteps   4;
+        gradScheme  gradPsiMetric;
+    }
+
+    writeIsoSurfaceTopo
+    {
+        type            writeIsoSurfaceTopo;
+        libs            ( fieldFunctionObjects leiaFunctionObjects );
+    }
+    gradPsiError
+    {
+        type            gradPsiError;
+        libs            ( fieldFunctionObjects leiaFunctionObjects );
+        field           psi;
+        result          gradPsiError;
+        writeControl    writeTime;
+    }
+    gradPsi
+    {
+        type            grad;
+        libs            ( fieldFunctionObjects );
+        field           psi;
+        result          gradPsi;
+        writeControl    writeTime;
+    }
+    gradPsiErrorCSV
+    {
+        type            gradPsiErrorCSV;
+        libs            ( leiaFunctionObjects );
+        writeControl    timeStep;
+        field           gradPsiError;
+    }
+    tvErrorCSV
+    {
+        type            tvErrorCSV;
+        libs            ( leiaFunctionObjects );
+        writeControl    timeStep;
+        field           psi;
+    }
+}
+
+
+// ************************************************************************* //

@@ -1,0 +1,23 @@
+# PDE LEVEL SET, inertness of the 3Dshear template change of 2026-11-18 (the interface as problem-data
+# tokens SURFACE_*, and the keys cpMaxDist and testInput in levelSet.velocityExtension). The rendered
+# dictionaries keep every old value (checked by rendering both templates); this run checks the binary
+# answer. Default 3Dshear tokens, hex, N 32, leiaLevelSetFoam, both phase indicators, serial.
+# PRE-REGISTERED: leiaLevelSetFoam.csv and gradPsiError.csv byte-identical (timing columns skipped)
+# between this clone and clone leia-pde-a5 (old template, binaries at 45fa83f2). Any difference: the
+# change is not inert, and the 3D step-A studies wait until the cause is known.
+study_name: a6Identity3Dshear
+case: 3Dshear
+mesh: hex
+mode: serial
+np: 1
+solver: leiaLevelSetFoam
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 60
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [32]
+  REPORT_WRITE_ONLY: ["false"]

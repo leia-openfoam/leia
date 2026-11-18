@@ -1,0 +1,28 @@
+// markerTest2D: the marker test of step B of the PDE level-set plan (section 6), 2026-11-18.
+// PROBLEM DATA ONLY (CLAUDE.md, "No free parameters"): geometry, flow, resolution, end time, CFL.
+// Every method setting comes from cases/default.parameter or from the study's axes_override.
+values
+{
+    solver (leiaLevelSetFoam);
+    N_CELLS ( 64 );
+    CFL ( 0.5 );
+    END_TIME ( 0.5 );
+    // The graded circle psi0 = g(z)(|z| - R), g = 1 + A (z0^2 - z1^2)/(|z|^2 + 0.01^2)
+    SURFACE_X0 ( 0.5013 );
+    SURFACE_Y0 ( 0.4987 );
+    SURFACE_R ( 0.15 );
+    MT_AMPLITUDE ( 0.3 );
+    // Initial data: psi0 = the surface value itself (profile signedDistance writes value(x));
+    // TANH_LIMIT is read only by the tanh profile.
+    PROFILE ( signedDistance );
+    TANH_LIMIT ( 0.1 );
+    // The linear flow v = G (x - x0) + b, x0 = the circle centre. Default: pure strain a = 1.
+    MT_GXX ( 1 );
+    MT_GXY ( 0 );
+    MT_GYX ( 0 );
+    MT_GYY ( -1 );
+    MT_UX ( 0 );
+    MT_UY ( 0 );
+    // Markers on the circle (read-out resolution, not a method setting)
+    MT_MARKERS ( 720 );
+}
