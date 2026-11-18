@@ -36,6 +36,7 @@ Description
 #include "velocityModel.H"
 #include "velocityExtension.H"
 #include "levelSetImplicitSurfaces.H"
+#include "syncTools.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -507,6 +508,247 @@ int main(int argc, char *argv[])
             const scalar QA = Foam::max(qa, SMALL);
             csv << "," << q1/QA << "," << Foam::sqrt(q2/QA);
             csv << "\n";
+        }
+
+        // -------------------------------------------------------------- //
+        // STEP A ROUND 2 (2026-11-18, plan section 5, "the model's own
+        // extension"). Two additions, written to a THIRD CSV
+        // (leiaTestVelocityExtensionLayers.csv) so the two CSVs above are
+        // unchanged:
+        //  1. the reference at the Newton point of the EXACT input field,
+        //         Y(x) = x - psi grad(psi)/|grad(psi)|^2,
+        //     ue_Y = u(Y), next to u(Pi(x)). The theorems of the Bothe-Maric-
+        //     Soga manuscript hold for Y; Y = Pi only for a signed distance.
+        //     psi is the analytic input of testInput (distance,
+        //     scaledDistance, quadratic) with its analytic gradient.
+        //     Also the blend reference of projectionBlend:
+        //         ue_B = delta u(x) + (1 - delta) u(Y),
+        //     delta(a) from w1/w2, a = |psi|/(|grad psi| h): the operator
+        //     that projectionBlend intends (meaningful only for that model);
+        //  2. every norm PER TOPOLOGICAL LAYER l = 0..8 (l = 0: the cells
+        //     with a sign change of psi across a face, internal or coupled;
+        //     l + 1: a face neighbour of layer l), and over l = 0..3, the
+        //     layers that the compact face curvature reads (plan section 4c,
+        //     A0.4). A distance shell |d| <= k h mixes layers; the curvature
+        //     requirement is stated per layer. Face flux per face layer
+        //     min(l_own, l_nei), internal faces only (as above).
+        // -------------------------------------------------------------- //
+        {
+            const word input =
+                velExtDict.getOrDefault<word>("testInput", "distance");
+            const scalar lam =
+                velExtDict.getOrDefault<scalar>("testInputWavelength", 0.5);
+            const scalar Rq =
+                (input == "quadratic") ? sDict.get<scalar>("radius") : 0;
+            const scalar pbW1 = velExtDict.getOrDefault<scalar>("w1", 1.5);
+            const scalar pbW2 = velExtDict.getOrDefault<scalar>("w2", 4.0);
+
+            // Newton point of the exact input; dN = psi/|grad psi| (signed).
+            auto newtonY = [&](const vector& x, scalar& dN) -> vector
+            {
+                const scalar d = surf->value(x);
+                vector n = surf->grad(x);
+                n /= Foam::max(Foam::mag(n), SMALL);
+                scalar p = d;
+                vector g = n;
+                if (input == "quadratic")
+                {
+                    p = d*(d + 2*Rq);
+                    g = 2*(d + Rq)*n;
+                }
+                else if (input == "scaledDistance")
+                {
+                    const scalar w = constant::mathematical::twoPi/lam;
+                    const scalar a = Foam::log(1.25);
+                    const scalar sx = Foam::sin(w*x.x()), cx = Foam::cos(w*x.x());
+                    const scalar sy = Foam::sin(w*x.y()), cy = Foam::cos(w*x.y());
+                    const scalar gg = Foam::exp(a*sx*sy);
+                    const vector dg = gg*a*w*vector(cx*sy, sx*cy, 0);
+                    p = d*gg;
+                    g = gg*n + d*dg;
+                }
+                const scalar q2 = Foam::max(Foam::magSqr(g), VSMALL);
+                dN = p/Foam::sqrt(q2);
+                return x - p*g/q2;
+            };
+
+            // Topological layer, parallel: sign change across internal and
+            // coupled faces, then face-neighbour passes with a swap of the
+            // layer index over coupled patches.
+            const label nL = 8;
+            const labelUList& own = mesh.owner();
+            const labelUList& nei = mesh.neighbour();
+            labelList layer(mesh.nCells(), labelMax);
+            forAll(nei, f)
+            {
+                if ((psi[own[f]] < 0) != (psi[nei[f]] < 0))
+                {
+                    layer[own[f]] = 0;
+                    layer[nei[f]] = 0;
+                }
+            }
+            {
+                scalarField psiNb;
+                syncTools::swapBoundaryCellList(mesh, psi.primitiveField(), psiNb);
+                forAll(mesh.boundaryMesh(), patchI)
+                {
+                    const polyPatch& pp = mesh.boundaryMesh()[patchI];
+                    if (!pp.coupled()) continue;
+                    forAll(pp, i)
+                    {
+                        const label c = pp.faceCells()[i];
+                        const label bf = pp.start() + i - mesh.nInternalFaces();
+                        if ((psi[c] < 0) != (psiNb[bf] < 0)) layer[c] = 0;
+                    }
+                }
+            }
+            for (label pass = 1; pass <= nL; ++pass)
+            {
+                labelList next(layer);
+                forAll(nei, f)
+                {
+                    if (layer[own[f]] == pass - 1 && next[nei[f]] == labelMax)
+                        next[nei[f]] = pass;
+                    if (layer[nei[f]] == pass - 1 && next[own[f]] == labelMax)
+                        next[own[f]] = pass;
+                }
+                labelList layerNb;
+                syncTools::swapBoundaryCellList(mesh, layer, layerNb);
+                forAll(mesh.boundaryMesh(), patchI)
+                {
+                    const polyPatch& pp = mesh.boundaryMesh()[patchI];
+                    if (!pp.coupled()) continue;
+                    forAll(pp, i)
+                    {
+                        const label c = pp.faceCells()[i];
+                        const label bf = pp.start() + i - mesh.nInternalFaces();
+                        if (layerNb[bf] == pass - 1 && next[c] == labelMax)
+                            next[c] = pass;
+                    }
+                }
+                layer.transfer(next);
+            }
+
+            // Per layer l = 0..nL, and slot nL + 1 = layers 0..3.
+            const label nS = nL + 2;
+            scalarField nC(nS, 0), vol(nS, 0), x1(nS, 0), x2(nS, 0),
+                y1(nS, 0), y2(nS, 0), b1(nS, 0), b2(nS, 0), ry1(nS, 0),
+                ry2(nS, 0), yp1(nS, 0);
+            forAll(C, c)
+            {
+                const label l = layer[c];
+                if (l > nL) continue;
+                scalar d = 0, dN = 0;
+                const vector uPi = footVelocity(C[c], d);
+                const vector Y = newtonY(C[c], dN);
+                const vector uY = velModel->velocity(Y);
+                const scalar hc = cellSize[c];
+                const scalar a = Foam::mag(dN)/hc;
+                scalar delta = 1;
+                if (a <= pbW1) delta = 0;
+                else if (a < pbW2)
+                {
+                    const scalar s = (a - pbW1)/(pbW2 - pbW1);
+                    delta = 0.5*(1 - Foam::cos(constant::mathematical::pi*s));
+                }
+                const vector uB = delta*U[c] + (1 - delta)*uY;
+                vector nc = surf->grad(C[c]);
+                nc /= Foam::max(Foam::mag(nc), SMALL);
+                const vector xPi = C[c] - d*nc;
+                const scalar ex = Foam::mag(Ue[c] - uPi);
+                const scalar ey = Foam::mag(Ue[c] - uY);
+                const scalar eb = Foam::mag(Ue[c] - uB);
+                const scalar er = Foam::mag(U[c] - uY);
+                const scalar V = mesh.V()[c];
+                const label slots[2] = {l, (l <= 3 ? nL + 1 : label(-1))};
+                for (const label s : slots)
+                {
+                    if (s < 0) continue;
+                    nC[s] += 1; vol[s] += V;
+                    x1[s] += ex*V; x2[s] += ex*ex*V;
+                    y1[s] += ey*V; y2[s] += ey*ey*V;
+                    b1[s] += eb*V; b2[s] += eb*eb*V;
+                    ry1[s] += er*V; ry2[s] += er*er*V;
+                    yp1[s] += Foam::mag(Y - xPi)/hc*V;
+                }
+            }
+            scalarField fy1(nS, 0), fy2(nS, 0), fx1(nS, 0), fa(nS, 0);
+            forAll(nei, f)
+            {
+                const label l = Foam::min(layer[own[f]], layer[nei[f]]);
+                if (l > nL) continue;
+                scalar d = 0, dN = 0;
+                const vector uPi = footVelocity(Cf[f], d);
+                const vector uY = velModel->velocity(newtonY(Cf[f], dN));
+                const scalar A = magSf[f];
+                const scalar ey = Foam::mag(phiE[f] - (uY & mesh.Sf()[f]))/A;
+                const scalar ex = Foam::mag(phiE[f] - (uPi & mesh.Sf()[f]))/A;
+                const label slots[2] = {l, (l <= 3 ? nL + 1 : label(-1))};
+                for (const label s : slots)
+                {
+                    if (s < 0) continue;
+                    fy1[s] += ey*A; fy2[s] += ey*ey*A; fx1[s] += ex*A; fa[s] += A;
+                }
+            }
+            for
+            (
+                scalarField* fld :
+                {&nC, &vol, &x1, &x2, &y1, &y2, &b1, &b2, &ry1, &ry2, &yp1,
+                 &fy1, &fy2, &fx1, &fa}
+            )
+            {
+                reduce(*fld, sumOp<scalarField>());
+            }
+
+            Info<< "Per-layer errors (round 2): against u(Pi), u(Y) of the exact"
+                << " input (" << input << "), the projectionBlend reference (w1 "
+                << pbW1 << ", w2 " << pbW2 << "):" << nl;
+            for (label s = 0; s < nS; ++s)
+            {
+                const scalar V = Foam::max(vol[s], SMALL);
+                const scalar A = Foam::max(fa[s], SMALL);
+                Info<< "  " << (s <= nL ? word("l=" + Foam::name(s)) : word("l<=3"))
+                    << "  n " << label(nC[s])
+                    << "  Pi L1 " << x1[s]/V << "  Y L1 " << y1[s]/V
+                    << "  B L1 " << b1[s]/V << "  flux(Y) L1 " << fy1[s]/A
+                    << "  raw(Y) L1 " << ry1[s]/V
+                    << "  |Y-Pi|/h " << yp1[s]/V << nl;
+            }
+            Info<< endl;
+
+            if (Pstream::master())
+            {
+                OFstream csv("leiaTestVelocityExtensionLayers.csv");
+                csv << "DELTA_X";
+                for (label s = 0; s < nS; ++s)
+                {
+                    const word t =
+                        (s <= nL) ? word("L" + Foam::name(s)) : word("L0TO3");
+                    csv << ",N_" << t
+                        << ",E_EXT_L1_" << t << ",E_EXT_L2_" << t
+                        << ",E_EXTY_L1_" << t << ",E_EXTY_L2_" << t
+                        << ",E_EXTB_L1_" << t << ",E_EXTB_L2_" << t
+                        << ",E_RAWY_L1_" << t << ",E_RAWY_L2_" << t
+                        << ",D_YPI_L1_" << t
+                        << ",E_FLUXY_L1_" << t << ",E_FLUXY_L2_" << t
+                        << ",E_FLUX_L1_" << t;
+                }
+                csv << "\n" << h;
+                for (label s = 0; s < nS; ++s)
+                {
+                    const scalar V = Foam::max(vol[s], SMALL);
+                    const scalar A = Foam::max(fa[s], SMALL);
+                    csv << "," << label(nC[s])
+                        << "," << x1[s]/V << "," << Foam::sqrt(x2[s]/V)
+                        << "," << y1[s]/V << "," << Foam::sqrt(y2[s]/V)
+                        << "," << b1[s]/V << "," << Foam::sqrt(b2[s]/V)
+                        << "," << ry1[s]/V << "," << Foam::sqrt(ry2[s]/V)
+                        << "," << yp1[s]/V
+                        << "," << fy1[s]/A << "," << Foam::sqrt(fy2[s]/A)
+                        << "," << fx1[s]/A;
+                }
+                csv << "\n";
+            }
         }
     }
     else

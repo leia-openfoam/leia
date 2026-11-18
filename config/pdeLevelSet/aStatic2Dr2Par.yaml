@@ -1,0 +1,39 @@
+# PDE LEVEL SET, STEP A ROUND 2 (3): aStatic2Dr2 at np 4 (the 4-rank gate of the new per-layer read-out
+# and of projectionBlend in the static test), inputs scaledDistance and quadratic, N 128 to 512.
+# PRE-REGISTERED (2026-11-18, before any run):
+#   R7 the layer counts N_L0..N_L8 equal the serial counts of aStatic2Dr2 EXACTLY (the layer index is
+#      decomposition-independent: sign change and passes over coupled faces).
+#   R8 projectionBlend/first: every E_*_L0TO3 column within 1e-8 relative of serial (a pointwise formula
+#      with leastSquares grad psi and Gauss linear grad u through coupled patches: round-off only).
+#   R9 closestPoint/newton/layer: E_EXT_L1_L0TO3 within 2 % of serial (round 1: 1.7 % at N 128).
+# FALSIFIED: R7 fails (the per-layer read-out depends on the decomposition and every per-layer number of
+# round 2 is void until it is fixed), or R8 fails by more than 1e-6 (projectionBlend is not local).
+study_name: aStatic2Dr2Par
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaTestVelocityExtension
+solve_runtime: 60
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [128, 256, 512]
+  SURFACE_X0: [0.5013]
+  SURFACE_Y0: [0.7487]
+  VE_TEST_INPUT: [scaledDistance, quadratic]
+  VELOCITY_EXTENSION: [closestPoint, projectionBlend]
+  PB_DISTANCE: [first]
+  PB_W1: [4]
+  PB_W2: [8]
+  CP_STEP: [newton]
+  FADE_MODE: [layer]
+  END_TIME: [1]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  PHASE_INDICATOR: [detrixheAslam]

@@ -1,0 +1,65 @@
+# PDE LEVEL SET, STEP A ROUND 2 (1): the model's own extension u(Y) against closestPoint, per layer.
+# Plan docs/plan-velocity-extension-verification.md, section 5 ("the model's own extension",
+# 2026-11-15); supervisor's go 2026-11-18 ("proceed with next steps").
+# Off-vertex circle R = 0.15, centre (0.5013, 0.7487), shear2D at t = 0, serial, N 64 to 512,
+# extendThroughFade, correction flux form. Inputs (testInput, same zero set): distance, scaledDistance
+# (q 0.8 to 1.25), quadratic (q about 0.3). Arms:
+#   closestPoint     cpStep newton, fadeMode layer (the round-1 best; the reference operator for Pi)
+#   projectionBlend  distance first: Y_h = x - psi grad psi/|grad psi|^2 (the Newton point of the
+#                    manuscript), u_e = u + grad(u).(Y_h - x), blend to u from w1 = 4 h to w2 = 8 h.
+#                    w1 = 4 is DERIVED: the compact face curvature reads layers l <= 3 (STATUS 11.33),
+#                    and on a hexahedral mesh a layer-3 centre lies at |d| <= 3.71 h < 4 h.
+#   projectionBlend  distance second (control: the quadratic-root distance, Y moves towards Pi).
+# New read-out (leiaTestVelocityExtensionLayers.csv): the error per topological layer l = 0..8 and over
+# l = 0..3, against u(Pi) (E_EXT), against u(Y) of the EXACT input (E_EXTY), against the blend reference
+# delta u + (1 - delta) u(Y) (E_EXTB), the face flux against u(Y).Sf (E_FLUXY), and |Y - Pi|/h (D_YPI).
+# DERIVATION (before the run): at a fixed layer l, |d| = O(l h) and |Y - Pi| = O(d^2) (quadratic input:
+# exactly d^2/(2r)), so u(Y) and u(Pi) differ by O(h^2) there and BOTH references give the same order;
+# D_YPI (|Y - Pi|/h) is O(h). The Taylor step of projectionBlend leaves (1/2)|Y - x|^2 |grad grad u|,
+# O(l^2 h^2): second order at a fixed layer, with a constant that grows with l.
+# PRE-REGISTERED (2026-11-18, before any run). Orders L1 over N 128-256-512 (64 reported):
+#   R1 projectionBlend/first, every input: E_EXTY_L1_L0TO3 and E_FLUXY_L1_L0TO3 order >= 1.8.
+#   R2 projectionBlend/first: E_EXTB_L1 order >= 1.8 on every layer 0..8 (the blend operator is
+#      reproduced to second order; the blend itself is first order against u(Y) by design, outside the
+#      layers that the curvature reads).
+#   R3 closestPoint/newton/layer, every input: E_EXT_L1_L0TO3 and E_EXTY_L1_L0TO3 order >= 1.8.
+#   R4 the Taylor remainder: projectionBlend/first E_EXTY_L1_L3 / E_EXTY_L1_L0 >= 4 at N 512 on the
+#      distance input (the constant grows with l^2).
+#   R5 D_YPI_L1_L0TO3 order between 0.8 and 1.2 on scaledDistance and quadratic, 0 on distance.
+#   R6 INERTNESS: leiaTestVelocityExtensionExact.csv of every closestPoint case is byte-identical to the
+#      round-1 case of aStatic2Dq with the same N and input (clone leia-pde-a5): the change is in the
+#      test application only, and the libraries it links did not change since 45fa83f2.
+# FALSIFIED: projectionBlend/first below order 1.5 on E_EXTY_L1_L0TO3 on any input: the compact
+# Taylor evaluation of u(Y) is not second order at a fixed cell count, and section 5 of the plan is wrong.
+# HOW IT COULD PASS FOR THE WRONG REASON: the input not applied (check the log line "testInput ... psi
+# replaced"); the layers empty (check N_L0..N_L3 > 0 and growing as N); delta not 0 in layers 0..3
+# (check E_EXTB_L1_L0TO3 = E_EXTY_L1_L0TO3 for projectionBlend).
+study_name: aStatic2Dr2
+case: 2Dvortex
+mesh: hex
+mode: serial
+np: 1
+solver: leiaTestVelocityExtension
+solve_runtime: 60
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [64, 128, 256, 512]
+  SURFACE_X0: [0.5013]
+  SURFACE_Y0: [0.7487]
+  VE_TEST_INPUT: [distance, scaledDistance, quadratic]
+  VELOCITY_EXTENSION: [closestPoint, projectionBlend]
+  PB_DISTANCE: [first, second]
+  PB_W1: [4]
+  PB_W2: [8]
+  CP_STEP: [newton]
+  FADE_MODE: [layer]
+  END_TIME: [1]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  PHASE_INDICATOR: [detrixheAslam]
