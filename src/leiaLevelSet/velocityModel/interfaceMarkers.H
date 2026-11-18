@@ -49,6 +49,11 @@ Description
         E_Q    = q_h(Y_l(t)) - q_l(t)     (the target of step B)
         E_POS  = psi_h(Y_l(t))/q_l(t)     (the interface position error, to
                                            first order in the distance)
+        E_QRAW = q_h(Y_l(t)) - |F^{-T} grad psi_0|  (the reference for the
+                                           RAW velocity, no extension; F the
+                                           deformation gradient along the
+                                           marker, RK4 with the analytic
+                                           velocity gradient)
 
     reported as L1 and L2 means over the markers, never L_inf. One row per
     execution in interfaceMarkers.csv (master), the row at the start time
@@ -103,12 +108,19 @@ class interfaceMarkers
     pointField markers_;
     scalarField q0_;
 
+    //- grad psi0 at the markers and the deformation gradient F along them
+    //  (dF/dt = grad(u) F): the exact q WITHOUT an extension is
+    //  |F^{-T} grad psi0| (column E_QRAW, the reference of the raw velocity)
+    vectorField g0_;
+    List<tensor> F_;
+
     //- The time the markers belong to
     scalar tMarkers_;
 
     autoPtr<OFstream> csv_;
 
     vector velocityAt(const point& x, const scalar t) const;
+    tensor gradVelocityAt(const point& x, const scalar t) const;
     void advance(const scalar t1);
     void sampleAndWrite();
 

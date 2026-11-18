@@ -58,6 +58,30 @@ Foam::vector Foam::functionObjects::interfaceMarkers::velocityAt
 }
 
 
+Foam::tensor Foam::functionObjects::interfaceMarkers::gradVelocityAt
+(
+    const point& x,
+    const scalar t
+) const
+{
+    // L_ij = du_i/dx_j by central differences of the ANALYTIC velocity (exact for
+    // a linear flow; O(eps^2) otherwise).
+    const scalar eps = 1e-6;
+    tensor L(Zero);
+    for (direction j = 0; j < vector::nComponents; ++j)
+    {
+        vector e(Zero);
+        e[j] = eps;
+        const vector du = (velocityAt(x + e, t) - velocityAt(x - e, t))/(2*eps);
+        for (direction i = 0; i < vector::nComponents; ++i)
+        {
+            L(i, j) = du[i];
+        }
+    }
+    return L;
+}
+
+
 void Foam::functionObjects::interfaceMarkers::advance(const scalar t1)
 {
     const scalar T = t1 - tMarkers_;
@@ -70,14 +94,27 @@ void Foam::functionObjects::interfaceMarkers::advance(const scalar t1)
     forAll(markers_, l)
     {
         point& x = markers_[l];
+        tensor& F = F_[l];
         scalar t = tMarkers_;
         for (label s = 0; s < nSubSteps_; ++s)
         {
+            // RK4 on (x, F): dx/dt = u(x, t), dF/dt = L(x, t) F
             const vector k1 = velocityAt(x, t);
-            const vector k2 = velocityAt(x + 0.5*dt*k1, t + 0.5*dt);
-            const vector k3 = velocityAt(x + 0.5*dt*k2, t + 0.5*dt);
-            const vector k4 = velocityAt(x + dt*k3, t + dt);
+            const tensor m1 = gradVelocityAt(x, t) & F;
+            const point x2 = x + 0.5*dt*k1;
+            const tensor F2 = F + 0.5*dt*m1;
+            const vector k2 = velocityAt(x2, t + 0.5*dt);
+            const tensor m2 = gradVelocityAt(x2, t + 0.5*dt) & F2;
+            const point x3 = x + 0.5*dt*k2;
+            const tensor F3 = F + 0.5*dt*m2;
+            const vector k3 = velocityAt(x3, t + 0.5*dt);
+            const tensor m3 = gradVelocityAt(x3, t + 0.5*dt) & F3;
+            const point x4 = x + dt*k3;
+            const tensor F4 = F + dt*m3;
+            const vector k4 = velocityAt(x4, t + dt);
+            const tensor m4 = gradVelocityAt(x4, t + dt) & F4;
             x += dt/6*(k1 + 2*k2 + 2*k3 + k4);
+            F += dt/6*(m1 + 2*m2 + 2*m3 + m4);
             t += dt;
         }
         if (twoD)
@@ -97,6 +134,7 @@ void Foam::functionObjects::interfaceMarkers::sampleAndWrite()
     interpolationCellPoint<vector> iGrad(gradPsi);
 
     scalar nFound = 0, q1 = 0, q2 = 0, qs = 0, p1 = 0, p2 = 0;
+    scalar r1 = 0, r2 = 0, rs = 0;
     forAll(markers_, l)
     {
         const point& x = markers_[l];
@@ -112,11 +150,18 @@ void Foam::functionObjects::interfaceMarkers::sampleAndWrite()
         nFound += 1;
         q1 += Foam::mag(eq); q2 += eq*eq; qs += eq;
         p1 += Foam::mag(ep); p2 += ep*ep;
+        // The exact q WITHOUT an extension (the raw prescribed velocity):
+        // grad psi(t) = F^{-T} grad psi0 along the marker.
+        const scalar qRaw = Foam::mag(Foam::inv(F_[l]).T() & g0_[l]);
+        const scalar er = qh - qRaw;
+        r1 += Foam::mag(er); r2 += er*er; rs += er;
     }
     reduce(nFound, sumOp<scalar>());
     reduce(q1, sumOp<scalar>()); reduce(q2, sumOp<scalar>());
     reduce(qs, sumOp<scalar>());
     reduce(p1, sumOp<scalar>()); reduce(p2, sumOp<scalar>());
+    reduce(r1, sumOp<scalar>()); reduce(r2, sumOp<scalar>());
+    reduce(rs, sumOp<scalar>());
 
     const scalar n = Foam::max(nFound, scalar(1));
     Log << type() << ' ' << name() << ": t " << tMarkers_
@@ -132,14 +177,16 @@ void Foam::functionObjects::interfaceMarkers::sampleAndWrite()
             csv_.reset(new OFstream(time_.globalPath()/"interfaceMarkers.csv"));
             csv_()
                 << "TIME,N_MARKERS,N_FOUND,E_Q_L1,E_Q_L2,E_Q_MEAN,"
-                << "E_POS_L1,E_POS_L2,Q_EXACT_MIN,Q_EXACT_MAX\n";
+                << "E_POS_L1,E_POS_L2,Q_EXACT_MIN,Q_EXACT_MAX,"
+                << "E_QRAW_L1,E_QRAW_L2,E_QRAW_MEAN\n";
         }
         csv_().precision(12);
         csv_()
             << tMarkers_ << ',' << markers_.size() << ',' << label(nFound)
             << ',' << q1/n << ',' << Foam::sqrt(q2/n) << ',' << qs/n
             << ',' << p1/n << ',' << Foam::sqrt(p2/n)
-            << ',' << Foam::min(q0_) << ',' << Foam::max(q0_) << nl;
+            << ',' << Foam::min(q0_) << ',' << Foam::max(q0_)
+            << ',' << r1/n << ',' << Foam::sqrt(r2/n) << ',' << rs/n << nl;
         csv_().flush();
     }
 }
@@ -206,9 +253,12 @@ Foam::functionObjects::interfaceMarkers::interfaceMarkers
     }
 
     q0_.setSize(nMarkers_);
+    g0_.setSize(nMarkers_);
+    F_.setSize(nMarkers_, tensor::I);
     forAll(markers_, l)
     {
-        q0_[l] = Foam::mag(surface_->grad(markers_[l]));
+        g0_[l] = surface_->grad(markers_[l]);
+        q0_[l] = Foam::mag(g0_[l]);
     }
 
     Info<< type() << ' ' << name << ": " << nMarkers_ << " markers on the "
