@@ -1,0 +1,89 @@
+# ============================================================================
+# 3D TRANSLATING DROPLET: is the blow-up at t = 0.018 to 0.02 s tied to the outlet?
+# (2026-11-18, branch work/droplets3D, STATUS 11.42)
+#
+# MEASURED in the first 3D baseline gate (methodGate3D, c2301068): the translating arm
+# COMPLETES to 0.02 s on N = 60, 78, 102, but it ends inside a blow-up. The band curvature
+# standard deviation grows 4.2, 7.5, 14, 28, 94, 3502 1/m at t = 0.010 to 0.020 s on N = 60
+# and 2.9, 5.0, 10.6, 20, 43, 1645 on N = 102. The extreme velocity and curvature sit at the
+# LEADING POLE from t = 0.016 s, when the pole is about 1.1 mm from the outlet. The onset
+# time is the same on both meshes, which marks a geometric event (CLAUDE.md, research loop
+# step 5).
+#
+# ONE VARIABLE: the box. This study is the translating arm of the gate (same tokens, same
+# binaries) with DOMAIN_LENGTH 0.008 and N = 80, so h = 100 um as on N = 60 of the 6 mm
+# box. The droplet starts at the box centre (4 mm); its leading pole is 3 mm from the outlet
+# at t = 0, 2 mm at t = 0.02 s and 1.1 mm at t = 0.038 s. END_TIME is 0.04 s. The lateral
+# walls and the inlet are also 1 mm farther away; the read-out below cannot separate them
+# from the outlet. The template renders no droplet offset, so the box is the only token.
+#
+# PRE-REGISTERED READ-OUT (before the run).
+#   H-outlet: the growth is triggered by the distance of the leading pole to the outlet.
+#     PREDICTION: at t = 0.02 s kappaStdDevBand < 20 1/m and maxMagUPrime < 0.02 m/s
+#     (6 mm box, N = 60: 3502 1/m and 2.9 m/s). A blow-up, if any, starts after t = 0.034 s.
+#   FALSIFIED if kappaStdDevBand > 100 1/m at t = 0.02 s: the growth then runs in time and
+#     not with the outlet distance (the interior mechanism of the 2D record).
+#   BETWEEN 20 and 100 1/m: both mechanisms act; reported as such.
+#   Also reported: kappaStdDevBand at t = 0.010 to 0.016 s against the 6 mm values above,
+#     because that early growth starts 1.5 mm from the outlet.
+# ============================================================================
+study_name: translatingBox8mm3D
+case: translatingDroplet3D
+mesh: hex
+mode: parallel
+np: 32
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme: gradient-controlled-level-set
+solve_runtime: 240
+axes_override:
+  N_CELLS:
+  - '80'
+  MASS_FLUX:
+  - rhoLENT
+  MASS_FLUX_ALPHAF_SOURCE:
+  - donorPlane
+  MASS_FLUX_ALPHAF_TIME_LEVEL:
+  - new
+  MASS_FLUX_BOUND_RHO:
+  - 'true'
+  MASS_FLUX_PROJECT:
+  - 'false'
+  MOMENTUM_DDT_SCHEME:
+  - backward
+  RHO_DDT_SCHEME:
+  - backward
+  MOMENTUM_DIV_SCHEME:
+  - upwind
+  N_OUTER_CORRECTORS:
+  - '3'
+  PSI_OUTER_CORRECTORS:
+  - 'yes'
+  CAPILLARY_FORCE_CENTRING:
+  - endStep
+  SURFACE_TENSION_FORCE:
+  - reconstructedCurvature
+  FACE_CURVATURE_SOURCE:
+  - model
+  CURVATURE_INVERSE_GAUSSIAN:
+  - 'yes'
+  CAPILLARY_DT_COEFF:
+  - '0.010861'
+  PSI_FILTER:
+  - none
+  CURVATURE_EXTENSION:
+  - cellCentreInverse
+  END_TIME:
+  - '0.04'
+  TRANSLATION_SPEED:
+  - '0.05'
+  WRITE_INTERVAL:
+  - '0.002'
+  SL_RECONSTRUCTION:
+  - uncachedQuadraticWeightedLeastSquares
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  DOMAIN_LENGTH:
+  - '0.008'
+collapse_other_axes: true
+export_slides: false
+setfields_args: -alphaName alpha.water
