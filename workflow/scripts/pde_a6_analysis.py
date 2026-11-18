@@ -172,7 +172,7 @@ def main():
             if inp != "distance" and st == SER and m.startswith("closestPoint"):
                 show(st, m, inp, "D_YPI_L1_L0TO3", "R5", 0.8, 1.2)
             # per layer at the finest N
-            v = {N: r for (mm, ii, N), (_, r) in data[st].items() if mm == m and ii == inp}
+            v = {N: r for (mm, ii, N), (_, r) in data[st].items() if mm == m and ii == inp and r}
             if v:
                 N = max(v); r = v[N]
                 say(f"    per layer at N {N}:  l: E_EXTY_L1 / E_EXTB_L1 / E_FLUXY_L1 / E_RAWY_L1 / D_YPI / cells")

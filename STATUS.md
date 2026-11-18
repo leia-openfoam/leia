@@ -8239,3 +8239,65 @@ written into `config/integration/ghostDecompLocateN64.yaml` and
    (`slReconstruction.C`, not the default) uses the same index test. In parallel it misses the
    patch faces of another rank. The fix belongs in the base class and needs its own
    bit-identity gate. The `MEAN_DELTA_X` defect of 11.36 item 6 is also open.
+
+### 11.39 PDE level set: step A round 2 -- the model's own extension u(Y), per layer (2026-11-18, Lichtenberg, special00005)
+
+1. **The change.** `leiaTestVelocityExtension` writes a third CSV, `leiaTestVelocityExtensionLayers.csv`
+   (c44b5738). It holds the error per topological layer l = 0..8 and over l = 0..3 (the layers that the
+   compact face curvature reads, 11.33 item 4) against three references: u(Pi(x)), u(Y) at the Newton
+   point Y = x - psi grad psi/|grad psi|^2 of the EXACT input, and the blend reference of
+   `projectionBlend`. It also holds the face flux against u(Y).Sf and |Y - Pi|/h. The two existing CSVs
+   are unchanged. Arms: `projectionBlend` (distance first, w1 = 4 h, w2 = 8 h: the model's own
+   extension of the Bothe-Maric-Soga manuscript) and `closestPoint` (newton step, layer band,
+   extendThroughFade). Configs `aStatic2Dr2`, `aStatic2Dr2Ellipse`, `aStatic2Dr2Par` (R1 to R9 in the
+   headers, written before the run); read-out `pde_a6_analysis.py`. Clone `leia-pde-a6` at c44b5738,
+   jobs 56592686 to 56592689.
+2. **R1 PASS: projectionBlend is second order against u(Y) on the layers that the curvature reads,
+   on every input.** E_EXTY_L1_L0TO3 at N 128 / 256 / 512: 2.52e-3 / 6.33e-4 / 1.59e-4 (distance),
+   2.60e-3 / 6.36e-4 / 1.59e-4 (quadratic, q about 0.3), 2.52e-3 / 6.33e-4 / 1.59e-4 (scaledDistance);
+   orders 1.99 to 2.03. The face flux E_FLUXY_L1_L0TO3: orders 1.91 to 2.06. Ellipse: orders 1.92 to
+   2.00 (R1e). The error does not depend on q: the three inputs agree to 2 %. The falsification
+   condition (an order below 1.5) is not met.
+3. **R3 PASS: closestPoint is second order against u(Pi) and against u(Y)** in layers 0..3 on every
+   input and on the ellipse (orders 1.83 to 2.23). On the quadratic input it targets Pi, not Y: against
+   u(Y) its error is 2.56e-4 at N 512, ten times its error against u(Pi) (2.59e-5); |Y - Pi| = O(d^2) at a
+   fixed layer, so both references give the same order (R5 PASS: D_YPI order 0.90 to 1.03).
+4. **R4 PASS: the Taylor sample of projectionBlend sets its error, and the error grows with the layer.**
+   Distance input, N 512, E_EXTY_L1 per layer 0 / 1 / 2 / 3: projectionBlend 9.9e-6 / 6.9e-5 / 1.9e-4 /
+   3.7e-4 (ratio l3/l0 = 37); closestPoint 1.2e-5 / 1.9e-5 / 2.6e-5 / 3.1e-5. On a signed distance,
+   closestPoint is 12 times more accurate in layer 3. On the quadratic input projectionBlend is the more
+   accurate one against u(Y) (1.6e-4 against 2.6e-4 over l = 0..3).
+5. **The face flux of closestPoint degrades at the face layer 3.** Distance input, N 512, E_FLUXY_L1:
+   1.7e-5 (face layer 2) against 1.9e-4 (face layer 3); the layer-0..3 flux converges at order 1.40 to
+   1.60 only (circle), 1.31 to 1.63 (ellipse). READING (DERIVED from the per-layer cell errors): the
+   layer band of nLayers 3 extends fully on l <= 3; layer 4 is already in the fade (E_EXTY_L1_L4 =
+   1.6e-3), and the faces between layers 3 and 4 interpolate a faded value. projectionBlend has no such
+   step: its face flux at face layer 3 is 3.1e-4 and second order. This bears on the band width of step
+   B (the plateau test): the transport reads the face flux of layer 3.
+6. **R2 FAIL as pre-registered, on the coarse pair only.** projectionBlend reproduces its own blend
+   operator at order 1.91 to 2.07 on every layer between N 256 and 512, but between N 128 and 256 three
+   columns miss 1.8: layer 8 on the distance input (1.79), layers 5 and 6 on the quadratic input (1.76,
+   1.64). Ellipse: R2e PASS. The blend lies outside the layers that the curvature reads.
+7. **R8 FAIL as pre-registered; the cause is the read-out, MEASURED.** At np 4, every CELL column of
+   projectionBlend equals serial to 1.2e-12 (all layers, both inputs, N 128 to 512); the FACE columns
+   differ by 0.2 to 1.2 %, because the face norms summed internal faces only, so np 4 lost the processor
+   faces. Fixed in the test application (each coupled face counted once, owner side; serial unchanged).
+   R7 PASS (layer counts equal at np 4), R9 PASS (closestPoint within 1.72 % at N 128, 0.07 % at N 512).
+8. **R6 PASS (inertness):** 18 of 18 `leiaTestVelocityExtensionExact.csv` of the closestPoint arms are
+   byte-identical to round 1 (clone `leia-pde-a5`). Duplicate cases of one arm: 12 of 12 identical.
+9. **Wrong-reason checks.** (a) Three cases have no CSV: projectionBlend first N 64 (distance,
+   quadratic) and projectionBlend second N 512 (distance). These are LAUNCH FAILURES, not results:
+   `/work/scratch` reached its hard file limit during the run (cquota: 24,999,191 of 25,000,000 files
+   for tm83tomy; "Disk quota exceeded" in the driver log). No pre-registered verdict reads these cases.
+   (b) On the quadratic input E_EXTB differs from E_EXTY on l <= 3 by up to 0.6 % (N 128) and 0.02 %
+   (N 512): some layer-3 cells are partly blended. DERIVED: the Newton distance of psi = d (d + 2R) is
+   d (d + 2R)/(2 (d + R)), larger than |d| inside the circle, so a layer-3 cell inside can have
+   |psi|/|grad psi| > 4 h. The ratio goes to 1 as h -> 0 at a fixed layer, and R1 holds. A blend in
+   Newton-distance units does not guarantee the full extension on a fixed layer count when q != 1; a
+   blend by topological layer would.
+10. **Verdict and next step.** The core read-outs pass (R1, R3, R4, R5, R6, R7, R9); R2 fails on the
+    coarse pair outside the curvature layers; R8 fails on the instrument. Step A in 2D is a pass for
+    escalation: step B round 1 (the marker test, `bMarker2D*`) is submitted from a clone in $HOME,
+    because /work/scratch cannot take new files. The 3D studies (`aStatic3Dr2*`) wait for space on
+    /work/scratch (they need about 15 GB). The 3D template identity run (`a6Identity3Dshear`) is
+    incomplete for the same reason: one of its two CSVs could not be written.

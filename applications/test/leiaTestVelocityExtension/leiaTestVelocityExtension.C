@@ -531,7 +531,7 @@ int main(int argc, char *argv[])
         //     layers that the compact face curvature reads (plan section 4c,
         //     A0.4). A distance shell |d| <= k h mixes layers; the curvature
         //     requirement is stated per layer. Face flux per face layer
-        //     min(l_own, l_nei), internal faces only (as above).
+        //     min(l_own, l_nei), internal faces and coupled faces (once).
         // -------------------------------------------------------------- //
         {
             const word input =
@@ -688,6 +688,43 @@ int main(int argc, char *argv[])
                 {
                     if (s < 0) continue;
                     fy1[s] += ey*A; fy2[s] += ey*ey*A; fx1[s] += ex*A; fa[s] += A;
+                }
+            }
+            // Coupled faces, each counted ONCE (on the owner side of the coupled
+            // patch), so the face norms do not depend on the decomposition
+            // (2026-11-18: with internal faces only, np 4 lost the processor
+            // faces and differed from serial by 0.2-1.2 % while every cell
+            // value agreed to 1e-12; STATUS 11.39). No effect in serial.
+            {
+                labelList layerNb;
+                syncTools::swapBoundaryCellList(mesh, layer, layerNb);
+                forAll(mesh.boundaryMesh(), patchI)
+                {
+                    const polyPatch& pp = mesh.boundaryMesh()[patchI];
+                    if (!pp.coupled()) continue;
+                    if (!refCast<const coupledPolyPatch>(pp).owner()) continue;
+                    const fvsPatchScalarField& phiP = phiE.boundaryField()[patchI];
+                    const vectorField& CfP = mesh.boundary()[patchI].Cf();
+                    const vectorField& SfP = mesh.boundary()[patchI].Sf();
+                    forAll(pp, i)
+                    {
+                        const label c = pp.faceCells()[i];
+                        const label bf = pp.start() + i - mesh.nInternalFaces();
+                        const label l = Foam::min(layer[c], layerNb[bf]);
+                        if (l > nL) continue;
+                        scalar d = 0, dN = 0;
+                        const vector uPi = footVelocity(CfP[i], d);
+                        const vector uY = velModel->velocity(newtonY(CfP[i], dN));
+                        const scalar A = Foam::mag(SfP[i]);
+                        const scalar ey = Foam::mag(phiP[i] - (uY & SfP[i]))/A;
+                        const scalar ex = Foam::mag(phiP[i] - (uPi & SfP[i]))/A;
+                        const label slots[2] = {l, (l <= 3 ? nL + 1 : label(-1))};
+                        for (const label s : slots)
+                        {
+                            if (s < 0) continue;
+                            fy1[s] += ey*A; fy2[s] += ey*ey*A; fx1[s] += ex*A; fa[s] += A;
+                        }
+                    }
                 }
             }
             for
