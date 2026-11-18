@@ -101,6 +101,7 @@ SourceFiles
 #include "davofCurvedGeometry.H"
 #include "davofVolumeRule.H"
 #include "davofSweptRemote.H"
+#include "davofSweptPieces.H"
 #include "Map.H"
 #include "mapDistributeBase.H"
 #include "interpolationCellPoint.H"
@@ -859,6 +860,10 @@ class davofSweptAdvection
             //- Per computed face: its liquid volume minus the consistent
             //  rule's (zero unless the face met a cell without a surface)
             scalar sweptFaceConsDelta_;
+
+            //- The workspace of the piece clips (davofSweptPieces.H, diag2 fix F1,
+            //  2026-11-18): one object for the face loop, reused by every piece
+            davof::pieceWorkspace pieceWs_;
             //- sweptConsistent: the candidates added, the faces computed
             //  without a surface, their rank fallbacks (the algebraic value)
             label nConsCandAdded_;

@@ -1235,7 +1235,7 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
                 davof::pieceResult r;
                 if (sweeps)
                 {
-                    r = davof::sweptPieceVolume(T, planes, st.wetPlane, st.plic, xf, &xDonor, sweptCapSet_ == "crossing", sweptPieceMode_, sweptPieceValidate_);
+                    r = davof::sweptPieceVolume(T, planes, st.wetPlane, st.plic, xf, &xDonor, sweptCapSet_ == "crossing", sweptPieceMode_, sweptPieceValidate_, &pieceWs_);
                     covV = r.coverage;
                     // the pieces' own gate: a piece counts above 1e-12 of
                     // the boundary; below it nothing is added
@@ -1304,7 +1304,8 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
                     T, planes, wetPlane, plic, xf, &xDonor,
                     sweptCapSet_ == "crossing",
                     sweptPieceMode_,
-                    sweptPieceValidate_
+                    sweptPieceValidate_,
+                    &pieceWs_
                 );
             tStatVol += tick() - tv0;
             if (dumping)
@@ -1509,7 +1510,7 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
                     if (!st.touched) continue;
                     const SubList<davof::halfSpace> planes(ringPlanes, st.np, st.p0);
                     davof::pieceResult r;
-                    if (sweeps) r = davof::sweptPieceVolume(T, planes, st.wetPlane, st.plic, xf, &xDonor, sweptCapSet_ == "crossing", sweptPieceMode_, sweptPieceValidate_);
+                    if (sweeps) r = davof::sweptPieceVolume(T, planes, st.wetPlane, st.plic, xf, &xDonor, sweptCapSet_ == "crossing", sweptPieceMode_, sweptPieceValidate_, &pieceWs_);
                     Pout<< " [cell " << st.c << (st.rc ? "r" : "") << " alpha " << st.a0c
                         << " cov " << r.coverage/max(sumMagT, VSMALL) << " V/V_g " << (vTotal > VSMALL ? r.volume/vTotal : 0)
                         << " deg " << r.degenerate << " ok " << r.ok << " caps " << r.nCaps << " contacts " << r.nContact << "]";
@@ -1887,7 +1888,8 @@ void Foam::davofSweptAdvection::sweptConsistencyProbe
                     T, planes, hasS, plic, Cf[facei], &C[donor],
                     sweptCapSet_ == "crossing",
                     sweptPieceMode_,
-                    sweptPieceValidate_
+                    sweptPieceValidate_,
+                    &pieceWs_
                 );
             if (r.coverage <= 1e-12*sumMagT) continue;
             if (!r.ok) fallback = true;

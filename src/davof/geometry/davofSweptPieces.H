@@ -342,6 +342,29 @@ struct pieceResult
 };
 
 
+//- The workspace of sweptPieceExactVolume (diag2, 2026-11-18, fix F1 of the
+//  serial profile of the pieces path): two sets of polygons that the clips of
+//  one tetrahedron use alternately (a clip reads the one set and writes the
+//  other, then the roles swap, so that no polygon is copied back), the
+//  crossing points of one plane clip, and the two polygons of the coverage
+//  clips of a triangle. Plain storage: no member is zero-initialised (the
+//  default constructors of FixedList and Vector leave the points
+//  uninitialised), only the counts of the polygons are set before use. The
+//  caller owns one object and passes it to every call (the swept advection
+//  holds one for the face loop); without one the call makes its own.
+struct pieceWorkspace
+{
+    struct poly
+    {
+        FixedList<point, 24> p;
+        label n = 0;
+    };
+    poly setA[16], setB[16];
+    FixedList<point, 48> cross;
+    poly cov[2];
+};
+
+
 //- The liquid volume of Omega_f (the triangle list T, outward) inside the
 //  cell given by cellPlanes, clipped by the PLIC half-space plic when
 //  wetPlane is true (an interface cell), wet in total otherwise (a full
@@ -411,14 +434,13 @@ inline scalar sweptPieceExactVolume
     const point& xRef,
     scalar* coverage = nullptr,
     scalar* covPre = nullptr,
-    vector* aPre = nullptr
+    vector* aPre = nullptr,
+    pieceWorkspace* wsp = nullptr
 )
 {
-    struct poly
-    {
-        FixedList<point, 24> p;
-        label n = 0;
-    };
+    using poly = pieceWorkspace::poly;
+    pieceWorkspace wsLocal;
+    pieceWorkspace& ws = wsp ? *wsp : wsLocal;
     const label nc = cellPlanes.size();
     scalar vol = 0;
     // diag2 (print only): the operations of this call, added to the step's
@@ -497,20 +519,22 @@ inline scalar sweptPieceExactVolume
         davofProf::clipTag = -1;
         if (coverage || covPre || aPre)
         {
-            poly b; b.p[0] = t[0]; b.p[1] = t[1]; b.p[2] = t[2]; b.n = 3;
-            poly c; FixedList<point, 48> cr; label ncr = 0;
-            for (label i = 0; i < nc && b.n >= 3; ++i)
+            poly* b = &ws.cov[0];
+            poly* c = &ws.cov[1];
+            b->p[0] = t[0]; b->p[1] = t[1]; b->p[2] = t[2]; b->n = 3;
+            FixedList<point, 48>& cr = ws.cross; label ncr = 0;
+            for (label i = 0; i < nc && b->n >= 3; ++i)
             {
                 ++nCovClipL;
-                ncr = 0; clipOne(b, cellPlanes[i], c, cr, ncr, tolL); b = c;
+                ncr = 0; clipOne(*b, cellPlanes[i], *c, cr, ncr, tolL); Swap(b, c);
             }
-            if (b.n >= 3)
+            if (b->n >= 3)
             {
-                const scalar ab = mag(areaOf(b, t[0]));
+                const scalar ab = mag(areaOf(*b, t[0]));
                 if (coverage) *coverage += ab;
                 if (covPre && (k % 4 == 1)) *covPre += ab;
-                if (wetPlane) { ncr = 0; clipOne(b, plic, c, cr, ncr, tolL); b = c; }
-                if (aPre && b.n >= 3 && (k % 4 == 1)) *aPre += areaOf(b, t[0]);
+                if (wetPlane) { ncr = 0; clipOne(*b, plic, *c, cr, ncr, tolL); Swap(b, c); }
+                if (aPre && b->n >= 3 && (k % 4 == 1)) *aPre += areaOf(*b, t[0]);
             }
         }
         const scalar vs = ((t[0] - xRef) & aT)/3;
@@ -521,7 +545,10 @@ inline scalar sweptPieceExactVolume
         // faces outward
         point A = t[0], B = t[1], C = t[2];
         if (sgn < 0) Swap(B, C);
-        FixedList<poly, 16> P;
+        // the polygon sets of this tetrahedron's clips: P holds the current
+        // polyhedron's faces, Q receives the next clip (the roles swap)
+        poly* P = ws.setA;
+        poly* Q = ws.setB;
         label nP = 4;
         auto set3 = [](poly& q, const point& u, const point& v, const point& w)
         {
@@ -549,19 +576,18 @@ inline scalar sweptPieceExactVolume
         const scalar vInit = dbg ? volNow() : 0;
         auto clipAll = [&](const halfSpace& hs)
         {
-            FixedList<point, 48> cross;
+            FixedList<point, 48>& cross = ws.cross;
             label nCross = 0;
             anyLeft = false;
             ++nTetClipL;
             for (label i = 0; i < nP; ++i)
             {
-                poly& q = P[i];
-                if (q.n < 3) continue;
+                const poly& q = P[i];
+                poly& out = Q[i];
+                if (q.n < 3) { out.n = 0; continue; }
                 ++nPolyClipL;
-                poly out;
                 clipOne(q, hs, out, cross, nCross, tolL);
-                q = out;
-                if (q.n >= 3) anyLeft = true;
+                if (out.n >= 3) anyLeft = true;
             }
             if (nCross >= 3 && nP < 16)
             {
@@ -599,7 +625,7 @@ inline scalar sweptPieceExactVolume
                     }
                     idx[j + 1] = key;
                 }
-                poly& cap = P[nP];
+                poly& cap = Q[nP];
                 cap.n = 0;
                 for (label i = 0; i < nCross && cap.n < 24; ++i)
                 {
@@ -620,6 +646,8 @@ inline scalar sweptPieceExactVolume
                 ++nP;
                 anyLeft = true;
             }
+            // the clipped faces (and the cap) are in Q: they are the current set
+            Swap(P, Q);
         };
         for (label i = 0; i < nc && anyLeft; ++i)
         {
@@ -675,7 +703,8 @@ inline pieceResult sweptPieceVolume
     const point* xSide = nullptr,
     const bool crossing = false,
     const label mode = 0,
-    const bool validate = false
+    const bool validate = false,
+    pieceWorkspace* ws = nullptr
 )
 {
     // mode (key sweptPieceVolume, 2026-11-07): 0 closure (the cap closure
@@ -688,7 +717,7 @@ inline pieceResult sweptPieceVolume
     {
         r.volume = sweptPieceExactVolume
         (
-            T, cellPlanes, wetPlane, plic, xRef, &r.coverage, &r.covPre, &r.aPre
+            T, cellPlanes, wetPlane, plic, xRef, &r.coverage, &r.covPre, &r.aPre, ws
         );
         r.exactUsed = true;
         r.nCaps = -1;
@@ -898,7 +927,7 @@ inline pieceResult sweptPieceVolume
         if (mode >= 1)
         {
             // closureThenTets: the exact piece volume, no cap system
-            r.volume = sweptPieceExactVolume(T, cellPlanes, wetPlane, plic, xRef);
+            r.volume = sweptPieceExactVolume(T, cellPlanes, wetPlane, plic, xRef, nullptr, nullptr, nullptr, ws);
             r.closureResidual = 0;
             r.exactUsed = true;
             return r;
@@ -932,7 +961,7 @@ inline pieceResult sweptPieceVolume
         {
             if (mode >= 1)
             {
-                r.volume = sweptPieceExactVolume(T, cellPlanes, wetPlane, plic, xRef);
+                r.volume = sweptPieceExactVolume(T, cellPlanes, wetPlane, plic, xRef, nullptr, nullptr, nullptr, ws);
                 r.closureResidual = 0;
                 r.exactUsed = true;
                 return r;
@@ -989,7 +1018,7 @@ inline pieceResult sweptPieceVolume
     {
         // the validation of the exact path on the pieces the closure solves
         r.exactDiff =
-            mag(sweptPieceExactVolume(T, cellPlanes, wetPlane, plic, xRef) - r.volume);
+            mag(sweptPieceExactVolume(T, cellPlanes, wetPlane, plic, xRef, nullptr, nullptr, nullptr, ws) - r.volume);
     }
     return r;
 }
