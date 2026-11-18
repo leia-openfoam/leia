@@ -80,9 +80,8 @@ section 3 (supervisor, 2026-11-18).
 ### D6. The oscillating droplet
 
 - MEASURED: the period error grows under refinement. No discriminator ran.
-- Proposed: one run of the N = 78 rung with the exact initial shape and a prescribed-free
-  transport check is not available; the cheapest available discriminator is the horizon:
-  the same ladder to 0.05 s (6 periods), to separate a start-up effect from a drift.
+- Proposed: the cheapest available discriminator is the horizon. Run the same ladder to
+  0.05 s (6 periods), to separate a start-up effect from a drift of the period.
 - Recommendation: after D4, because the oscillating droplet has no mean velocity and D4
   does not act on it; run it only if the supervisor wants the oscillating case before the
   translating one.
