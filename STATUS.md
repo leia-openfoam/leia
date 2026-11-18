@@ -8239,3 +8239,164 @@ written into `config/integration/ghostDecompLocateN64.yaml` and
    (`slReconstruction.C`, not the default) uses the same index test. In parallel it misses the
    patch faces of another rank. The fix belongs in the base class and needs its own
    bit-identity gate. The `MEAN_DELTA_X` defect of 11.36 item 6 is also open.
+
+### 11.39 PDE level set: step A round 2 -- the model's own extension u(Y), per layer (2026-11-18, Lichtenberg, special00005)
+
+1. **The change.** `leiaTestVelocityExtension` writes a third CSV, `leiaTestVelocityExtensionLayers.csv`
+   (c44b5738). It holds the error per topological layer l = 0..8 and over l = 0..3 (the layers that the
+   compact face curvature reads, 11.33 item 4) against three references: u(Pi(x)), u(Y) at the Newton
+   point Y = x - psi grad psi/|grad psi|^2 of the EXACT input, and the blend reference of
+   `projectionBlend`. It also holds the face flux against u(Y).Sf and |Y - Pi|/h. The two existing CSVs
+   are unchanged. Arms: `projectionBlend` (distance first, w1 = 4 h, w2 = 8 h: the model's own
+   extension of the Bothe-Maric-Soga manuscript) and `closestPoint` (newton step, layer band,
+   extendThroughFade). Configs `aStatic2Dr2`, `aStatic2Dr2Ellipse`, `aStatic2Dr2Par` (R1 to R9 in the
+   headers, written before the run); read-out `pde_a6_analysis.py`. Clone `leia-pde-a6` at c44b5738,
+   jobs 56592686 to 56592689.
+2. **R1 PASS: projectionBlend is second order against u(Y) on the layers that the curvature reads,
+   on every input.** E_EXTY_L1_L0TO3 at N 128 / 256 / 512: 2.52e-3 / 6.33e-4 / 1.59e-4 (distance),
+   2.60e-3 / 6.36e-4 / 1.59e-4 (quadratic, q about 0.3), 2.52e-3 / 6.33e-4 / 1.59e-4 (scaledDistance);
+   orders 1.99 to 2.03. The face flux E_FLUXY_L1_L0TO3: orders 1.91 to 2.06. Ellipse: orders 1.92 to
+   2.00 (R1e). The error does not depend on q: the three inputs agree to 2 %. The falsification
+   condition (an order below 1.5) is not met.
+3. **R3 PASS: closestPoint is second order against u(Pi) and against u(Y)** in layers 0..3 on every
+   input and on the ellipse (orders 1.83 to 2.23). On the quadratic input it targets Pi, not Y: against
+   u(Y) its error is 2.56e-4 at N 512, ten times its error against u(Pi) (2.59e-5); |Y - Pi| = O(d^2) at a
+   fixed layer, so both references give the same order (R5 PASS: D_YPI order 0.90 to 1.03).
+4. **R4 PASS: the Taylor sample of projectionBlend sets its error, and the error grows with the layer.**
+   Distance input, N 512, E_EXTY_L1 per layer 0 / 1 / 2 / 3: projectionBlend 9.9e-6 / 6.9e-5 / 1.9e-4 /
+   3.7e-4 (ratio l3/l0 = 37); closestPoint 1.2e-5 / 1.9e-5 / 2.6e-5 / 3.1e-5. On a signed distance,
+   closestPoint is 12 times more accurate in layer 3. On the quadratic input projectionBlend is the more
+   accurate one against u(Y) (1.6e-4 against 2.6e-4 over l = 0..3).
+5. **The face flux of closestPoint degrades at the face layer 3.** Distance input, N 512, E_FLUXY_L1:
+   1.7e-5 (face layer 2) against 1.9e-4 (face layer 3); the layer-0..3 flux converges at order 1.40 to
+   1.60 only (circle), 1.31 to 1.63 (ellipse). READING (DERIVED from the per-layer cell errors): the
+   layer band of nLayers 3 extends fully on l <= 3; layer 4 is already in the fade (E_EXTY_L1_L4 =
+   1.6e-3), and the faces between layers 3 and 4 interpolate a faded value. projectionBlend has no such
+   step: its face flux at face layer 3 is 3.1e-4 and second order. This bears on the band width of step
+   B (the plateau test): the transport reads the face flux of layer 3.
+6. **R2 FAIL as pre-registered, on the coarse pair only.** projectionBlend reproduces its own blend
+   operator at order 1.91 to 2.07 on every layer between N 256 and 512, but between N 128 and 256 three
+   columns miss 1.8: layer 8 on the distance input (1.79), layers 5 and 6 on the quadratic input (1.76,
+   1.64). Ellipse: R2e PASS. The blend lies outside the layers that the curvature reads.
+7. **R8 FAIL as pre-registered; the cause is the read-out, MEASURED.** At np 4, every CELL column of
+   projectionBlend equals serial to 1.2e-12 (all layers, both inputs, N 128 to 512); the FACE columns
+   differ by 0.2 to 1.2 %, because the face norms summed internal faces only, so np 4 lost the processor
+   faces. Fixed in the test application (each coupled face counted once, owner side; serial unchanged).
+   R7 PASS (layer counts equal at np 4), R9 PASS (closestPoint within 1.72 % at N 128, 0.07 % at N 512).
+8. **R6 PASS (inertness):** 18 of 18 `leiaTestVelocityExtensionExact.csv` of the closestPoint arms are
+   byte-identical to round 1 (clone `leia-pde-a5`). Duplicate cases of one arm: 12 of 12 identical.
+9. **Wrong-reason checks.** (a) Three cases have no CSV: projectionBlend first N 64 (distance,
+   quadratic) and projectionBlend second N 512 (distance). These are LAUNCH FAILURES, not results:
+   `/work/scratch` reached its hard file limit during the run (cquota: 24,999,191 of 25,000,000 files
+   for tm83tomy; "Disk quota exceeded" in the driver log). No pre-registered verdict reads these cases.
+   (b) On the quadratic input E_EXTB differs from E_EXTY on l <= 3 by up to 0.6 % (N 128) and 0.02 %
+   (N 512): some layer-3 cells are partly blended. DERIVED: the Newton distance of psi = d (d + 2R) is
+   d (d + 2R)/(2 (d + R)), larger than |d| inside the circle, so a layer-3 cell inside can have
+   |psi|/|grad psi| > 4 h. The ratio goes to 1 as h -> 0 at a fixed layer, and R1 holds. A blend in
+   Newton-distance units does not guarantee the full extension on a fixed layer count when q != 1; a
+   blend by topological layer would.
+10. **Verdict and next step.** The core read-outs pass (R1, R3, R4, R5, R6, R7, R9); R2 fails on the
+    coarse pair outside the curvature layers; R8 fails on the instrument. Step A in 2D is a pass for
+    escalation: step B round 1 (the marker test, `bMarker2D*`) is submitted from a clone in $HOME,
+    because /work/scratch cannot take new files. The 3D studies (`aStatic3Dr2*`) wait for space on
+    /work/scratch (they need about 15 GB). The 3D template identity run (`a6Identity3Dshear`) is
+    incomplete for the same reason: one of its two CSVs could not be written.
+
+### 11.40 PDE level set: step B round 1 -- the marker test (2026-11-18, Lichtenberg, special00005)
+
+1. **The change (all new runtime-selectable classes; fc679662).** `gradedSphere` (implicitSurface):
+   psi0 = g(z)(|z| - R), g = 1 + 0.3 (z0^2 - z1^2)/(|z|^2 + 0.01^2), so q0 = g is 0.70 to 1.30 on the
+   circle (the marker test of the Bothe-Maric-Soga manuscript, section 5). `linearFlow` (velocityModel):
+   v = G (x - x0) + b. `interfaceMarkers` (function object, libleiaCore): 720 markers on the initial zero
+   set moved with the prescribed flow by RK4; q_h and psi_h sampled by cell-point interpolation;
+   E_Q = q_h - q0 (without feedback q is constant along the markers for the extension u(Y)) and
+   E_POS = psi_h/q0, L1 and L2. Case `markerTest2D` (problem data only). Configs `bMarker2Dtranslation`,
+   `bMarker2Dstrain`, `bMarker2DstrainPar` (B1 to B8 in the headers, written before the run); read-out
+   `pde_b1_analysis.py`. Clone `$HOME/leia-pde-h` on Lichtenberg (/work/scratch at its file limit,
+   11.39 item 9), jobs 56594964 to 56594969.
+2. **Inertness PASS:** 100 of 100 CSVs of aStatic2Dedge and a0Identity2Dvortex identical to clone
+   `leia-pde-a5`.
+3. **The instrument passes.** t = 0 row: E_Q_L1 9.4e-4 / 2.3e-4 / 5.8e-5 at N 128 / 256 / 512 (orders
+   2.02, 2.00; B5 PASS); every marker found in every row (B6, B7 PASS).
+4. **Translation (the null arm) PASS.** The three arms (none, projectionBlend, closestPoint) agree to
+   1.1e-10 relative (B1); E_Q_L1 and E_POS_L1 converge at orders 1.97 to 2.04 at T/2 and T (B2).
+5. **Pure strain: the baseline behaves as derived (B3 PASS).** Without an extension E_Q_L1(T) = 0.33 at
+   every N (order 0.00): q changes by exp(-T n.G.n) along the markers.
+6. **Pure strain with an extension: B4 FALSIFIED.** projectionBlend E_Q_L1(T) = 1.23e-2 / 2.19e-2 /
+   2.45e-2 at N 128 / 256 / 512 (orders -0.84, -0.16); closestPoint 1.03e-2 / 2.46e-2 / 3.54e-2. The
+   extension reduces the error by a factor 13 to 33 against the baseline, but the error GROWS under
+   refinement. Time history (MEASURED): E_Q_L1 stays at its t = 0 level, then grows by 1.7 to 3.1 % per
+   step; the onset is at a nearly fixed step count (about 67, 58, 44 steps at N 128, 256, 512), so the
+   onset time falls with h. The signed mean stays small: the error is noise, not a bias. E_POS_L1 also
+   degrades at N 512 at T (5.0e-5 against 2.5e-5 at N 256; B2s FAIL). The pre-registered consequence
+   holds: step D does not start until the cause is known.
+7. **np 4 (B7, B8 PASS, read from processor0).** The function object wrote its CSV into `processor0/`
+   (time_.path() in a parallel run; fixed to globalPath in aebad0c7). np 4 equals serial to 4e-6
+   (projectionBlend) and 2.6e-3 (closestPoint): the growth does not depend on the decomposition.
+8. **Next: the discriminators `bDiscr2Dstrain`** (N 256, projectionBlend; CFL, the psi time scheme, the
+   reconstruction gradient of linearUpwind and the flux form; D0 to D4 pre-registered in the header).
+   DERIVED: a linearised continuum analysis of the loop psi -> Y -> u_e gives rates near |G| = 1 per unit
+   time, far below the measured 17 to 30 per unit time at N 512, so the discretisation is suspected.
+9. **The discriminators `bDiscr2Dstrain` (N 256, projectionBlend; jobs 56599221, 56599222; read-out
+   `pde_b2_analysis.py`).** D0 PASS: the base arm reproduces round 1 exactly (293 rows, difference 0).
+   **D1: the growth runs PER UNIT TIME.** The onset (E_Q_L1 > 2 x its t = 0 value) is at t = 0.093 /
+   0.092 / 0.090 for CFL 0.5 / 0.25 / 0.125 (spread 4 %), at step 83 / 126 / 211 (spread 154 %). The
+   growth rate is about 10 per unit time (1.85, 0.91, 0.45 % per step), against a strain rate |G| = 1.
+   E_Q_L1(T) = 2.19e-2 / 2.14e-2 / 2.11e-2: the time step does not move it, so the amplifier is a SPATIAL
+   operator, not the time integration. D2 FAIL: Euler reduces E_Q_L1(T) to 0.41 to 0.84 of the CN value
+   (limit 0.2), and it doubles to quadruples E_POS: Euler only damps. D3 and D4 FAIL (no effect): the
+   unlimited gradient and the interpolate flux form change E_Q by less than 1e-3 relative (the tokens
+   were consumed: every CSV differs). DERIVED after the run (should have been before): for a LINEAR
+   velocity the interpolate and correction forms are equal to round-off on a uniform mesh, so D4 could
+   not discriminate on this case. The cause is not the time scheme, the limiter or the flux form.
+10. **The raw-velocity control `bRaw2Dstrain` (no extension, read against its own exact q; job
+    56599430, clone `$HOME/leia-pde-h2` at 2d371702).** `interfaceMarkers` integrates the deformation
+    gradient F along each marker (dF/dt = grad(u) F) and reports E_QRAW = q_h - |F^{-T} grad psi0|.
+    W1 PASS (the t = 0 row equals E_Q). **W2 PASS: the Eulerian transport under strain converges at
+    order 2 against its own exact q:** E_QRAW_L1(T) = 3.30e-3 / 8.29e-4 / 2.07e-4 at N 128 / 256 / 512
+    (orders 1.99, 2.00); the error grows smoothly with time (the field is compressed by up to e^0.5) and
+    shows no onset. The transport is sound; the growth of item 6 belongs to the extension. Next: the
+    band-width sweep `bBand2DstrainPB{2,4,8}` and `bBand2DstrainCP` (H1, H2 pre-registered; the
+    hypothesis: the rate scales with the band width in cells, from the linearised loop).
+11. **The band-width sweep (`bBand2DstrainPB{2,4,8}`, `bBand2DstrainCP`; jobs 56600094 to 56600098;
+    read-out `pde_b3_analysis.py`). H1 and H2 FALSIFIED, with the sign reversed:** the growth is SLOWER
+    and starts LATER in a WIDER band. projectionBlend (w1, w2) = (2, 4) / (4, 8) / (8, 16) cells: rate 28.2
+    / 24.3 / 6.3 per unit time, onset t = 0.013 / 0.093 / 0.218, E_Q_L1(T) = 8.2e-2 / 2.2e-2 / 2.6e-3.
+    closestPoint nLayers 2 / 3 / 5: rate 29.6 / 23.8 / 5.3, onset t = 0.048 / 0.089 / 0.187, E_Q_L1(T) =
+    1.7e-2 / 2.5e-2 / 2.4e-3. I was wrong about the mechanism (the linearised loop inside the band); the
+    measurement says the disturbance comes from the band EDGE (the blend or the fade, where u_e returns to
+    u) and reaches the interface after a delay that grows with the band width. HYPOTHESIS (consistent with
+    round 1, item 6): a band of a fixed CELL count is physically thinner at a finer mesh, so the
+    disturbance arrives earlier, and the error at T grows under refinement. Test: `bEdge2Dstrain*`.
+12. **The band-edge test (`bEdge2Dstrain*`, jobs 56600396 to 56600400; read-out `pde_b4_analysis.py`;
+    research instrument: the blend at a FIXED PHYSICAL width, w1 h = 1/16, w2 h = 1/8).** The q error now
+    CONVERGES, but at FIRST order: E_Q_L1(T) = 3.28e-3 / 1.41e-3 / 6.59e-4 at N 128 / 256 / 512 (orders
+    1.22, 1.10; at T/2 1.45, 1.00); E_POS_L1(T) = 1.87e-4 / 8.02e-5 / 3.66e-5 (orders 1.22, 1.13), worse than
+    the raw transport (1.38e-5 at N 256). E1 FAIL. The domain-wide arm (w 64/128 at N 256) gives the same
+    error as the 1/16 band (1.42e-3 against 1.41e-3): beyond about 16 cells the band edge no longer acts,
+    and a first-order error that does not depend on the band position remains (E2 FAIL as written: ratio
+    0.065 to the (4, 8) arm passes, but the onset at t = 0.23 is before 0.3). TWO DEFECTS, MEASURED: (1) the
+    band-edge disturbance, which makes a band of a fixed cell count non-convergent; (2) a first-order error
+    with a wide band. HYPOTHESIS for (2): the band crosses the medial axis near the sharpening tips (rho =
+    0.15 exp(-3t) = 0.033 at T), where the Newton point jumps. Test: `bSkel2Dstrain*` (S1, S2).
+13. **The medial-axis test (`bSkel2Dstrain*`, jobs 56600781 to 56600787; read-out `pde_b5_analysis.py`;
+    the blend at a fixed physical width 1/32 to 1/16). The medial-axis hypothesis is FALSIFIED.** At
+    a = 0.3, where the band never reaches the medial axis (rho(T) = 0.096 > 1/16), E_Q_L1 converges at
+    order 2.06 / 1.85 at T/2 but only 1.38 / 1.14 at T (7.3e-4, 2.8e-4, 1.3e-4), and the growth starts at
+    N 512 at t = 0.47. At a = 1 the orders are 1.92 / 1.19 (T/2) and 2.26 / 1.94 (T); E_POS converges at
+    order 0.9 to 1.6 in all arms. S1 and S2 FAIL. READING (MEASURED across items 6 to 13): every arm with
+    an extension carries a component that grows in time at a rate that scales with the strain (about 2.5
+    per unit time at a = 0.3, 5 to 8 at a = 1), that starts earlier at a finer mesh, and that
+    the band edge excites (a narrow band in cells excites it strongly, items 6 and 11). The transport
+    without an extension has none of it (item 10). The cause inside the extension is NOT known: it is not
+    the time scheme, the limiter, the flux form, the band position alone or the medial axis.
+14. **Figure:** `docs/pde-level-set/pde-level-set-article/data/figures/stepB_marker_histories.png`
+    (`workflow/scripts/plot_b_marker_histories.py`, from the study directories of the home clones):
+    E_Q_L1 against t for round 1, the raw transport, the band-width sweep and the fixed physical band.
+15. **Open, for the supervisor (no run started):** (a) the next discriminator inside the extension, for
+    example a frozen extension (u_e computed once from psi_0 and kept) against the updated one, which
+    separates the feedback of psi on u_e from the transport of a non-solenoidal u_e; (b) the band edge
+    must not excite the interface with a band of a fixed cell count (rule "No free parameters"); a
+    candidate is an edge that the extension characteristics leave (an outflow boundary, as the source
+    term with feedback makes it, plan section 6); (c) step D (the source) waits; the 3D step-A studies
+    wait for space on /work/scratch.

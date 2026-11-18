@@ -28,6 +28,7 @@ profile/tanh.C
 velocityModel/velocityModel.C
 velocityModel/prescribedVelocityModels.C
 velocityModel/fluxCorrection.C
+velocityModel/interfaceMarkers.C
 
 leiaVersionRegistry.C
 leiaStamp_leiaCore.C

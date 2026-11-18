@@ -1,0 +1,48 @@
+# PDE LEVEL SET, STEP B: the first-order error with a wide band -- the medial axis? (2026-11-18, STATUS 11.40 item 12)
+# MEASURED (bEdge2Dstrain*): with the blend at a fixed physical width (1/16 to 1/8) the q error converges,
+# but at order 1.0 to 1.45 (E_Q_L1(T) 3.3e-3, 1.4e-3, 6.6e-4), against order 2 for the raw transport; the
+# domain-wide band gives the same error as the 1/16 band at N 256. HYPOTHESIS: under pure strain the tips of
+# the ellipse sharpen (radius of curvature rho = 0.15 exp(-3 a t)); where the band is wider than rho, it
+# crosses the medial axis, where the Newton point (and the closest point) jumps, and u_e is not smooth.
+# RESEARCH INSTRUMENT: the blend at a fixed physical width w1 h = 1/32, w2 h = 1/16 (cells 4/8, 8/16, 16/32 at
+# N 128, 256, 512). Two strain rates: a = 0.3 (rho(T) = 0.096 > 1/16: the band never reaches the medial
+# axis) and a = 1 (rho < 1/16 after t = 0.29: it does). projectionBlend distance first, CN, CFL 0.5.
+# PRE-REGISTERED (2026-11-18, before any run):
+#   S1 a = 0.3: E_Q_L1 order >= 1.5 at T/2 and at T over N 128-256-512.
+#   S2 a = 1: the E_Q_L1 order at T at least 0.5 below the a = 0.3 order at T (both pairs).
+# FALSIFIED: S1 below order 1.2: the first-order error is not the medial axis.
+# CONFOUND (stated before the run): the band-edge disturbance (item 11) is also slower at a = 0.3, so S1
+# alone does not separate the two; S2 compares two strain rates at the same band.
+# THIS FILE: a = 1, N 512, w 16/32.
+study_name: bSkel2DstrainA1N512
+case: markerTest2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaLevelSetFoam
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 240
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [512]
+  MT_GXX: [1]
+  MT_GYY: [-1]
+  VELOCITY_EXTENSION: [projectionBlend]
+  PB_DISTANCE: [first]
+  PB_W1: [16]
+  PB_W2: [32]
+  CP_STEP: [newton]
+  FADE_MODE: [layer]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  ADVECTION: [eulerian]
+  SDPLS_SOURCE: [noSource]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+  REPORT_WRITE_ONLY: ["false"]
+  PSI_DDT: [CrankNicolsonDdt]

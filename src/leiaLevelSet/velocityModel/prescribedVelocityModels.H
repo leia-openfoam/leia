@@ -277,6 +277,31 @@ public:
 };
 
 
+//- The linear flow v(x) = G (x - x0) + b (PDE plan section 5 and 6: rotation,
+//  pure strain and simple shear in one model). Dictionary (fvSolution
+//  velocityModel): gradient G (tensor), origin x0 (default 0), offset b
+//  (default 0). Pure strain G = diag(a, -a, 0) maps a circle centred at x0 to
+//  an ellipse with semi-axes R e^{a t} and R e^{-a t}; the interface markers
+//  follow x(t) = x0 + e^{G t}(x(0) - x0) for b = 0. A linear field is
+//  reproduced exactly by a Gauss linear gradient on a uniform mesh, so the
+//  Taylor sample of projectionBlend is the exact u(Y) here. Oscillation
+//  defaults to OFF (as uniaxialStrain): the closed forms assume a constant G.
+class linearFlow
+:
+    public velocityModel
+{
+    tensor gradient_;
+    vector origin_;
+    vector offset_;
+
+public:
+    TypeName("linearFlow");
+    explicit linearFlow(const fvMesh& mesh);
+    virtual ~linearFlow() = default;
+    virtual vector velocity(const vector& p) const;
+};
+
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

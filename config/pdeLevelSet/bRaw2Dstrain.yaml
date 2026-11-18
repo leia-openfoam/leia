@@ -1,0 +1,37 @@
+# PDE LEVEL SET, STEP B: the control WITHOUT an extension against its own exact q (2026-11-18, STATUS 11.40).
+# interfaceMarkers now also integrates the deformation gradient F along each marker (dF/dt = grad(u) F, RK4,
+# the analytic velocity gradient by central differences) and reports E_QRAW = q_h - |F^{-T} grad psi0|, the
+# exact q of the RAW velocity. In round 1 the baseline (none) could only be read against q0, where the
+# physical change (0.33) hides any noise.
+# Case markerTest2D, pure strain (as bMarker2Dstrain), VELOCITY_EXTENSION none, N 128, 256, 512, CN,
+# linearUpwind with the cellLimited leastSquares gradient, CFL 0.5 (the round-1 schemes).
+# PRE-REGISTERED (2026-11-18, before any run):
+#   W1 the t = 0 row equals the round-1 instrument floor (E_QRAW_L1 = E_Q_L1 at t = 0, F = I).
+#   W2 E_QRAW_L1 converges at order >= 1.5 at T/2 and at T: the Eulerian transport under strain keeps
+#      grad psi on the markers, and the growth of round 1 belongs to the extension loop.
+# FALSIFIED (W2 below order 1, with a per-step growth from a fixed step count as in round 1): the
+# transport of psi under a strain velocity is the amplifier, without any extension; step B then returns
+# to sub-problem 0 (the transport), which step 0.1 tested only under translation.
+study_name: bRaw2Dstrain
+case: markerTest2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaLevelSetFoam
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 240
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [128, 256, 512]
+  VELOCITY_EXTENSION: [none]
+  VE_FLUX_FORM: [correction]
+  ADVECTION: [eulerian]
+  SDPLS_SOURCE: [noSource]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+  REPORT_WRITE_ONLY: ["false"]
+  PSI_DDT: [CrankNicolsonDdt]

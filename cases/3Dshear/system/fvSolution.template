@@ -115,9 +115,12 @@ levelSet
         //A 3D unsplit-advection volume tracking algorithm with
         //planarity-preserving interface reconstruction. Computers and Fluids,
         //35(10), 1011–1032. https://doi.org/10.1016/j.compfluid.2005.09.003
-        type implicitSphere; 
-        radius 0.15;
-        center (0.35 0.75 0.25); 
+        // Problem data (2026-11-18, step A in 3D): implicitSphere (radius SURFACE_R) or
+        // signedDistanceEllipsoid (semi-axes SURFACE_A/B/C). Default = the historical sphere.
+        type @!SURFACE_TYPE!@;
+        center (@!SURFACE_X0!@ @!SURFACE_Y0!@ @!SURFACE_Z0!@);
+        radius @!SURFACE_R!@;                                // implicitSphere
+        axes   (@!SURFACE_A!@ @!SURFACE_B!@ @!SURFACE_C!@);  // signedDistanceEllipsoid
     }
 
     phaseIndicator
@@ -266,6 +269,10 @@ levelSet
         fadePlacement @!VE_FADE_PLACEMENT!@;
         cpStep        @!CP_STEP!@;   // closestPoint: distance (default) | newton
         cpFill        @!CP_FILL!@;   // closestPoint: steadyUpwind (default) | footPointTaylor
+        // closestPoint path cap: |x_fp - C| <= cpMaxDist*reach*cellSize, beyond -> the fill (cpFill)
+        cpMaxDist     @!CP_MAX_DIST!@;
+        // leiaTestVelocityExtension only: distance (default) | scaledDistance | quadratic
+        testInput     @!VE_TEST_INPUT!@;
         // projectionBlend (D. Bothe 2026-10; read only by that model): P(x) = x - dist n,
         // Uext = delta U + (1 - delta) U(P), delta from 0 (|dist| <= w1 h) to 1 (>= w2 h)
         distance    @!PB_DISTANCE!@;

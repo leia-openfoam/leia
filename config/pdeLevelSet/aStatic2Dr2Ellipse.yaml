@@ -1,0 +1,42 @@
+# PDE LEVEL SET, STEP A ROUND 2 (2): as aStatic2Dr2 on the ellipse (semi-axes 0.18 x 0.12, centre
+# (0.5013, 0.7487), signedDistanceEllipse: exact distance and closest point), inputs distance and
+# scaledDistance (quadratic needs implicitSphere), N 128 to 512. Derivation as in aStatic2Dr2.
+# PRE-REGISTERED (2026-11-18, before any run). Orders L1 over N 128-256-512:
+#   R1e projectionBlend/first, both inputs: E_EXTY_L1_L0TO3 and E_FLUXY_L1_L0TO3 order >= 1.8.
+#   R2e projectionBlend/first: E_EXTB_L1 order >= 1.8 on every layer 0..8.
+#   R3e closestPoint/newton/layer, both inputs: E_EXT_L1_L0TO3 and E_EXTY_L1_L0TO3 order >= 1.8.
+#   R6e INERTNESS: leiaTestVelocityExtensionExact.csv of every closestPoint case byte-identical to the
+#      round-1 aStatic2Dellipse case with the same N and input (clone leia-pde-a5).
+# FALSIFIED and wrong-reason checks: as in aStatic2Dr2.
+study_name: aStatic2Dr2Ellipse
+case: 2Dvortex
+mesh: hex
+mode: serial
+np: 1
+solver: leiaTestVelocityExtension
+solve_runtime: 60
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [128, 256, 512]
+  SURFACE_TYPE: [signedDistanceEllipse]
+  SURFACE_X0: [0.5013]
+  SURFACE_Y0: [0.7487]
+  SURFACE_A: [0.18]
+  SURFACE_B: [0.12]
+  VE_TEST_INPUT: [distance, scaledDistance]
+  VELOCITY_EXTENSION: [closestPoint, projectionBlend]
+  PB_DISTANCE: [first]
+  PB_W1: [4]
+  PB_W2: [8]
+  CP_STEP: [newton]
+  FADE_MODE: [layer]
+  END_TIME: [1]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  PHASE_INDICATOR: [detrixheAslam]

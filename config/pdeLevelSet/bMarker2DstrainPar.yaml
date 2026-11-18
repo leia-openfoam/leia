@@ -1,0 +1,51 @@
+# PDE LEVEL SET, STEP B ROUND 1: the marker test (plan section 6; manuscript of D. Bothe, T. Maric and
+# K. Soga, 2026-11-15, section 5). Case markerTest2D: the graded circle psi0 = g(z)(|z| - R), R = 0.15,
+# centre (0.5013, 0.4987), g = 1 + 0.3 (z0^2 - z1^2)/(|z|^2 + 0.01^2), so q0 = |grad psi0| = g goes
+# from 0.70 to 1.30 along the circle, known pointwise. The linear flow v = G (x - x0) + b. No source
+# (no feedback), no redistancing, the Eulerian material form, CFL 0.5 (dt ~ h), T = 0.5.
+# Read-out: interfaceMarkers.csv (libleiaCore): 720 markers moved with v by RK4; WITHOUT feedback q is
+# constant along them for the extension velocity u(Y), so E_Q = q_h(Y_l(t)) - q0_l is the target;
+# E_POS = psi_h(Y_l)/q0_l is the interface position error. L1 and L2 means, never L_inf.
+# Arms: none (raw velocity, the baseline), projectionBlend (distance first, w1 4 h, w2 8 h: the model's
+# own extension u(Y); for a LINEAR flow its Taylor sample is exact, so it is the oracle of the
+# sampling and only Y_h is computed), closestPoint (newton step, layer band, extendThroughFade).
+# DERIVATION (before the run): on the interface the extension equals v and grad(u_e) n = 0 for both
+# u(Y) and u(Pi), so dq/dt = -q n.grad(u_e).n = 0 at the markers; for the raw velocity
+# dq/dt = -q n.G.n, so q_l(T) = q0_l exp(-T n.G.n) to first order along the marker path.
+# THIS STUDY: bMarker2Dstrain at np 4, N 256 (the 4-rank gate of interfaceMarkers and of the extension
+# arms in transport).
+# PRE-REGISTERED (2026-11-18, before any run):
+#   B7 N_FOUND = 720 in every row (each marker found by exactly one rank).
+#   B8 E_Q_L1 and E_POS_L1 at T/2 and T within 1 % of serial for none and projectionBlend, within 5 %
+#      for closestPoint (round 1 of step A: closestPoint at np 4 within 1.7 %).
+# FALSIFIED: B7 fails (the read-out depends on the decomposition: every parallel row is void).
+study_name: bMarker2DstrainPar
+case: markerTest2D
+mesh: hex
+solver: leiaLevelSetFoam
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 240
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+mode: parallel
+np: 4
+axes_override:
+  N_CELLS: [256]
+  VELOCITY_EXTENSION: [none, projectionBlend, closestPoint]
+  PB_DISTANCE: [first]
+  PB_W1: [4]
+  PB_W2: [8]
+  CP_STEP: [newton]
+  FADE_MODE: [layer]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  ADVECTION: [eulerian]
+  SDPLS_SOURCE: [noSource]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+  REPORT_WRITE_ONLY: ["false"]
+  PSI_DDT: [CrankNicolsonDdt]   # the case hardcoded CrankNicolson 1 when round 1 ran (fc679662)

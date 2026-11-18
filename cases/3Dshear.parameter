@@ -1,5 +1,17 @@
 values
 {
+    // The interface (problem data, 2026-11-18): implicitSphere (radius SURFACE_R) or
+    // signedDistanceEllipsoid (semi-axes SURFACE_A, SURFACE_B, SURFACE_C). Default = the
+    // historical sphere of the case (Liovic et al. 2006).
+    SURFACE_TYPE ( implicitSphere );
+    SURFACE_X0 ( 0.35 );
+    SURFACE_Y0 ( 0.75 );
+    SURFACE_Z0 ( 0.25 );
+    SURFACE_R ( 0.15 );
+    SURFACE_A ( 0.15 );
+    SURFACE_B ( 0.15 );
+    SURFACE_C ( 0.15 );
+
     PHASE_INDICATOR ( geometric detrixheAslam );
     solver (leiaLevelSetFoam);
 

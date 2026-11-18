@@ -428,6 +428,44 @@ namespace Foam {
             scalar omega() const;
     };
 
+    //- The graded circle/sphere of the marker test (D. Bothe, T. Maric, K. Soga,
+    //  manuscript of 2026-11-15, section 5; PDE plan section 6, step B):
+    //      phi0(x) = g(z) (|z| - R),  z = x - center,
+    //      g(z)    = 1 + A (z_0^2 - z_1^2)/(|z|^2 + eps^2)
+    //  (amplitude A = 0.3, epsilon = 0.01 by default). The zero set is the sphere
+    //  |z| = R; on it |grad phi0| = g, between 1 - A and 1 + A (0.70 to 1.30),
+    //  known pointwise. NOT a signed distance: a consumer that reads value() as a
+    //  distance gets g (|z| - R). curvature() follows the 2D convention of
+    //  implicitSphere (1/R).
+    class gradedSphere : public implicitSurface
+    {
+        vector center_;
+        scalar radius_;
+        scalar amplitude_;
+        scalar epsilon_;
+
+        public:
+
+            TypeName ("gradedSphere");
+
+            gradedSphere(const dictionary& dict);
+
+            virtual ~gradedSphere() = default;
+
+            virtual scalar value(const vector& x) const;
+
+            virtual vector grad(const vector& x) const;
+
+            virtual scalar curvature(const vector& x) const;
+
+            //- The factor g(z) = |grad phi0| on the zero set
+            scalar gradeFactor(const vector& x) const;
+
+            vector center() const { return center_; }
+
+            scalar radius() const { return radius_; }
+    };
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
