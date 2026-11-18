@@ -7411,3 +7411,51 @@ Orders of E_shape over N (least squares; pairwise in brackets), completed rungs 
 - PP3: E_shape below plicRDF's in 10 of 18 compared cases (>= 12 of 18 required); at Co 0.5 and 0.95 above plicRDF's in: shear2D N64 Co0.5 ratio 1.060; shear2D N256 Co0.95 ratio 1.004; deformation3D N32 Co0.5 ratio 1.013; deformation3D N64 Co0.5 ratio 1.059; deformation3D N32 Co0.95 ratio 1.016; deformation3D N64 Co0.95 ratio 1.023; deformation3D N128 Co0.95 ratio 1.006
 - PP4: order(pointIso) - order(plicRDF) per family and Co: shear2D Co0.2: 0.01 (3.49 vs 3.48); shear2D Co0.5: 0.05 (3.21 vs 3.17); shear2D Co0.95: -0.03 (2.61 vs 2.64); deformation3D Co0.2: 0.00 (1.76 vs 1.76); deformation3D Co0.5: 0.01 (1.76 vs 1.75); deformation3D Co0.95: 0.01 (1.73 vs 1.72); falsified where the difference is below -0.1
 - PP5: wall clock ratio to plicRDF at the same ranks: shear2D N64 Co0.2 1.62; shear2D N128 Co0.2 1.30; shear2D N256 Co0.2 0.71; shear2D N64 Co0.5 1.12; shear2D N128 Co0.5 1.26; shear2D N256 Co0.5 0.71; shear2D N64 Co0.95 0.71; shear2D N128 Co0.95 1.20; shear2D N256 Co0.95 1.84; deformation3D N32 Co0.2 1.51; deformation3D N64 Co0.2 0.82; deformation3D N128 Co0.2 0.60; deformation3D N32 Co0.5 1.05; deformation3D N64 Co0.5 0.71; deformation3D N128 Co0.5 0.62; deformation3D N32 Co0.95 1.25; deformation3D N64 Co0.95 0.73; deformation3D N128 Co0.95 0.66; above 1.3 in 3 of 18
+
+
+## Contact line advection: plicRDF + isoAdvector against pointIsoAdvector (2026-11-18; leia branch `davof-point-iso`)
+
+Reference of the test set and of the measures: M. Fricke, T. Maric, D. Bothe, Contact line advection using the geometrical
+Volume-of-Fluid method, Journal of Computational Physics 407 (2020) 109221, doi:10.1016/j.jcp.2019.109221, arXiv:1907.01785.
+Sections 2 and 4 of the arXiv version (v2) were read against the brief before any code (2026-11-18). Every formula of the brief agrees with
+the paper: Eq. 10 (v = (v0 + c1 x1 + c2 x2, -c1 x2)), Eq. 12 (x1(t) = x1_0 e^{c1 t} + (v0/c1)(e^{c1 t} - 1)), Eq. 13/14 (theta(t) =
+pi/2 + arctan(-cot(theta0) e^{2 c1 t} +- c2 (e^{2 c1 t} - 1)/(2 c1)), "+" the right and "-" the left contact point, with the
+normals n^l = (-sin theta, cos theta), n^r = (sin theta, cos theta) of the paper), Eq. 36 (c1 = 0.1, c2 = -2, v0 = -0.2, left point
+x1_0 = 0.4 - sqrt(0.2^2 - 0.1^2): x1(t) = x1_0 e^{0.1 t} - 2 (e^{0.1 t} - 1), theta_ref = pi/2 + arctan(-e^{0.2 t}/sqrt 3 + 10 (e^{0.2 t} - 1))
+= Eq. 14 with "-" and c2 = -2), Eq. 37/38 (s(t) = tau sin(pi t/tau)/pi, tau 0.2, v0 = -0.2, c1 = 0.1, c2 = -2), Eq. 33 (Neumann on the inflow
+boundary), E_theta^inf = max |theta_num - theta_ref|, E_cl^inf = max |(x_cl,num - x_cl,ref)/R0|, Eq. 35 (E_1 = sum |alpha_ij(tau) -
+alpha_ij(0)| dx1 dx2), the domain [0,1] x [0,0.25] with N x N/4 cells, the cap R0 = 0.2 at (0.4, -0.1), theta0 = pi/3, wall x2 = 0, CFL =
+dt |v|_Linf/dx with 0.2 unless stated. Differences, all of the brief and not of a formula: (a) the paper runs N up to 2048, the brief to 1024;
+(b) the paper's Eq. 33 is the inflow condition only; the brief takes zero gradient of alpha on all non-wall sides (the interface does not reach
+them); (c) the time step: dt = Co dx/REFERENCE_SPEED with REFERENCE_SPEED = max over the domain of |v1| + |v2| (0.725 for B and C, 0.5 for D),
+so that OpenFOAM's Courant number (0.5 sum_f |phi_f| dt / V) is the target; the paper's |v|_Linf is 0.7005 (B, C) and 0.5 (D), a ratio of
+1.035 for B and C; the measured OpenFOAM maximum Courant number is printed per case; (d) case D (the limit c1 -> 0, v0 = 0 of Eq. 14,
+cot(theta) = cot(theta0) -+ c2 t) is the brief's, the paper states the limit c1 = 0 of Eq. 12 and 14 only in general; theta_ref(0.4) is
+102.6 deg (left) and 36.0 deg (right) in D, inside (10, 170) deg, so T = 0.4 is kept; (e) the angle is measured as the paper's, through the
+liquid, from the PLIC normal of the wall cell, and the contact point as the intersection of that cell's PLIC plane with the wall, counted when it lies in
+the cell; where two cells of one side qualify the outermost one is taken and the count is reported.
+
+### Rows and measures
+
+(1) plicRDF + isoAdvector (OpenFOAM's, no contact angle treatment); (2) pointIsoAdvection (the flux of this branch) + plicRDF; (3) pointIso with the
+DAVOF reconstruction fed by pointIso's end-of-step wetted fractions: NOT wired, see the report (the missing parts are method decisions).
+Measures per case: status, steps, E_theta^inf (rad and deg) and E_cl^inf/R0 of both contact points with orders over dx/R0, the time series for N = 256,
+E_1 (case C, Eq. 35) with order, the relative liquid volume error, min alpha, max alpha - 1, the number of steps without a detected contact cell,
+the wall clock at the same number of ranks for all rows (1 rank for N 128 and 256, 8 ranks for N 512 and 1024). Scoring: the function object
+contactLineError (the same code for every row, raw contact points and angles per step) and a post-processing script (the references).
+
+### Gates (before the study)
+
+Gw1: the three cases at N 128, step 0: theta_num and x_num of the initial reconstruction of the rows printed (no gate value).
+Gw2: case D, pointIso: the displaced wall points of the PLIC polygons have zero displacement (max |dx| over boundary points per step, exactly 0) and the
+fitted plane passes through them (distance <= 1e-14 dx).
+Gw3: np 1 = np 8 for pointIso on case B, N 128, alpha to 1e-12.
+
+### Pre-registered (the main session's guesses; each is falsified by one counterexample; every one is reported)
+
+- PW1 case D: E_cl^inf of rows (2) and (3) is at least 2 times below row (1) at every N and Co.
+- PW2 cases B, C: E_cl^inf of rows (2), (3) converges with order >= 1 and is <= row (1).
+- PW3 E_theta^inf of row (3) <= row (1) in every case; the orders of all rows are reported (the paper finds no convergence of the angle for a
+  Youngs-type boundary normal and first order for boundary ELVIRA).
+- PW4 all rows keep the liquid volume to 1e-10 relative and alpha within 1e-8 of [0, 1].
+- PW5 wall clock of rows (2), (3) <= 2 x row (1).

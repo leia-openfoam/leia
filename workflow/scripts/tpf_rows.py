@@ -180,7 +180,28 @@ VELOCITY_ARMS = OrderedDict([
     # (initShearFlow3D), the tokens here are the U0 of the exact body (the sphere
     # at rest: the exact state at t = T is the initial sphere)
     ("deformation3D", ("0", "0", "0")),
+    # the 2D contact line tests (cases/davof/contactLine2D, 2026-11-18): the velocity is
+    # written by davofInitContactLine from TPF_CL_V0, TPF_CL_C1, TPF_CL_C2 (contactline_tokens)
+    ("clB", ("0", "0", "0")),
+    ("clC", ("0", "0", "0")),
+    ("clD", ("0", "0", "0")),
 ])
+# M. Fricke, T. Maric, D. Bothe, Contact line advection using the geometrical Volume-of-Fluid method,
+# J. Comput. Phys. 407 (2020) 109221, doi:10.1016/j.jcp.2019.109221, arXiv:1907.01785: Eq. 36 (clB),
+# Eq. 37 with tau 0.2 (clC), the no-slip limit c1 -> 0, v0 = 0 of Eq. 14 (clD). REFERENCE_SPEED:
+# the maximum of |v1| + |v2| over the domain [0, 1] x [0, 0.25] (OpenFOAM's Courant number at t = 0)
+CONTACTLINE_ARMS = OrderedDict([
+    #        v0      c1     c2   spirallingFlow  reference speed
+    ("clB", ("-0.2", "0.1", "-2", "0",   "0.725")),
+    ("clC", ("-0.2", "0.1", "-2", "0.2", "0.725")),
+    ("clD", ("0",    "0",   "-2", "0",   "0.5")),
+])
+def contactline_tokens(arm):
+    """The tokens of a contact line arm, or {} for another arm."""
+    if arm not in CONTACTLINE_ARMS:
+        return {}
+    return dict(zip(("TPF_CL_V0", "TPF_CL_C1", "TPF_CL_C2", "TPF_CL_SPIRAL", "REFERENCE_SPEED"),
+                    CONTACTLINE_ARMS[arm]))
 
 VELOCITY_TOKENS = ("TPF_UX", "TPF_UY", "TPF_UZ")
 

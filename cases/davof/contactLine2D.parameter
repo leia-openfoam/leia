@@ -1,0 +1,110 @@
+// M. Fricke, T. Maric, D. Bothe, Contact line advection using the geometrical Volume-of-Fluid
+// method, Journal of Computational Physics 407 (2020) 109221, doi:10.1016/j.jcp.2019.109221,
+// arXiv:1907.01785. The 2D contact line advection tests (leia, 2026-11-18): the circular cap on the
+// wall z = 0 of the domain [0, 1] x [0, 0.25] in the x-z plane of a one-cell-thick mesh.
+// Velocities (Eqs. 36, 37 and the no-slip limit): clB steady (v0, c1, c2) = (-0.2, 0.1, -2); clC the same times cos(pi t/tau), tau 0.2;
+// clD v = (c2 x2, 0), c2 = -2, no slip on the wall (the limit c1 -> 0, v0 = 0 of Eq. 14). T = 0.4.
+values at t = T are errors of the transport; the fork's
+// testsuite scores plicRDF at N 128 with 2.334e-3 and isoAlpha with 1.469e-3
+// (expected_results.csv, maxAlphaCo 0.5, thickness 1), the check of the template.
+values
+{
+    TPF_CL_V0 ( -0.2 );
+    TPF_CL_C1 ( 0.1 );
+    TPF_CL_C2 ( -2 );
+    TPF_CL_SPIRAL ( 0 );
+    solver (advectorVoF);
+    // TPF_APPLICATION retired 2026-11-07: the application, the advection scheme and the
+    // function-object library come from the config's solver (DAVOF_APP, DAVOF_ADVECTION_SCHEME,
+    // DAVOF_FO_LIBS; materialize.py)
+    N_CELLS ( 128 256 512 1024 );
+    TARGET_ADVECTIVE_CO ( 0.2 0.5 0.95 );
+    // the rows of the verification (tpf_rows.py): plicRDF (vofCutCell, the
+    // classical setting), plicRDF-ccs, davof-ringArea (ccs), davof-ringArea-vofCutCell,
+    // isoAlpha (the third reference)
+    TPF_ROW ( plicRDF pointIso );
+    TPF_POSITIONING_TOL ( 1e-14 );
+    TPF_POSITIONING_MAX_ITER ( 30 );
+    TPF_INTERPOLATE_NORMAL ( true );
+    TPF_WISP_TOL ( 1e-3 );
+    TPF_N_ALPHA_BOUNDS ( 3 );
+    TPF_SNAP_TOL ( 0 );
+    TPF_CLIP ( false );
+    TPF_DAVOF_METHOD ( exactCylinder );
+    TPF_REF_METHOD ( exactCylinder );
+    TPF_SPHERE_RADIUS ( 0.2 );
+    DOMAIN_LENGTH ( 1 );
+    TIME_STEP_CONTROL ( advective );
+    // 17: the fields, the function objects and the log at full double precision
+    TPF_WRITE_PRECISION ( 17 );
+    TPF_RECON_ERROR_EVERY_STEP ( false );
+    TPF_PROFILING ( false );
+    TPF_AFE_WRITE_CONTROL ( adjustableRunTime );
+    TPF_VFE_WRITE_CONTROL ( adjustableRunTime );
+    TPF_VELOCITY_ARM ( clB clC clD );
+    TPF_PERIOD ( 0.2 );
+    TPF_SPHERE_CX ( 0.4 );
+    TPF_SPHERE_CY ( 0 );
+    TPF_SPHERE_CZ ( -0.1 );
+    END_TIME ( 0.4 );
+    REFERENCE_SPEED ( 0.725 );
+    // zeroGradient: the rim flux is exactly zero
+    TPF_ALPHA_BC ( zeroGradient );
+    TPF_ABORT_INTERFACE_FACTOR ( 100 );
+    TPF_WRITE_INTERVAL ( 0.4 );
+    TPF_AFE_WRITE_INTERVAL ( 0.4 );
+    TPF_VFE_WRITE_INTERVAL ( 0.4 );
+    // The swept-face advection of leia's davofSwept scheme (the leia route's DAVOF
+    // rows; the fork route's isoAdvection does not read them), 2026-11-07: the
+    // reference setting of fork davof-swept 407f969 (cases/davof/sphereDeformation3D)
+    // with the four round-4 keys on; the tokens TPF_FACE_CLIPPING, TPF_CLIPPING_SURFACE,
+    // TPF_FIT_ANCHOR, TPF_FIT_DOF and TPF_POSITIONING come from the row (tpf_rows.py)
+    TPF_CURVED_DEBUG ( false );
+    TPF_VOLUME_RULE ( kromerBothe );
+    TPF_KB_MIN_SPLIT ( 1 );
+    TPF_KB_FAN ( auto );
+    TPF_ANCHOR_METHOD ( ccs );
+    // the grazing-cut rule of the cell cut (PORT-DESIGN 1.2 item 1; Tomislav's policy of
+    // 2026-11-07): fork wherever a number is reproduced against the fork's record (the
+    // standing matrix's DAVOF rows against the fork track), openfoam otherwise
+    TPF_GRAZING_CUT ( openfoam );
+    TPF_CCS_END_INTERVAL ( none );
+    TPF_CCS_TOLERANCE ( absolute );
+    TPF_CCS_ROUNDOFF_FLOOR ( 1e-15 );
+    TPF_ANCHOR_SKIP_CONVERGED ( true );
+    TPF_SWEPT_PRE_TEST ( touching );
+    TPF_SWEPT_STATE_SHORTCUT ( false );
+    TPF_SWEPT_TRACE_CACHE ( true );
+    TPF_FLUX_INTEGRATION ( sweptFaceCells );
+    TPF_SWEPT_CLASSIFY ( false );
+    TPF_SWEPT_SCALE ( true );
+    TPF_SWEPT_VOLUME_CORRECTION ( pyramid );
+    TPF_SWEPT_WISP_SURFACE ( matched );
+    TPF_SWEPT_WISP_TOL ( 0 );
+    TPF_SWEPT_WISP_MATCH_TOL ( 1e-9 );
+    TPF_SWEPT_FACE_UPDATE ( pieces );
+    TPF_SWEPT_COPLANAR ( donorSide );
+    TPF_SWEPT_DUMP ( false );
+    TPF_PLANE_SOURCE ( anchor );
+    TPF_SWEPT_FACE_LOG ( false );
+    TPF_SWEPT_CAP_SET ( final );
+    TPF_SWEPT_CONSISTENCY_LOG ( false );
+    TPF_SWEPT_CONSISTENT ( true );
+    TPF_SWEPT_AXIS_PLANES ( true );
+    TPF_SWEPT_TET_CACHE ( true );
+    TPF_SWEPT_POINT_VELOCITY_LAZY ( true );
+    TPF_SWEPT_PRE_TEST_COPLANAR_SIDE ( true );
+    TPF_FACE_STATE ( scalar );
+    TPF_TENSOR_CENTROID ( cut );
+    TPF_KB_PRISM_APEX ( vertexMean );
+    TPF_CURVED_TOL_REL ( 1e-11 );
+    TPF_CURVED_MAX_DEPTH ( 9 );
+    TPF_WRITE_TENSOR ( false );
+    // the timed repetitions of the standing matrix (config/davof/standing): identical
+    // runs numbered 1, 2, 3 (a comment line of controlDict carries the number, so every
+    // repetition is its own case with its own stamp); 1 for a study without them
+    TPF_REPETITION ( 1 );
+    // the setting of the Enright agent's decisions 1-3 (tpf_rows.ENRIGHT_SETTINGS,
+    // 2026-11-07): reference = closure, no bounded face fractions, normalOnly
+    TPF_ENRIGHT_SETTING ( reference );
+}

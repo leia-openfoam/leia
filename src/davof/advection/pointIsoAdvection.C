@@ -311,7 +311,8 @@ void Foam::pointIsoAdvection::polygonPoints
     const point& x0,
     const scalar dt,
     DynamicPointList& displaced,
-    DynamicList<bool>& isBoundary
+    DynamicList<bool>& isBoundary,
+    scalar& maxBndDisp
 ) const
 {
     displaced.clear();
@@ -330,6 +331,10 @@ void Foam::pointIsoAdvection::polygonPoints
         {
             displaced.append(pts[pointi] + dt*pointU_[pointi]);
             isBoundary.append(bndPoint_.test(pointi));
+            if (bndPoint_.test(pointi))
+            {
+                maxBndDisp = max(maxBndDisp, dt*mag(pointU_[pointi]));
+            }
         }
     }
 
@@ -355,6 +360,10 @@ void Foam::pointIsoAdvection::polygonPoints
             );
             displaced.append(p + dt*u);
             isBoundary.append(bndEdge_.test(edgei));
+            if (bndEdge_.test(edgei))
+            {
+                maxBndDisp = max(maxBndDisp, dt*mag(u));
+            }
         }
     }
 }
@@ -562,6 +571,8 @@ void Foam::pointIsoAdvection::timeIntegratedFlux()
     scalar maxAngle = 0;
     scalar maxDiff = 0;
     label nCompared = 0;
+    scalar maxBndDisp = 0;
+    scalar maxBndDist = 0;
 
     DynamicPointList qPts(16);
     DynamicList<bool> qBnd(16);
@@ -579,7 +590,7 @@ void Foam::pointIsoAdvection::timeIntegratedFlux()
             const vector n0(normalised(-surf_->normal()[celli]));
 
             // The displaced polygon points and the fitted plane g_1
-            polygonPoints(celli, n0, x0, dt, qPts, qBnd);
+            polygonPoints(celli, n0, x0, dt, qPts, qBnd, maxBndDisp);
 
             if (qPts.size() < 3)
             {
@@ -620,6 +631,14 @@ void Foam::pointIsoAdvection::timeIntegratedFlux()
 
             {
                 const scalar L = std::cbrt(mesh_.V()[celli]);
+                forAll(qPts, k)
+                {
+                    if (qBnd[k])
+                    {
+                        maxBndDist =
+                            max(maxBndDist, mag(fit.n & (qPts[k] - fit.x))/L);
+                    }
+                }
                 const scalar res = fit.rms/L;
                 ++nPlanes;
                 sumResidual += res;
@@ -799,6 +818,8 @@ void Foam::pointIsoAdvection::timeIntegratedFlux()
         reduce(sumResidual, sumOp<scalar>());
         reduce(maxResidual, maxOp<scalar>());
         reduce(maxAngle, maxOp<scalar>());
+        reduce(maxBndDisp, maxOp<scalar>());
+        reduce(maxBndDist, maxOp<scalar>());
 
         Info<< "pointIsoAdvection: planes " << nPlanes
             << ", fit residual (rms/V^(1/3)) mean "
@@ -808,7 +829,9 @@ void Foam::pointIsoAdvection::timeIntegratedFlux()
             << maxAngle*180.0/Foam::constant::mathematical::pi
             << " deg, cells with boundary points " << nBoundaryCells
             << ", with more than three non-collinear boundary points "
-            << nOverThree << endl;
+            << nOverThree << ", boundary points: max |dx| = " << maxBndDisp
+            << " m, max distance to the fitted plane/V^(1/3) = " << maxBndDist
+            << endl;
     }
 
     if (compareIso_)

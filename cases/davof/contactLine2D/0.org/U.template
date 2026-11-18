@@ -1,0 +1,39 @@
+// M. Fricke, T. Maric, D. Bothe, Contact line advection using the geometrical Volume-of-Fluid
+// method, Journal of Computational Physics 407 (2020) 109221, doi:10.1016/j.jcp.2019.109221,
+// arXiv:1907.01785. The 2D contact line advection tests (leia, 2026-11-18): the circular cap on the
+// wall z = 0 of the domain [0, 1] x [0, 0.25] in the x-z plane of a one-cell-thick mesh.
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      U;
+}
+dimensions      [0 1 -1 0 0 0 0];
+internalField   uniform (0 0 0);
+boundaryField
+{
+    // the wall prescribes the (tangential, analytic) velocity: fixedValue, so U.fixesValue() is true;
+    // davofInitContactLine writes the analytic face values and davofAdvectorFoam (isoAdvector key
+    // forceBoundaryU) sets them at every step (assignment to a fixedValue patch is otherwise a no-op)
+    wall
+    {
+        type            fixedValue;
+        value           uniform (0 0 0);
+    }
+    // the artificial inflow/outflow boundaries: analytic values, not a velocity-prescribing patch
+    inout
+    {
+        type            calculated;
+        value           uniform (0 0 0);
+    }
+    front
+    {
+        type            empty;
+    }
+    back
+    {
+        type            empty;
+    }
+}

@@ -1,0 +1,73 @@
+// M. Fricke, T. Maric, D. Bothe, Contact line advection using the geometrical Volume-of-Fluid
+// method, Journal of Computational Physics 407 (2020) 109221, doi:10.1016/j.jcp.2019.109221,
+// arXiv:1907.01785. The 2D contact line advection tests (leia, 2026-11-18): the circular cap on the
+// wall z = 0 of the domain [0, 1] x [0, 0.25] in the x-z plane of a one-cell-thick mesh.
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+scale   1;
+n_cells @!N_CELLS_BASE!@;
+half_h  #eval{ 0.5 / $n_cells };
+nz      #eval{ $n_cells / 4 };
+vertices
+(
+    (0 #eval{ -$half_h } 0)
+    (1 #eval{ -$half_h } 0)
+    (1 $half_h 0)
+    (0 $half_h 0)
+    (0 #eval{ -$half_h } 0.25)
+    (1 #eval{ -$half_h } 0.25)
+    (1 $half_h 0.25)
+    (0 $half_h 0.25)
+);
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) ($n_cells 1 $nz) simpleGrading (1 1 1)
+);
+edges
+(
+);
+boundary
+(
+    wall
+    {
+        type wall;
+        faces
+        (
+            (0 3 2 1)
+        );
+    }
+    inout
+    {
+        type patch;
+        faces
+        (
+            (0 4 7 3)
+            (2 6 5 1)
+            (4 5 6 7)
+        );
+    }
+    front
+    {
+        type empty;
+        faces
+        (
+            (1 5 4 0)
+        );
+    }
+    back
+    {
+        type empty;
+        faces
+        (
+            (3 7 6 2)
+        );
+    }
+);
+mergePatchPairs
+(
+);

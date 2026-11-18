@@ -8,6 +8,7 @@
 areaFractionError/areaFractionError.C
 volumeFractionError/volumeFractionError.C
 reconstructionError/reconstructionError.C
+contactLineError/contactLineError.C
 
 leiaStamp_leiaDavofFunctionObjects.C
 

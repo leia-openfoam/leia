@@ -284,7 +284,8 @@ class pointIsoAdvection
                 const point& x0,
                 const scalar dt,
                 DynamicPointList& displaced,
-                DynamicList<bool>& isBoundary
+                DynamicList<bool>& isBoundary,
+                scalar& maxBndDisp
             ) const;
 
             //- Wetted area of the face facei under g_tau = h(tau) with

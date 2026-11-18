@@ -72,6 +72,12 @@ int main(int argc, char *argv[])
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+    // forceBoundaryU (contact line tests, 2026-11-18): assignment to a fixedValue patch field is a
+    // no-op, so U = U0 cos(...) leaves the analytic wall velocity at its t = 0 value; with the key
+    // the boundary values are set with the forced assignment ==
+    const bool forceBoundaryU =
+        mesh.solutionDict().subDict("isoAdvector").lookupOrDefault<Switch>("forceBoundaryU", false);
+
     Info<< "\nStarting time loop\n" << endl;
     scalar executionTime = runTime.elapsedCpuTime();
 
@@ -109,6 +115,15 @@ int main(int argc, char *argv[])
             {
                 U = U0*Foam::cos(constant::mathematical::pi*(t+ 0.5*dt)/spirallingFlow);
                 phi = phi0*Foam::cos(constant::mathematical::pi*(t+ 0.5*dt)/spirallingFlow);
+                if (forceBoundaryU)
+                {
+                    const scalar fac =
+                        Foam::cos(constant::mathematical::pi*(t + 0.5*dt)/spirallingFlow);
+                    forAll(U.boundaryField(), patchi)
+                    {
+                        U.boundaryFieldRef()[patchi] == U0.boundaryField()[patchi]*fac;
+                    }
+                }
             }
         }
 
