@@ -8368,3 +8368,14 @@ written into `config/integration/ghostDecompLocateN64.yaml` and
     u) and reaches the interface after a delay that grows with the band width. HYPOTHESIS (consistent with
     round 1, item 6): a band of a fixed CELL count is physically thinner at a finer mesh, so the
     disturbance arrives earlier, and the error at T grows under refinement. Test: `bEdge2Dstrain*`.
+12. **The band-edge test (`bEdge2Dstrain*`, jobs 56600396 to 56600400; read-out `pde_b4_analysis.py`;
+    research instrument: the blend at a FIXED PHYSICAL width, w1 h = 1/16, w2 h = 1/8).** The q error now
+    CONVERGES, but at FIRST order: E_Q_L1(T) = 3.28e-3 / 1.41e-3 / 6.59e-4 at N 128 / 256 / 512 (orders
+    1.22, 1.10; at T/2 1.45, 1.00); E_POS_L1(T) = 1.87e-4 / 8.02e-5 / 3.66e-5 (orders 1.22, 1.13), worse than
+    the raw transport (1.38e-5 at N 256). E1 FAIL. The domain-wide arm (w 64/128 at N 256) gives the same
+    error as the 1/16 band (1.42e-3 against 1.41e-3): beyond about 16 cells the band edge no longer acts,
+    and a first-order error that does not depend on the band position remains (E2 FAIL as written: ratio
+    0.065 to the (4, 8) arm passes, but the onset at t = 0.23 is before 0.3). TWO DEFECTS, MEASURED: (1) the
+    band-edge disturbance, which makes a band of a fixed cell count non-convergent; (2) a first-order error
+    with a wide band. HYPOTHESIS for (2): the band crosses the medial axis near the sharpening tips (rho =
+    0.15 exp(-3t) = 0.033 at T), where the Newton point jumps. Test: `bSkel2Dstrain*` (S1, S2).
