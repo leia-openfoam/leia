@@ -2,6 +2,10 @@
 """plot_b_marker_histories.py: the q error on the markers against time, step B (STATUS 11.40).
 
     plot_b_marker_histories.py --h <clone of round 1> --h2 <clone of the controls> --out <png>
+                               [--panels ab|cd|a|...]
+
+Without --panels: the four panels in a 2 x 2 grid (the article figure). With --panels: only the named
+panels, in one row, with titles that name the method and not the code class (the status deck).
 
 Four panels, log scale, one sequential blue ramp per panel (ordered by N or by the band width):
 (a) round 1, projectionBlend w 4/8 cells, E_Q_L1; (b) the raw transport against its own exact q, E_QRAW_L1;
@@ -60,27 +64,59 @@ def panel(ax, series, col, title):
     ax.set_xlabel("t", color=MUTED, fontsize=8)
 
 
+TITLES = {
+    "a": "(a) projectionBlend, band 4/8 cells: error grows under refinement",
+    "b": "(b) no extension, against its own exact q: order 2",
+    "c": "(c) N 256, blend width in cells: wider band, later onset",
+    "d": "(d) blend at a fixed physical width: order 1 only",
+}
+# --panels: titles without code names (the status deck)
+PLAIN = {
+    "a": "Newton-point extension, blend from 4 to 8 cells",
+    "b": "no extension, against its own exact q",
+    "c": "N 256: blend from w1 to w2 cells (w1/w2)",
+    "d": "blend at a fixed physical width, 1/16 to 1/8",
+}
+
+
+def series(a, key):
+    S = lambda root, st: os.path.join(root, st)
+    if key == "a":
+        return [(f"N {N}", load(S(a.h, "bMarker2Dstrain"), VELOCITY_EXTENSION="projectionBlend", N_CELLS=N))
+                for N in (128, 256, 512)], "E_Q_L1"
+    if key == "b":
+        return [(f"N {N}", load(S(a.h2, "bRaw2Dstrain"), N_CELLS=N)) for N in (128, 256, 512)], "E_QRAW_L1"
+    if key == "c":
+        return [(f"{w}/{2 * w}", load(S(a.h2, f"bBand2DstrainPB{w}"))) for w in (2, 4, 8)], "E_Q_L1"
+    return [(f"N {N}", load(S(a.h2, f"bEdge2DstrainN{N}"))) for N in (128, 256, 512)], "E_Q_L1"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--h", required=True); ap.add_argument("--h2", required=True); ap.add_argument("--out", required=True)
+    ap.add_argument("--panels", default="", help="subset of abcd, one row, plain titles (status deck)")
     a = ap.parse_args()
-    S = lambda root, st: os.path.join(root, st)
-    fig, axs = plt.subplots(2, 2, figsize=(9, 6.4), sharey=True, facecolor=SURF)
-    for ax in axs.flat:
-        ax.set_facecolor(SURF)
-    panel(axs[0, 0], [(f"N {N}", load(S(a.h, "bMarker2Dstrain"), VELOCITY_EXTENSION="projectionBlend", N_CELLS=N))
-                      for N in (128, 256, 512)], "E_Q_L1",
-          "(a) projectionBlend, band 4/8 cells: error grows under refinement")
-    panel(axs[0, 1], [(f"N {N}", load(S(a.h2, "bRaw2Dstrain"), N_CELLS=N)) for N in (128, 256, 512)], "E_QRAW_L1",
-          "(b) no extension, against its own exact q: order 2")
-    panel(axs[1, 0], [(f"{w}/{2 * w}", load(S(a.h2, f"bBand2DstrainPB{w}"))) for w in (2, 4, 8)], "E_Q_L1",
-          "(c) N 256, blend width in cells: wider band, later onset")
-    panel(axs[1, 1], [(f"N {N}", load(S(a.h2, f"bEdge2DstrainN{N}"))) for N in (128, 256, 512)], "E_Q_L1",
-          "(d) blend at a fixed physical width: order 1 only")
-    axs[0, 0].set_ylabel("L1 mean of |q_h - q| on the markers", color=MUTED, fontsize=8)
-    axs[1, 0].set_ylabel("L1 mean of |q_h - q| on the markers", color=MUTED, fontsize=8)
-    fig.suptitle("Step B marker test, pure strain a = 1: the q error on 720 material markers", fontsize=10, color=INK, x=0.01, ha="left")
-    fig.tight_layout()
+    ylab = "L1 mean of |q_h - q| on the markers"
+    if a.panels:
+        keys = [k for k in a.panels if k in TITLES]
+        fig, axs = plt.subplots(1, len(keys), figsize=(4.6 * len(keys), 3.5), sharey=True, facecolor=SURF,
+                                squeeze=False)
+        for ax, k in zip(axs[0], keys):
+            ax.set_facecolor(SURF)
+            sr, col = series(a, k)
+            panel(ax, sr, col, PLAIN[k])
+        axs[0, 0].set_ylabel(ylab, color=MUTED, fontsize=8)
+        fig.tight_layout()
+    else:
+        fig, axs = plt.subplots(2, 2, figsize=(9, 6.4), sharey=True, facecolor=SURF)
+        for ax, k in zip(axs.flat, "abcd"):
+            ax.set_facecolor(SURF)
+            sr, col = series(a, k)
+            panel(ax, sr, col, TITLES[k])
+        axs[0, 0].set_ylabel(ylab, color=MUTED, fontsize=8)
+        axs[1, 0].set_ylabel(ylab, color=MUTED, fontsize=8)
+        fig.suptitle("Step B marker test, pure strain a = 1: the q error on 720 material markers", fontsize=10, color=INK, x=0.01, ha="left")
+        fig.tight_layout()
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     fig.savefig(a.out, dpi=150, facecolor=SURF)
     print("wrote", a.out)
