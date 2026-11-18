@@ -29,6 +29,11 @@
 #   P4 METRIC: MEAN_DELTA_X and MAX_DELTA_X of ghostDecompN64serial and ghostDecompN64np4
 #      differ by at most 1e-12 relative after the fix (before: 2.8e-4), and the serial
 #      values are identical to those before the fix.
+#   RESULT 2026-11-18 (STATUS 11.41). P1 holds for exclude (848 cells differ after step 1
+#   before the fix, 0 after); inflowOnly and lipschitzCone show no difference before or
+#   after. P2 FAILS as written for exclude: round-off size until step 60, then a growth of
+#   1.25 per step, mean 1.1e-7 at t = 1. P3 holds. P4 FAILS as written: 4.7e-12 against the
+#   limit 1e-12 (before: 2.8e-4); the serial value is identical.
 # ============================================================================
 study_name: remotePatchFaceLocateN64
 case: 3Dtranslation
