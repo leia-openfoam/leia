@@ -35,7 +35,14 @@ for a in serial np4; do
       foamDictionary -entry writeInterval  -set 1        system/controlDict > /dev/null
       foamDictionary -entry writeFormat    -set ascii    system/controlDict > /dev/null
       foamDictionary -entry writePrecision -set 17       system/controlDict > /dev/null
-      foamDictionary -entry timePrecision  -set 14       system/controlDict > /dev/null )
+      foamDictionary -entry timePrecision  -set 14       system/controlDict > /dev/null
+      # Optional: SLSET="<keyword> <value>" sets one entry of levelSet/semiLagrangian in
+      # fvSolution, for an option that the case template does not render.
+      if [ -n "$SLSET" ]; then
+          set -- $SLSET
+          foamDictionary -entry "levelSet/semiLagrangian/$1" -set "$2" system/fvSolution > /dev/null
+          echo "$a: $1 = $(foamDictionary -entry "levelSet/semiLagrangian/$1" -value system/fvSolution)" >&2
+      fi )
 done
 echo "initial state equal: $(diff -rq "$OUT/serial/0" "$OUT/np4/0" > /dev/null && diff -rq "$OUT/serial/constant" "$OUT/np4/constant" > /dev/null && diff -rq "$OUT/serial/system" "$OUT/np4/system" > /dev/null && echo yes || echo NO)"
 echo "mesh digest: $(md5sum "$OUT/serial/constant/polyMesh/points" | cut -c1-12) $(md5sum "$OUT/np4/constant/polyMesh/points" | cut -c1-12)"
@@ -51,6 +58,8 @@ decomposePar -force -cellDist > log.decomposePar 2>&1; echo "decomposePar rc=$?"
 mpirun -np 4 $SOLVER -parallel > log.$SOLVER 2>&1; echo "np4 solver rc=$?"
 echo "np4 state=$(bash "$SLURM_SUBMIT_DIR/workflow/scripts/foam_log_state.sh" log.$SOLVER)"
 reconstructPar -fields '(psi)' > log.reconstructPar 2>&1; echo "reconstructPar rc=$?"
+echo "---- boundary-face and bound lines"
+grep -h "stencilBoundaryFaces\|lipschitzCone" "$OUT/serial/log.$SOLVER" "$OUT/np4/log.$SOLVER" | sort | uniq -c | cut -c1-200
 echo "---- ghost data lines (serial, then np 4)"
 grep -h "ghostCellQuadraticWeightedLeastSquares:" "$OUT/serial/log.$SOLVER" | sort | uniq -c
 grep -h "ghostCellQuadraticWeightedLeastSquares:" "$OUT/np4/log.$SOLVER" | sort | uniq -c

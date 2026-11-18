@@ -68,9 +68,9 @@ axes_override:
   FLUX_PROJECTION: ["none"]
   SDPLS_SOURCE: [noSource]
   SOURCE_SCHEME: [explicit]
-  # The product gives six cases. The measurement uses three of them:
-  # (exclude, none), (inflowOnly, none), (include, lipschitzCone).
-  SL_STENCIL_BOUNDARY_FACES: ["exclude", "inflowOnly", "include"]
+  # Two cases. cases/3Dtranslation does not render stencilBoundaryFaces, so the arms exclude
+  # and inflowOnly are made from the case with valueBound none by the SLSET option of
+  # ghost_locate.sbatch (one foamDictionary entry in the copies of the case).
   SL_VALUE_BOUND: ["none", "lipschitzCone"]
 collapse_other_axes: true
 export_slides: false
