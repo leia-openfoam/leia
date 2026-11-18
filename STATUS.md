@@ -8358,3 +8358,13 @@ written into `config/integration/ghostDecompLocateN64.yaml` and
     shows no onset. The transport is sound; the growth of item 6 belongs to the extension. Next: the
     band-width sweep `bBand2DstrainPB{2,4,8}` and `bBand2DstrainCP` (H1, H2 pre-registered; the
     hypothesis: the rate scales with the band width in cells, from the linearised loop).
+11. **The band-width sweep (`bBand2DstrainPB{2,4,8}`, `bBand2DstrainCP`; jobs 56600094 to 56600098;
+    read-out `pde_b3_analysis.py`). H1 and H2 FALSIFIED, with the sign reversed:** the growth is SLOWER
+    and starts LATER in a WIDER band. projectionBlend (w1, w2) = (2, 4) / (4, 8) / (8, 16) cells: rate 28.2
+    / 24.3 / 6.3 per unit time, onset t = 0.013 / 0.093 / 0.218, E_Q_L1(T) = 8.2e-2 / 2.2e-2 / 2.6e-3.
+    closestPoint nLayers 2 / 3 / 5: rate 29.6 / 23.8 / 5.3, onset t = 0.048 / 0.089 / 0.187, E_Q_L1(T) =
+    1.7e-2 / 2.5e-2 / 2.4e-3. I was wrong about the mechanism (the linearised loop inside the band); the
+    measurement says the disturbance comes from the band EDGE (the blend or the fade, where u_e returns to
+    u) and reaches the interface after a delay that grows with the band width. HYPOTHESIS (consistent with
+    round 1, item 6): a band of a fixed CELL count is physically thinner at a finer mesh, so the
+    disturbance arrives earlier, and the error at T grows under refinement. Test: `bEdge2Dstrain*`.
