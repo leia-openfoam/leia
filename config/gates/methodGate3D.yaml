@@ -8,6 +8,31 @@
 # close for a stable order estimate. First rung R/h >= 10, even N. Droplets on the certified
 # 6R box (DOMAIN_LENGTH 0.006). The exact1D arm is the same arm as in the 2D gate, so every
 # 3D run carries its own exact check on its own commit and binaries.
+#
+# FIRST RUN OF THE BASELINE (2026-11-18, supervisor: "work until we can simulate the 3D
+# stationary, translating and oscillating droplet accurately"). The 2D gate has no pass; the
+# supervisor orders the 3D measurement, so this run is a MEASUREMENT of the baseline, not a
+# candidate verdict. Branch work/droplets3D at c2301068, clone
+# /work/scratch/tm83tomy/leia-drop3d, OpenFOAM-v2606, np 32, hexahedral blockMesh.
+# The viscosity is geo_lin (the OPEN item below); it is not changed for this run.
+#
+# PRE-REGISTERED READ-OUT (before the run). "Accurate" is PROPOSED here as:
+#   A-stationary: every rung COMPLETES; relative Laplace pressure-jump error at the finest
+#      rung <= 1 %; L1 shape error order >= 1.8; relative volume error <= 1e-3 at the
+#      finest rung; the L2 spurious current at the end time does not grow with N.
+#   A-translating: every rung COMPLETES; L1 shape error order >= 1.5; relative volume
+#      error <= 1e-3 at the finest rung; l2MagUPrime / U0 <= 5 % at the finest rung and
+#      not growing with N.
+#   A-oscillating: every rung COMPLETES; the period is within 2 % of the Lamb value
+#      (11.65 ms) at the finest rung and converges; relative volume error <= 1e-3; the
+#      band gradient error does not grow in time at the finest rung.
+# PREDICTIONS (HYPOTHESIS, from the 2D gate of 2026-09-27 and the 3D ladders in STATUS):
+#   P1 stationary: shape and jump meet their criteria; the end-time current FAILS (its
+#      order is negative, as in 2D and in the 3D production-force ladder).
+#   P2 translating: completes to 0.02 s; the curvature error does not converge; the
+#      disturbance velocity is first order at best.
+#   P3 oscillating: completes on this horizon (2 periods); the period error is above 2 %.
+# FALSIFIED if a prediction is wrong in either direction; both directions are reported.
 gate: methodGate3D
 dims: 3
 theme: gradient-controlled-level-set
