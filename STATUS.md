@@ -8337,3 +8337,15 @@ written into `config/integration/ghostDecompLocateN64.yaml` and
    reconstruction gradient of linearUpwind and the flux form; D0 to D4 pre-registered in the header).
    DERIVED: a linearised continuum analysis of the loop psi -> Y -> u_e gives rates near |G| = 1 per unit
    time, far below the measured 17 to 30 per unit time at N 512, so the discretisation is suspected.
+9. **The discriminators `bDiscr2Dstrain` (N 256, projectionBlend; jobs 56599221, 56599222; read-out
+   `pde_b2_analysis.py`).** D0 PASS: the base arm reproduces round 1 exactly (293 rows, difference 0).
+   **D1: the growth runs PER UNIT TIME.** The onset (E_Q_L1 > 2 x its t = 0 value) is at t = 0.093 /
+   0.092 / 0.090 for CFL 0.5 / 0.25 / 0.125 (spread 4 %), at step 83 / 126 / 211 (spread 154 %). The
+   growth rate is about 10 per unit time (1.85, 0.91, 0.45 % per step), against a strain rate |G| = 1.
+   E_Q_L1(T) = 2.19e-2 / 2.14e-2 / 2.11e-2: the time step does not move it, so the amplifier is a SPATIAL
+   operator, not the time integration. D2 FAIL: Euler reduces E_Q_L1(T) to 0.41 to 0.84 of the CN value
+   (limit 0.2), and it doubles to quadruples E_POS: Euler only damps. D3 and D4 FAIL (no effect): the
+   unlimited gradient and the interpolate flux form change E_Q by less than 1e-3 relative (the tokens
+   were consumed: every CSV differs). DERIVED after the run (should have been before): for a LINEAR
+   velocity the interpolate and correction forms are equal to round-off on a uniform mesh, so D4 could
+   not discriminate on this case. The cause is not the time scheme, the limiter or the flux form.
