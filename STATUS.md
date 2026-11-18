@@ -8405,9 +8405,8 @@ This closes item 7 of 11.38 as a measurement; the merge waits for the supervisor
      HYPOTHESIS: the option `exclude` amplifies round-off at the walls (one-sided fits), and
      the decomposition only seeds the round-off. Not tested: the same growth between two
      serial runs with a perturbed initial field. Before the fix the mean at t = 1 was 1.4e-4.
-4. **P3 identity against the tree of `development` (c2301068), HOLDS** (one polyhedral arm,
-   N = 3Dshear_00004 with `none`, still ran when this was written; its partial CSVs are
-   identical). advConv2Dtranslation 36 of 36, advConv3DshearHex 27 of 27, s0Translation2D
+4. **P3 identity against the tree of `development` (c2301068), HOLDS** (all nine polyhedral
+   arms completed). advConv2Dtranslation 36 of 36, advConv3DshearHex 27 of 27, s0Translation2D
    48 of 48, a0Identity2Dvortex 6 of 6 CSV pairs identical at tolerance 0. Polyhedral arms on
    48 ranks: the arms `none` and `stencilBounds` differ only in `MEAN_DELTA_X`; the three
    `lipschitzCone` arms change, as pre-registered: relative volume error by 1.6 to 1.9 %,
