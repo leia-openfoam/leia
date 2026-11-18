@@ -8349,3 +8349,12 @@ written into `config/integration/ghostDecompLocateN64.yaml` and
    were consumed: every CSV differs). DERIVED after the run (should have been before): for a LINEAR
    velocity the interpolate and correction forms are equal to round-off on a uniform mesh, so D4 could
    not discriminate on this case. The cause is not the time scheme, the limiter or the flux form.
+10. **The raw-velocity control `bRaw2Dstrain` (no extension, read against its own exact q; job
+    56599430, clone `$HOME/leia-pde-h2` at 2d371702).** `interfaceMarkers` integrates the deformation
+    gradient F along each marker (dF/dt = grad(u) F) and reports E_QRAW = q_h - |F^{-T} grad psi0|.
+    W1 PASS (the t = 0 row equals E_Q). **W2 PASS: the Eulerian transport under strain converges at
+    order 2 against its own exact q:** E_QRAW_L1(T) = 3.30e-3 / 8.29e-4 / 2.07e-4 at N 128 / 256 / 512
+    (orders 1.99, 2.00); the error grows smoothly with time (the field is compressed by up to e^0.5) and
+    shows no onset. The transport is sound; the growth of item 6 belongs to the extension. Next: the
+    band-width sweep `bBand2DstrainPB{2,4,8}` and `bBand2DstrainCP` (H1, H2 pre-registered; the
+    hypothesis: the rate scales with the band width in cells, from the linearised loop).
