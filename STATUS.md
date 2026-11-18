@@ -8386,7 +8386,7 @@ written into `config/integration/ghostDecompLocateN64.yaml` and
     N 512 at t = 0.47. At a = 1 the orders are 1.92 / 1.19 (T/2) and 2.26 / 1.94 (T); E_POS converges at
     order 0.9 to 1.6 in all arms. S1 and S2 FAIL. READING (MEASURED across items 6 to 13): every arm with
     an extension carries a component that grows in time at a rate that scales with the strain (about 2.5
-    per unit time at a = 1/3 of the strain, 5 to 8 at a = 1), that starts earlier at a finer mesh, and that
+    per unit time at a = 0.3, 5 to 8 at a = 1), that starts earlier at a finer mesh, and that
     the band edge excites (a narrow band in cells excites it strongly, items 6 and 11). The transport
     without an extension has none of it (item 10). The cause inside the extension is NOT known: it is not
     the time scheme, the limiter, the flux form, the band position alone or the medial axis.
