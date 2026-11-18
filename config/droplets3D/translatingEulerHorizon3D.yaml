@@ -17,6 +17,8 @@
 #     (baseline N = 60: 3502 1/m and 2.9 m/s).
 #   FALSIFIED if kappaStdDevBand > 100 1/m at t = 0.02 s.
 #   This run and translatingBox8mm3D (H-outlet) are read together: both can hold.
+#   RESULT 2026-11-18 (STATUS 11.42). FALSIFIED: kappaStdDevBand 3.0, 6.4, 13, 27, 94,
+#   4483 1/m at t = 0.010 to 0.020 s, the same growth as with BDF2; maxMagUPrime 2.1 m/s.
 # ============================================================================
 study_name: translatingEulerHorizon3D
 case: translatingDroplet3D

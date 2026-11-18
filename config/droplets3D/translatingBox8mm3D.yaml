@@ -26,6 +26,11 @@
 #   BETWEEN 20 and 100 1/m: both mechanisms act; reported as such.
 #   Also reported: kappaStdDevBand at t = 0.010 to 0.016 s against the 6 mm values above,
 #     because that early growth starts 1.5 mm from the outlet.
+#   RESULT 2026-11-18 (STATUS 11.42). kappaStdDevBand 4.2, 7.5, 14, 26, 41, 42 1/m at
+#   t = 0.010 to 0.020 s, the same as the 6 mm box until 0.016 s; 42 at 0.02 s is the
+#   pre-registered case "between 20 and 100". maxMagUPrime 7.9e-3 m/s at 0.02 s. The run
+#   blows up between t = 0.028 and 0.032 s (58 to 5240 1/m), pole 1.5 mm from the outlet:
+#   the prediction "not before 0.034 s" is FALSIFIED.
 # ============================================================================
 study_name: translatingBox8mm3D
 case: translatingDroplet3D

@@ -9,7 +9,7 @@ values
     N_CELLS ( 60 78 102 );
     DOMAIN_LENGTH ( 0.006 );
     CAPILLARY_REF_LENGTH ( 0.01 );
-    // About 2.1 periods of Lamb's n = 2 mode (11.65 ms): enough for the period and
+    // About 3.0 periods of Lamb's n = 2 mode (8.23 ms; corrected 2026-11-18 from 11.65 ms): enough for the period and
     // the damping rate from the zero crossings of m2CosCoefficient.
     END_TIME ( 0.025 );
     MAX_CO ( 0.1 );

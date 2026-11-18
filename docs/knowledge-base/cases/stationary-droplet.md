@@ -103,3 +103,4 @@ The case itself is sound; the method fails on it in two ways. First, the parasit
 
 ### 2026-09-29
 Created from the SL article sections on the stationary droplet and the static refinement, STATUS 0, 4, 11.14 and 11.15, METHOD 7 and 8.1, the case files and the 2D gate tables.
+- 2026-11-18 · the first 3D gate baseline (STATUS 11.42, branch `work/droplets3D`), N = 60, 78, 102 to 0.025 s: shape error / R 5.5e-4, 2.8e-4, 1.9e-4 (order 2.06); pressure-jump error 1.0e-3, 4.8e-4, 3.0e-4 (order 2.28); curvature error order 2.02; L2 current 1.15e-6, 1.09e-6, 1.85e-6 m/s, which does not fall with N.

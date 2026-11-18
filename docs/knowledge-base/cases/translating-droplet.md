@@ -105,3 +105,4 @@ All the late-instability runs are laptop runs. Their libraries carry the stamp `
 
 ### 2026-09-29
 Created from STATUS 0, 11.13 to 11.15, the SL article, the case files, the gate configs and the gcls data archive.
+- 2026-11-18 · the first 3D gate baseline (STATUS 11.42, branch `work/droplets3D`): every rung reaches 0.02 s inside a blow-up. Two defects are measured. (1) The deviation of the band curvature doubles about every 2 ms from t = 0.008 s, at the same rate on N = 60 and 102, with BDF2 and with Euler, and in a 6 mm and an 8 mm box until 0.016 s; the 8 mm box blows up later (0.028 to 0.032 s), and neither a fixed outlet distance nor the time alone gives the onset. (2) At step 2, the first three-level step, the disturbance velocity jumps to 1.6e-2 m/s on N = 60 and 9.0e-2 m/s on N = 102; with Euler in both equations it is 3.8e-4 m/s; the density equation has a relative mass residual of 4.1e-3 at that step only.

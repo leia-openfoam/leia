@@ -21,6 +21,9 @@
 #   FALSIFIED if K(Euler, Euler) >= 8e-3 m/s (half the baseline or more): the time scheme
 #     is then not the cause.
 #   The two mixed cases are reported; they show which of the two schemes carries the jump.
+#   RESULT 2026-11-18 (STATUS 11.42). K = 1.95e-2 (backward, backward), 1.95e-2 (backward,
+#   Euler), 6.0e-3 (Euler, backward), 3.8e-4 m/s (Euler, Euler). The PREDICTION holds.
+#   With the backward density scheme the relative mass residual is 4.1e-3 at step 2 only.
 # ============================================================================
 study_name: translatingKickDdt3D
 case: translatingDroplet3D
