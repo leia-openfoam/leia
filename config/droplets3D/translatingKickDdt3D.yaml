@@ -1,0 +1,84 @@
+# ============================================================================
+# 3D TRANSLATING DROPLET: the disturbance at step 2, and the time scheme (2026-11-18)
+# (branch work/droplets3D, STATUS 11.42). A RESEARCH INSTRUMENT: Euler is not a production
+# setting (CLAUDE.md, BDF2 everywhere).
+#
+# MEASURED in the first 3D baseline gate: the largest disturbance velocity max|U - U0| of
+# the translating droplet is 2.3e-4 m/s after step 1 and 1.6e-2 m/s after step 2 on N = 60
+# (4.3e-5 and 9.0e-2 m/s on N = 102; U0 = 0.05 m/s). The stationary droplet has 6.8e-5 m/s
+# after step 2 on N = 102. The jump needs U0 != 0 and appears at the first step that uses
+# the three-level formula of BDF2.
+#
+# HYPOTHESIS: at step 2 the BDF2 form of ddt(rho U) uses rho^n and rho^(n-1) with a mass
+# flux that is not consistent with the three-level ddt(rho); the defect is of the size
+# U0 * (density mismatch) at the interface.
+#
+# FOUR CASES, N = 60, 46 steps (END_TIME 5e-4 s): MOMENTUM_DDT_SCHEME x RHO_DDT_SCHEME in
+# {backward, Euler}. (backward, backward) is the baseline and must reproduce 1.6e-2 m/s.
+#
+# PRE-REGISTERED READ-OUT (before the run). K = the largest maxMagUPrime over steps 2 to 5.
+#   PREDICTION: K(Euler, Euler) <= 1e-3 m/s.
+#   FALSIFIED if K(Euler, Euler) >= 8e-3 m/s (half the baseline or more): the time scheme
+#     is then not the cause.
+#   The two mixed cases are reported; they show which of the two schemes carries the jump.
+# ============================================================================
+study_name: translatingKickDdt3D
+case: translatingDroplet3D
+mesh: hex
+mode: parallel
+np: 32
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme: gradient-controlled-level-set
+solve_runtime: 30
+axes_override:
+  N_CELLS:
+  - '60'
+  MASS_FLUX:
+  - rhoLENT
+  MASS_FLUX_ALPHAF_SOURCE:
+  - donorPlane
+  MASS_FLUX_ALPHAF_TIME_LEVEL:
+  - new
+  MASS_FLUX_BOUND_RHO:
+  - 'true'
+  MASS_FLUX_PROJECT:
+  - 'false'
+  MOMENTUM_DDT_SCHEME:
+  - backward
+  - Euler
+  RHO_DDT_SCHEME:
+  - backward
+  - Euler
+  MOMENTUM_DIV_SCHEME:
+  - upwind
+  N_OUTER_CORRECTORS:
+  - '3'
+  PSI_OUTER_CORRECTORS:
+  - 'yes'
+  CAPILLARY_FORCE_CENTRING:
+  - endStep
+  SURFACE_TENSION_FORCE:
+  - reconstructedCurvature
+  FACE_CURVATURE_SOURCE:
+  - model
+  CURVATURE_INVERSE_GAUSSIAN:
+  - 'yes'
+  CAPILLARY_DT_COEFF:
+  - '0.010861'
+  PSI_FILTER:
+  - none
+  CURVATURE_EXTENSION:
+  - cellCentreInverse
+  END_TIME:
+  - 5e-4
+  TRANSLATION_SPEED:
+  - '0.05'
+  WRITE_INTERVAL:
+  - 1e-4
+  SL_RECONSTRUCTION:
+  - uncachedQuadraticWeightedLeastSquares
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+collapse_other_axes: true
+export_slides: false
+setfields_args: -alphaName alpha.water
