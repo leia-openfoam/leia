@@ -8379,3 +8379,24 @@ written into `config/integration/ghostDecompLocateN64.yaml` and
     band-edge disturbance, which makes a band of a fixed cell count non-convergent; (2) a first-order error
     with a wide band. HYPOTHESIS for (2): the band crosses the medial axis near the sharpening tips (rho =
     0.15 exp(-3t) = 0.033 at T), where the Newton point jumps. Test: `bSkel2Dstrain*` (S1, S2).
+13. **The medial-axis test (`bSkel2Dstrain*`, jobs 56600781 to 56600787; read-out `pde_b5_analysis.py`;
+    the blend at a fixed physical width 1/32 to 1/16). The medial-axis hypothesis is FALSIFIED.** At
+    a = 0.3, where the band never reaches the medial axis (rho(T) = 0.096 > 1/16), E_Q_L1 converges at
+    order 2.06 / 1.85 at T/2 but only 1.38 / 1.14 at T (7.3e-4, 2.8e-4, 1.3e-4), and the growth starts at
+    N 512 at t = 0.47. At a = 1 the orders are 1.92 / 1.19 (T/2) and 2.26 / 1.94 (T); E_POS converges at
+    order 0.9 to 1.6 in all arms. S1 and S2 FAIL. READING (MEASURED across items 6 to 13): every arm with
+    an extension carries a component that grows in time at a rate that scales with the strain (about 2.5
+    per unit time at a = 1/3 of the strain, 5 to 8 at a = 1), that starts earlier at a finer mesh, and that
+    the band edge excites (a narrow band in cells excites it strongly, items 6 and 11). The transport
+    without an extension has none of it (item 10). The cause inside the extension is NOT known: it is not
+    the time scheme, the limiter, the flux form, the band position alone or the medial axis.
+14. **Figure:** `docs/pde-level-set/pde-level-set-article/data/figures/stepB_marker_histories.png`
+    (`workflow/scripts/plot_b_marker_histories.py`, from the study directories of the home clones):
+    E_Q_L1 against t for round 1, the raw transport, the band-width sweep and the fixed physical band.
+15. **Open, for the supervisor (no run started):** (a) the next discriminator inside the extension, for
+    example a frozen extension (u_e computed once from psi_0 and kept) against the updated one, which
+    separates the feedback of psi on u_e from the transport of a non-solenoidal u_e; (b) the band edge
+    must not excite the interface with a band of a fixed cell count (rule "No free parameters"); a
+    candidate is an edge that the extension characteristics leave (an outflow boundary, as the source
+    term with feedback makes it, plan section 6); (c) step D (the source) waits; the 3D step-A studies
+    wait for space on /work/scratch.

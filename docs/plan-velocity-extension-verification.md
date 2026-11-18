@@ -362,6 +362,13 @@ target of B, because it does not assume a distance. The plateau test runs with a
 with a stabilizing f the characteristics leave the interface (the source carries the velocity
 -Phi f'(q) n, DERIVED from eq. 3.2 of the manuscript), so the band edge becomes an outflow boundary.
 
+**Status 2026-11-18 (STATUS 11.40).** The marker test is built (`gradedSphere`, `linearFlow`,
+`interfaceMarkers`, case `markerTest2D`) and run. Translation passes at order 2; the transport WITHOUT an
+extension passes at order 2 against its own exact q under strain. With projectionBlend or closestPoint the q
+error under strain grows in time from the band edge and does not converge with a band of a fixed cell count;
+with a band of fixed physical width it converges at order 1. The cause inside the extension is open (items
+9 to 15); step C and step D wait for it.
+
 **The plateau test (2026-11-14).** Every B and C arm reports the curvature at the interface layer
 (cell and face, by the operator of a4CurvStencil2D) and runs the band width in layers over the
 derived depth and two more layers. The curvature must reach a plateau: no change beyond the
