@@ -1,0 +1,44 @@
+# PDE LEVEL SET, STEP A ROUND 2 IN 3D (2): as aStatic3Dr2 on the ellipsoid (semi-axes 0.18, 0.12, 0.15,
+# signedDistanceEllipsoid: exact distance and closest point), centre (0.4513, 0.5487, 0.4521), inputs
+# distance and scaledDistance, N 72, 96, 128, 168 (R/h >= 8.6 on the short axis at N 72; 72 is reported,
+# not judged).
+# PRE-REGISTERED (2026-11-18, before any run). Orders L1 over the pairs with N1 >= 96:
+#   R1e projectionBlend/first, both inputs: E_EXTY_L1_L0TO3 and E_FLUXY_L1_L0TO3 order >= 1.8.
+#   R2e projectionBlend/first: E_EXTB_L1 order >= 1.8 on every layer 0..8.
+#   R3e closestPoint/newton/layer, both inputs: E_EXT_L1_L0TO3 and E_EXTY_L1_L0TO3 order >= 1.8.
+# FALSIFIED and wrong-reason checks: as in aStatic3Dr2.
+study_name: aStatic3Dr2Ellipsoid
+case: 3Dshear
+mesh: hex
+solver: leiaTestVelocityExtension
+solve_runtime: 120
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+mode: serial
+np: 1
+solve_mem_mb: 24000
+axes_override:
+  N_CELLS: [72, 96, 128, 168]
+  SURFACE_TYPE: [signedDistanceEllipsoid]
+  SURFACE_X0: [0.4513]
+  SURFACE_Y0: [0.5487]
+  SURFACE_Z0: [0.4521]
+  SURFACE_A: [0.18]
+  SURFACE_B: [0.12]
+  SURFACE_C: [0.15]
+  VE_TEST_INPUT: [distance, scaledDistance]
+  VELOCITY_EXTENSION: [closestPoint, projectionBlend]
+  PB_DISTANCE: [first]
+  PB_W1: [4]
+  PB_W2: [8]
+  CP_STEP: [newton]
+  FADE_MODE: [layer]
+  END_TIME: [1]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  PHASE_INDICATOR: [detrixheAslam]

@@ -1,0 +1,50 @@
+# PDE LEVEL SET, STEP A ROUND 2 IN 3D (1): the extension on a sphere, hexahedral mesh, per layer.
+# Escalation of aStatic2Dr2 (plan section 5: "3D: sphere and ellipsoid with a 3D flow"); submitted only
+# after the 2D round passes R1 to R3 (supervisor's go 2026-11-18, "proceed with next steps").
+# Sphere R = 0.15, centre (0.4513, 0.5487, 0.4521): off the mesh vertices and at least 0.27 from every
+# wall, so the 8 layers of the read-out stay inside the domain at N 72. shear3D at t = 0, serial.
+# Ladder N 72, 96, 128, 168 (h ratios 1.33, 1.33, 1.31 >= 1.3, Celik et al. 2008; even N; R/h >= 10.8).
+# Inputs distance, scaledDistance (q 0.8 to 1.25), quadratic (q about 0.3). Arms as in aStatic2Dr2
+# (projectionBlend distance first, w1 4 h, w2 8 h; closestPoint newton, layer band). Derivation as in
+# aStatic2Dr2; in 3D a layer-3 centre lies at |d| <= 3 h + (sqrt 3/2) h = 3.87 h < w1 = 4 h.
+# PRE-REGISTERED (2026-11-18, before any run). Orders L1 over the pairs with N1 >= 96 (72 reported):
+#   R1 projectionBlend/first, every input: E_EXTY_L1_L0TO3 and E_FLUXY_L1_L0TO3 order >= 1.8.
+#   R2 projectionBlend/first: E_EXTB_L1 order >= 1.8 on every layer 0..8.
+#   R3 closestPoint/newton/layer, every input: E_EXT_L1_L0TO3 and E_EXTY_L1_L0TO3 order >= 1.8.
+#   R4 projectionBlend/first E_EXTY_L1_L3 / E_EXTY_L1_L0 >= 4 at N 168, distance input.
+#   R5 D_YPI_L1_L0TO3 order between 0.8 and 1.2 on scaledDistance and quadratic.
+#   R6 INERTNESS of the 3Dshear template change: a6Identity3Dshear byte-identical between this clone and
+#      the clone of round 1 (leia-pde-a5, old template).
+# FALSIFIED: projectionBlend/first below order 1.5 on E_EXTY_L1_L0TO3 on any input in 3D.
+# Wrong-reason checks as in aStatic2Dr2.
+study_name: aStatic3Dr2
+case: 3Dshear
+mesh: hex
+solver: leiaTestVelocityExtension
+solve_runtime: 120
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+mode: serial
+np: 1
+solve_mem_mb: 24000
+axes_override:
+  N_CELLS: [72, 96, 128, 168]
+  SURFACE_X0: [0.4513]
+  SURFACE_Y0: [0.5487]
+  SURFACE_Z0: [0.4521]
+  VE_TEST_INPUT: [distance, scaledDistance, quadratic]
+  VELOCITY_EXTENSION: [closestPoint, projectionBlend]
+  PB_DISTANCE: [first]
+  PB_W1: [4]
+  PB_W2: [8]
+  CP_STEP: [newton]
+  FADE_MODE: [layer]
+  END_TIME: [1]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  VE_FLUX_FORM: [correction]
+  ANCHOR_LAYERS: [0]
+  PHASE_INDICATOR: [detrixheAslam]

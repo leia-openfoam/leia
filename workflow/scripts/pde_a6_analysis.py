@@ -2,6 +2,11 @@
 """pde_a6_analysis.py: the read-out of step A, round 2 (the model's own extension u(Y), per layer).
 
     pde_a6_analysis.py --old <clone of round 1 (leia-pde-a5)> --new <clone a6> [--out <dir>]
+    pde_a6_analysis.py --dim 3 --old <clone with the pre-change template> --new <clone> [--out <dir>]
+
+--dim 3 reads aStatic3Dr2, aStatic3Dr2Ellipsoid and aStatic3Dr2Par instead (orders judged over the
+pairs with N1 >= 96), and replaces R6 by the bit identity of a6Identity3Dshear (leiaLevelSetFoam,
+default 3Dshear) between the two clones.
 
 Reads leiaTestVelocityExtensionLayers.csv (per topological layer l = 0..8 and l = 0..3) of
 aStatic2Dr2, aStatic2Dr2Ellipse and aStatic2Dr2Par, and checks the pre-registered read-outs R1 to R9
@@ -38,7 +43,7 @@ def load(study):
     """(model, input, N) -> (case, row); duplicates of one arm (an axis the model does not read) are
     checked for byte identity and kept once."""
     out, dup = {}, []
-    for c in sorted(glob.glob(os.path.join(study, "2Dvortex_[0-9]*"))):
+    for c in sorted(glob.glob(os.path.join(study, "*_[0-9][0-9][0-9][0-9][0-9]"))):
         t = tok(c)
         key = (model(t), t["VE_TEST_INPUT"], int(t["N_CELLS"]))
         if key in out:
@@ -53,8 +58,12 @@ def load(study):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--old", required=True); ap.add_argument("--new", required=True); ap.add_argument("--out")
+    ap.add_argument("--dim", type=int, default=2)
     a = ap.parse_args()
-    out = a.out or os.path.join(a.new, "studies", "pdeLevelSet", "a6")
+    D = a.dim
+    SER, ELL, PAR = ((f"aStatic{D}Dr2", f"aStatic{D}Dr2" + ("Ellipse" if D == 2 else "Ellipsoid"), f"aStatic{D}Dr2Par"))
+    NMIN = 128 if D == 2 else 96
+    out = a.out or os.path.join(a.new, "studies", "pdeLevelSet", "a6" if D == 2 else "a6_3D")
     os.makedirs(out, exist_ok=True)
     L = []
     say = lambda s="": (L.append(s), print(s))
@@ -66,7 +75,7 @@ def main():
         verdict[tag] = verdict[tag] and ok
 
     data = {}
-    for st in ("aStatic2Dr2", "aStatic2Dr2Ellipse", "aStatic2Dr2Par"):
+    for st in (SER, ELL, PAR):
         data[st], dup = load(S(a.new, st))
         bad = [d for d in dup if d[1] != "PASS"]
         say(f"{st}: {len(data[st])} arms, {len(dup)} duplicate cases (an axis the model does not read), "
@@ -74,7 +83,7 @@ def main():
 
     say()
     say("R6 / R6e INERTNESS: leiaTestVelocityExtensionExact.csv of every closestPoint case against round 1:")
-    for st, old in (("aStatic2Dr2", "aStatic2Dq"), ("aStatic2Dr2Ellipse", "aStatic2Dellipse")):
+    for st, old in (((SER, "aStatic2Dq"), (ELL, "aStatic2Dellipse")) if D == 2 else ()):
         ref = {}
         for c in glob.glob(os.path.join(S(a.old, old), "2Dvortex_[0-9]*")):
             t = tok(c)
@@ -90,6 +99,16 @@ def main():
             if v != "PASS":
                 say(f"  {st} {inp} N {N}: {v} {' | '.join(d[-2:])[:160]}")
         say(f"  {st} against {old}: {ok} of {n} identical")
+        judge("R6", n > 0 and ok == n)
+    if D == 3:
+        n = ok = 0
+        for c in sorted(glob.glob(os.path.join(S(a.new, "a6Identity3Dshear"), "3Dshear_[0-9]*"))):
+            for f in ("leiaLevelSetFoam.csv", "gradPsiError.csv"):
+                v, d = cmp(os.path.join(S(a.old, "a6Identity3Dshear"), os.path.basename(c), f), os.path.join(c, f))
+                n += 1; ok += v == "PASS"
+                if v != "PASS":
+                    say(f"  a6Identity3Dshear {os.path.basename(c)} {f}: {v} {' | '.join(d[-2:])[:160]}")
+        say(f"  a6Identity3Dshear (3Dshear template with the surface tokens, against the old template): {ok} of {n} identical")
         judge("R6", n > 0 and ok == n)
 
     say()
@@ -122,17 +141,17 @@ def main():
         res = ""
         if tag:
             # pre-registered over N 128-256-512: the orders of the pairs with N1 >= 128
-            oo = [x for (n1, _), x in zip(v, o) if n1 >= 128]
+            oo = [x for (n1, _), x in zip(v, o) if n1 >= NMIN]
             ok = bool(oo) and all((lo is None or x >= lo) and (hi is None or x <= hi) for x in oo)
             if v and all(e <= 1e-13 for _, e in v):
                 ok = True  # identically zero (round-off) at every N: nothing to converge
             judge(tag, ok); res = f"   [{tag} {'PASS' if ok else 'FAIL'}]"
         say(f"    {col:20s} {txt}{res}")
 
-    for st in ("aStatic2Dr2", "aStatic2Dr2Ellipse"):
+    for st in (SER, ELL):
         say()
         say(f"===== {st}: errors (L1, L2) and orders over N, layers 0..3 and per layer")
-        sfx = "e" if "Ellipse" in st else ""
+        sfx = "e" if st == ELL else ""
         for m, inp in sorted({(k[0], k[1]) for k in data[st]}):
             say(f"  == {m}  input {inp}")
             if m == "projectionBlend/first":
@@ -150,7 +169,7 @@ def main():
             else:
                 for col in ("E_EXTY_L1_L0TO3", "E_EXT_L1_L0TO3", "E_FLUXY_L1_L0TO3", "E_EXTY_L2_L0TO3"):
                     show(st, m, inp, col)
-            if inp != "distance" and st == "aStatic2Dr2" and m.startswith("closestPoint"):
+            if inp != "distance" and st == SER and m.startswith("closestPoint"):
                 show(st, m, inp, "D_YPI_L1_L0TO3", "R5", 0.8, 1.2)
             # per layer at the finest N
             v = {N: r for (mm, ii, N), (_, r) in data[st].items() if mm == m and ii == inp}
@@ -161,15 +180,15 @@ def main():
                     t = f"L{l}"
                     say(f"      {l}: {r[f'E_EXTY_L1_{t}']:.2e} / {r[f'E_EXTB_L1_{t}']:.2e} / {r[f'E_FLUXY_L1_{t}']:.2e}"
                         f" / {r[f'E_RAWY_L1_{t}']:.2e} / {r[f'D_YPI_L1_{t}']:.2e} / {int(r[f'N_{t}'])}")
-                if m == "projectionBlend/first" and inp == "distance" and st == "aStatic2Dr2":
+                if m == "projectionBlend/first" and inp == "distance" and st == SER:
                     ratio = r["E_EXTY_L1_L3"] / r["E_EXTY_L1_L0"] if r["E_EXTY_L1_L0"] > 0 else float("nan")
                     judge("R4", ratio >= 4)
                     say(f"    R4 E_EXTY_L1_L3 / E_EXTY_L1_L0 at N {N} = {ratio:.2f} [{'PASS' if ratio >= 4 else 'FAIL'}]")
 
     say()
-    say("===== aStatic2Dr2Par against aStatic2Dr2 (np 4 against serial):")
-    for (m, inp, N), (c, r) in sorted(data["aStatic2Dr2Par"].items()):
-        s = data["aStatic2Dr2"].get((m, inp, N), (None, {}))[1]
+    say(f"===== {PAR} against {SER} (np 4 against serial):")
+    for (m, inp, N), (c, r) in sorted(data[PAR].items()):
+        s = data[SER].get((m, inp, N), (None, {}))[1]
         if not s or not r:
             say(f"  {m} {inp} N {N}: no serial or no parallel CSV"); judge("R7", False); continue
         same = all(r[f"N_{t}"] == s[f"N_{t}"] for t in LAY)
@@ -187,7 +206,7 @@ def main():
 
     say()
     say("VERDICTS: " + ", ".join(f"{k} {'PASS' if v else 'FAIL'}" for k, v in sorted(verdict.items())))
-    open(os.path.join(out, "a6_summary.txt"), "w").write("\n".join(L) + "\n")
+    open(os.path.join(out, f"a6_{D}D_summary.txt"), "w").write("\n".join(L) + "\n")
     return 0
 
 
