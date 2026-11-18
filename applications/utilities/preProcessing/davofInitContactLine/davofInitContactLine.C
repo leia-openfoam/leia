@@ -80,12 +80,12 @@ int main(int argc, char *argv[])
     volVectorField::Boundary& Ub = U.boundaryFieldRef();
     forAll(Ub, patchi)
     {
-        if (isA<emptyFvPatchField<vector>>(Ub[patchi])) continue;
-        const vectorField& Cf = mesh.C().boundaryField()[patchi];
+        if (isA<emptyPolyPatch>(mesh.boundaryMesh()[patchi])) continue;
+        const vectorField& Cf = mesh.Cf().boundaryField()[patchi];
         vectorField Uf(Cf.size());
         forAll(Cf, i)
         {
-            Uf[i] = vel(mesh.Cf().boundaryField()[patchi][i]);
+            Uf[i] = vel(Cf[i]);
         }
         Ub[patchi] == Uf;
     }
@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
     surfaceScalarField::Boundary& phib = phi.boundaryFieldRef();
     forAll(phib, patchi)
     {
-        if (phib[patchi].size() == 0 || isA<emptyFvsPatchField<scalar>>(phib[patchi])) continue;
+        if (isA<emptyPolyPatch>(mesh.boundaryMesh()[patchi])) continue;
         const label start = mesh.boundaryMesh()[patchi].start();
         forAll(phib[patchi], i)
         {
