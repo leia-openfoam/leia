@@ -187,6 +187,9 @@ GATE_PY ?= $(or $(shell sed -n '1s/^\#!//p' $$(PATH=$$HOME/.local/bin:$$PATH com
 gate:
 	@test -n "$(GATE)" || { echo "usage: make gate GATE=methodGate2D|methodGate3D CANDIDATES=<a+b> [SET=...] [SMOKE=1] [PRESERVE=1] [DRYRUN=1] PROFILE=..."; exit 1; }
 	@$(if $(PRESERVE),$(GATE_PY) workflow/scripts/render_gate_configs.py --gate config/gates/$(GATE).yaml --candidates "$(CANDIDATES)" --set "$(SET)" $(if $(SMOKE),--smoke,) --preserve,true)
+	@if [ -z "$(SMOKE)" ] && [ -z "$(DRYRUN)" ] && ls studies/$(GATE)Smoke_summary/*/summary.csv >/dev/null 2>&1; then \
+	  for d in studies/$(GATE)Smoke_*; do case $$d in *Smoke_summary) ;; *) rm -rf $$d;; esac; done; \
+	  echo "[gate] removed the case directories of the finished smoke of $(GATE) (its summary stays)"; fi
 	PATH=$$HOME/.local/bin:$$PATH snakemake -s workflow/Snakefile.gate --cores $(GATE_CORES) --nolock --keep-going \
 	  --config gate=$(GATE) candidates="$(CANDIDATES)" set="$(SET)" smoke=$(SMOKE) profile=$(PROFILE) $(if $(DRYRUN),-n,)
 

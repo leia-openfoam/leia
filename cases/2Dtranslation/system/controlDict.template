@@ -40,7 +40,7 @@ writeControl    runTime;
 // the half-way position and the end position of the translated circle.
 writeInterval   @!HALF_END_TIME!@;
 
-purgeWrite      0;
+purgeWrite      @!PURGE_WRITE!@;
 
 writeFormat     ascii;
 

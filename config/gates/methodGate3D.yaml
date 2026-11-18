@@ -9,6 +9,11 @@
 # 6R box (DOMAIN_LENGTH 0.006). The exact1D arm is the same arm as in the 2D gate, so every
 # 3D run carries its own exact check on its own commit and binaries.
 gate: methodGate3D
+# Field output (2026-11-18, the file-count limit on scratch): the verdict reads CSVs only.
+# A finished case keeps time 0 and the last written time; a failed case keeps the last two
+# written times in its processor directories. Does not change a number.
+keep_fields: last
+purge_write: 2
 dims: 3
 theme: gradient-controlled-level-set
 np: 32

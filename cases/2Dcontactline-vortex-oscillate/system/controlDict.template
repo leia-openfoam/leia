@@ -35,7 +35,7 @@ writeControl    runTime;
 
 writeInterval   @!END_TIME!@;
 
-purgeWrite      0;
+purgeWrite      @!PURGE_WRITE!@;
 
 writeFormat     ascii;
 

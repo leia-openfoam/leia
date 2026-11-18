@@ -58,4 +58,8 @@ PY=python3; $PY -c "import numpy" 2>/dev/null || PY=$(head -1 "$HOME/.local/bin/
 echo "python: $PY"
 $PY "$INT_SCRIPTS/ghost_locate_compare.py" "$OUT/serial" "$OUT/np4" --out "$OUT/locate" > "$OUT/locate.md" 2>&1; echo "compare rc=$?"
 } > "$OUT/locate.job.log" 2>&1
+# The two solved copies hold psi at every step (about 12,500 files). Pack them into one
+# tar and remove them; locate.md, locate_steps.csv and locate.job.log stay next to it.
+( cd "$OUT" && tar -cf fields.tar serial np4 && [ "$(tar -tf fields.tar | wc -l)" = "$(find serial np4 | wc -l)" ] \
+  && rm -rf serial np4 && echo "packed serial and np4 into fields.tar" >> locate.job.log )
 echo LOCATE_FINISHED > "$SLURM_SUBMIT_DIR/int.locate.done"
