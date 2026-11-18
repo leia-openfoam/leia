@@ -128,7 +128,8 @@ void Foam::functionObjects::interfaceMarkers::sampleAndWrite()
     {
         if (!csv_)
         {
-            csv_.reset(new OFstream(time_.path()/"interfaceMarkers.csv"));
+            // globalPath: the case directory also in parallel (path() is processor0)
+            csv_.reset(new OFstream(time_.globalPath()/"interfaceMarkers.csv"));
             csv_()
                 << "TIME,N_MARKERS,N_FOUND,E_Q_L1,E_Q_L2,E_Q_MEAN,"
                 << "E_POS_L1,E_POS_L2,Q_EXACT_MIN,Q_EXACT_MAX\n";

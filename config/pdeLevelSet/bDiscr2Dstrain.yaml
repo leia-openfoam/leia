@@ -1,0 +1,57 @@
+# PDE LEVEL SET, STEP B: discriminators of the q growth found in bMarker2Dstrain (2026-11-18, STATUS 11.40).
+# MEASURED in round 1 (pure strain, CN, linearUpwind with the cellLimited leastSquares gradient, correction
+# flux form, CFL 0.5): with projectionBlend and with closestPoint, E_Q_L1 stays at its t = 0 level and then
+# grows by 2 to 3 % PER STEP to about 0.02, at every N; the growth starts after about 44 to 67 steps, so the
+# error at T grows under refinement (E_Q_L1(T) 1.2e-2, 2.2e-2, 2.4e-2 at N 128, 256, 512). Translation
+# (u_e = u) has no growth. A linearised continuum analysis of the loop psi -> Y -> u_e gives rates near |G| = 1
+# per unit time, far below the measured 17 to 30 per unit time at N 512 (DERIVED, plan section 7 names the
+# loop as explicit in the extension).
+# One case: N 256, projectionBlend (distance first, w1 4, w2 8), pure strain, no source. Four factors,
+# full product (24 cases): CFL 0.5 / 0.25 / 0.125; PSI_DDT CrankNicolson 1 / Euler; DIV_GRAD (the
+# reconstruction gradient of linearUpwind) cellLimited leastSquares / unlimited leastSquares; flux form
+# correction / interpolate. Read-out pde_b2_analysis.py: E_Q_L1 at T/2 and T, the step and the time at which
+# E_Q_L1 first exceeds 2 times its t = 0 value (the onset), and the mean growth per step after the onset.
+# PRE-REGISTERED (2026-11-18, before any run):
+#   D0 CONTROL: the arm (CFL 0.5, CN, cellLimited, correction) reproduces the projectionBlend N 256 row of
+#      bMarker2Dstrain: interfaceMarkers.csv identical to 1e-12 relative.
+#   D1 PER STEP or PER TIME: with CN, cellLimited, correction, if the onset STEP changes by less than 30 %
+#      from CFL 0.5 to 0.125, the amplifier acts per step (a time-discretisation instability); if the onset
+#      TIME changes by less than 30 %, it acts per unit time (a spatial operator).
+#   D2 TIME SCHEME: Euler removes the growth if E_Q_L1(T) <= 0.2 times the CN value at the same CFL.
+#   D3 LIMITER: the unlimited gradient changes E_Q_L1(T) by more than a factor 3 (either way): the
+#      limiter takes part in the amplifier.
+#   D4 FLUX FORM: interpolate changes E_Q_L1(T) by more than a factor 3: the flux form takes part.
+# A factor that passes none of D1 to D4 is not the cause. Which one does is the result; no factor is
+# expected over another.
+study_name: bDiscr2Dstrain
+case: markerTest2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaLevelSetFoam
+theme: pde-level-set
+studies_dir: studies/pdeLevelSet
+solve_runtime: 240
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+axes_override:
+  N_CELLS: [256]
+  CFL: [0.5, 0.25, 0.125]
+  PSI_DDT: [CrankNicolsonDdt, EulerDdt]
+  DIV_GRAD: [CellLimitedLSQ, UnlimitedLSQ]
+  VE_FLUX_FORM: [correction, interpolate]
+  VELOCITY_EXTENSION: [projectionBlend]
+  PB_DISTANCE: [first]
+  PB_W1: [4]
+  PB_W2: [8]
+  CP_STEP: [newton]
+  FADE_MODE: [layer]
+  VE_FADE_PLACEMENT: [extendThroughFade]
+  ANCHOR_LAYERS: [0]
+  ADVECTION: [eulerian]
+  SDPLS_SOURCE: [noSource]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+  REPORT_WRITE_ONLY: ["false"]

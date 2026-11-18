@@ -48,3 +48,4 @@ axes_override:
   REDISTANCER: [noRedistancing]
   PHASE_INDICATOR: [detrixheAslam]
   REPORT_WRITE_ONLY: ["false"]
+  PSI_DDT: [CrankNicolsonDdt]   # the case hardcoded CrankNicolson 1 when round 1 ran (fc679662)

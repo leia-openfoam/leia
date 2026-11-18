@@ -31,6 +31,8 @@ LinearUpwindUext  linearUpwind grad(Uext);
 // over a tenfold CFL change, so the loss is spatial, not temporal.
 
 CellLimitedLSQ    cellLimited leastSquares 1;   // historical default
+EulerDdt          Euler;                        // PSI_DDT
+CrankNicolsonDdt  CrankNicolson 1;              // PSI_DDT (step B round 1)
 UnlimitedLSQ      leastSquares;                 // no limiter at all
 CellLimitedGauss  cellLimited Gauss linear 1;   // limiter, different base gradient
 FaceLimitedLSQ    faceLimited leastSquares 1;   // face-limited: less aggressive

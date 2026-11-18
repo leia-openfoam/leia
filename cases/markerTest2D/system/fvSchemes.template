@@ -21,7 +21,8 @@ FoamFile
 
 ddtSchemes
 {
-    default         CrankNicolson 1;
+    // PSI_DDT: EulerDdt | CrankNicolsonDdt (aliasDict). The step-B studies pin it explicitly.
+    default         $@!PSI_DDT!@;
 }
 
 gradSchemes
