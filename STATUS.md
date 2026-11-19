@@ -8401,7 +8401,7 @@ written into `config/integration/ghostDecompLocateN64.yaml` and
     term with feedback makes it, plan section 6); (c) step D (the source) waits; the 3D step-A studies
     wait for space on /work/scratch.
 
-### 11.43 Scratch data: the clean-up, the file count per folder, and the lean field output (2026-11-18, Lichtenberg, special00005)
+### 11.43 Scratch data: the clean-up and the lean field output (2026-11-18, Lichtenberg, special00005)
 
 Branch `feature/lean-output` (NOT in `development`; commits 3e6a1f48, bcc8b05a). The numbers
 11.41 and 11.42 are used on the branches `fix/sl-remote-patch-faces` and `work/droplets3D`.
@@ -8427,35 +8427,7 @@ The plan with the open decisions D1 to D7 is `docs/plan-3d-droplets-next-steps.m
    sections 11.35 to 11.42 with its committed table; a case is simulated again from its
    committed config. The rule script is not in the repository (`$HOME/prune.py` on the
    cluster): a case directory is a directory with `system/controlDict`.
-3. **The file count per top-level folder (MEASURED 2026-11-18, 14:41 to 15:49, job 56629135,
-   read-only; 1,194 entries, sum 22,609,599 against 22.2 to 22.5 million of `cquota`).** The
-   account lost a further 4.8 million files after this count; the list below is the state of
-   the count, not of today.
-
-   | folder | files | size [GB] | `processor*` directories | last change |
-   |---|---|---|---|---|
-   | `davof` | 5,093,085 | 5806 | 74,883 | 2026-11-19 |
-   | `openfoam-bayesopt-cht` | 3,234,631 | 1266 | 21,040 | 2026-11-18 |
-   | `peng-interIsoLocalFoamLB` | 2,287,132 | 409 | 51,368 | 2026-11-12 |
-   | `openfoam-reactive-mass-transfer` | 861,326 | 2516 | 19,960 | 2026-11-17 |
-   | `partex_runs` | 711,851 | 70 | 0 | 2026-10-23 |
-   | `orm-stokes-2026-11-06` | 591,554 | 108 | 10,516 | |
-   | `leia` | 556,866 | 755 | 6,736 | |
-   | `leia-static2` | 464,958 | 99 | 2,432 | |
-   | `orm-pU-coupling-2026-11-05` | 455,105 | 153 | 10,488 | |
-   | `leia-static` | 399,738 | 58 | 2,432 | |
-   | `orm-tband-2026-11-09` | 380,881 | 135 | 9,695 | |
-   | `leia-curvature` (during its prune) | 373,096 | 223 | 4,600 | |
-   | `orm-defaults-H-2026-11-16` | 356,561 | 144 | 8,757 | |
-   | `openfoam-bayesopt-cht-r49` | 303,597 | 523 | 2,540 | |
-   | `orm-edge-2026-11-12` | 284,713 | 120 | 6,926 | |
-
-   The first three folders hold 47 % of the files. In `davof`, 4,915,205 files are under
-   `agents/`; in `openfoam-bayesopt-cht`, 3,225,310 under `studies/`; in
-   `peng-interIsoLocalFoamLB`, 928,193 under `p3/`. The full table is
-   `$HOME/leia-filecount.d/totals.tsv` on the cluster. The eleven folders named `orm-*` among
-   the 25 largest hold 3.38 million files together (not all in the table above).
-4. **Lean field output (workflow and templates only, no solver change).**
+3. **Lean field output (workflow and templates only, no solver change).**
    - Token `PURGE_WRITE` (controlDict `purgeWrite`), default 0; all 38 case templates had 0.
    - Workflow key `keep_fields`, default `all`. With `last`, a finished parallel case keeps
      time 0 and the last written time, and its processor directories are removed, except
