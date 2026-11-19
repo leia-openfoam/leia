@@ -8400,3 +8400,80 @@ written into `config/integration/ghostDecompLocateN64.yaml` and
     candidate is an edge that the extension characteristics leave (an outflow boundary, as the source
     term with feedback makes it, plan section 6); (c) step D (the source) waits; the 3D step-A studies
     wait for space on /work/scratch.
+
+### 11.43 Scratch data: the clean-up, the file count per folder, and the lean field output (2026-11-18, Lichtenberg, special00005)
+
+Branch `feature/lean-output` (NOT in `development`; commits 3e6a1f48, bcc8b05a). The numbers
+11.41 and 11.42 are used on the branches `fix/sl-remote-patch-faces` and `work/droplets3D`.
+The plan with the open decisions D1 to D7 is `docs/plan-3d-droplets-next-steps.md` on
+`work/droplets3D`.
+
+1. **The limit.** The scratch area of the account has a quota on the number of files: soft
+   20,000,000, hard 25,000,000 (`cquota`). It reached 24,999,191 on 2026-11-18 at about
+   01:55; jobs then fail with "Couldn't create directory", and `foam_log_state.sh` reports
+   DIVERGED. State on 2026-11-19: 17,335,850 files, below the soft limit, no grace period.
+2. **The clean-up of this session's data (supervisor's go, job 56627323, MEASURED).**
+
+   | item | action |
+   |---|---|
+   | eight tar files of finished identity rounds and locate runs (157 GB) | removed |
+   | clones `leia-integration`, `leia-ghost`, `leia-integration-base` | CSVs, logs, ledgers and the profile files copied into one tar per clone (1,379, 554 and 735 files; member counts verified), then removed |
+   | `leia-amp-schemes`, `leia-amp-schemes-c`, `.leia-int-logs` | copied (42, 28, 49 files), then removed |
+   | `leia-drop3d` | void and smoke directories removed; `processor*` and all times except 0 and the last removed in 23 cases; 138,917 files to 8,404 (54 GB to 5.8 GB) |
+   | `leia-curvature` (supervisor: this session's to prune) | the same rule in 559 cases, 8,157 directories; 583,452 files to 45,042 (281 GB to 87 GB) |
+
+   The copies are in `/work/scratch/tm83tomy/leia-kept-20261118/`. The account went from
+   23,214,885 to 22,176,796 files during the job. Every result of the removed data is in
+   sections 11.35 to 11.42 with its committed table; a case is simulated again from its
+   committed config. The rule script is not in the repository (`$HOME/prune.py` on the
+   cluster): a case directory is a directory with `system/controlDict`.
+3. **The file count per top-level folder (MEASURED 2026-11-18, 14:41 to 15:49, job 56629135,
+   read-only; 1,194 entries, sum 22,609,599 against 22.2 to 22.5 million of `cquota`).** The
+   account lost a further 4.8 million files after this count; the list below is the state of
+   the count, not of today.
+
+   | folder | files | size [GB] | `processor*` directories | last change |
+   |---|---|---|---|---|
+   | `davof` | 5,093,085 | 5806 | 74,883 | 2026-11-19 |
+   | `openfoam-bayesopt-cht` | 3,234,631 | 1266 | 21,040 | 2026-11-18 |
+   | `peng-interIsoLocalFoamLB` | 2,287,132 | 409 | 51,368 | 2026-11-12 |
+   | `openfoam-reactive-mass-transfer` | 861,326 | 2516 | 19,960 | 2026-11-17 |
+   | `partex_runs` | 711,851 | 70 | 0 | 2026-10-23 |
+   | `orm-stokes-2026-11-06` | 591,554 | 108 | 10,516 | |
+   | `leia` | 556,866 | 755 | 6,736 | |
+   | `leia-static2` | 464,958 | 99 | 2,432 | |
+   | `orm-pU-coupling-2026-11-05` | 455,105 | 153 | 10,488 | |
+   | `leia-static` | 399,738 | 58 | 2,432 | |
+   | `orm-tband-2026-11-09` | 380,881 | 135 | 9,695 | |
+   | `leia-curvature` (during its prune) | 373,096 | 223 | 4,600 | |
+   | `orm-defaults-H-2026-11-16` | 356,561 | 144 | 8,757 | |
+   | `openfoam-bayesopt-cht-r49` | 303,597 | 523 | 2,540 | |
+   | `orm-edge-2026-11-12` | 284,713 | 120 | 6,926 | |
+
+   The first three folders hold 47 % of the files. In `davof`, 4,915,205 files are under
+   `agents/`; in `openfoam-bayesopt-cht`, 3,225,310 under `studies/`; in
+   `peng-interIsoLocalFoamLB`, 928,193 under `p3/`. The full table is
+   `$HOME/leia-filecount.d/totals.tsv` on the cluster. Twelve folders named `orm-*` hold
+   about 3.6 million files together (not all in the table above).
+4. **Lean field output (workflow and templates only, no solver change).**
+   - Token `PURGE_WRITE` (controlDict `purgeWrite`), default 0; all 38 case templates had 0.
+   - Workflow key `keep_fields`, default `all`. With `last`, a finished parallel case keeps
+     time 0 and the last written time, and its processor directories are removed, except
+     `processor0/constant/polyMesh/owner`, the declared output of the `decompose` rule. A
+     failed case is not reconstructed and keeps its processor directories.
+   - The method gates set `keep_fields: last` and `purge_write: 2`.
+   - A full gate run removes the case directories of its finished smoke.
+   - `ghost_locate.sbatch` packs its two solved copies into one tar.
+   - **4-rank smoke of the 3D gate (MEASURED, drivers 56628958 and 56629448, binaries
+     c2301068):** the first run failed in the three droplet arms: their only written time is
+     0, and `reconstructPar -latestTime` without `-withZero` selects no time. Fixed in
+     bcc8b05a. The second run returns 0; the exact 1D arm and the 8-rank check pass (1.1e-12,
+     9.1e-12); the stationary, oscillating and shear values equal those of the smoke of
+     11.42 to all printed digits. A finished droplet case holds 54 files (about 136
+     before), a shear case 69.
+   - **Not measured:** a full-length run (about 6,900 files per case before), the path of a
+     failed case, a study outside the gates with `keep_fields: last`, and the default
+     path `all` on this branch (it is the old command, unchanged).
+   - Not done: collated file handling, binary format, and a smaller set of written fields
+     (steps 3 to 5 of the plan).
+
