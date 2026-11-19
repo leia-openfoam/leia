@@ -119,7 +119,6 @@ SourceFiles
 #include "davofSimplexGeometry.H"   // davof::triNegativePolygon (the wet polygon of a cut triangle)
 #include "IOstreams.H"
 #include "Pstream.H"
-#include <cmath>
 #include <iostream>
 #include <iomanip>
 #include "davofPhaseProf.H"         // diag2 (print-only operation counters of sweptPieceExactVolume)
@@ -650,14 +649,7 @@ inline scalar sweptPieceExactVolume
                 for (label i = 0; i < nCross; ++i)
                 {
                     const vector d = cross[i] - cen;
-                    // the pseudo-angle of the in-plane coordinates (x, y) =
-                    // (d & u, d & v), fix F4 (2026-11-18): copysign(1 - x/(|x| + |y|), y)
-                    // is a monotone function of atan2(y, x) on (-pi, pi]
-                    // (-2 .. 2), so the sort order is the one of the angle;
-                    // the point at the centroid (x = y = 0) takes 0 as atan2 does
-                    const scalar px = d & u, py = d & v;
-                    const scalar pa = mag(px) + mag(py);
-                    ang[i] = (pa > 0) ? std::copysign(1 - px/pa, py) : scalar(0);
+                    ang[i] = Foam::atan2(d & v, d & u);
                     idx[i] = i;
                 }
                 for (label i = 1; i < nCross; ++i)
