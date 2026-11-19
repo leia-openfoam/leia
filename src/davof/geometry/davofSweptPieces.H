@@ -590,7 +590,14 @@ inline scalar sweptPieceExactVolume
         // the pristine triangles of A, B, C and the apex, and the snapped vertex
         // distances of the classification (sv: A, B, C, apex) are theirs
         bool pristine = true;
-        auto clipAll = [&](const halfSpace& hs, const scalar* sv)
+        // fix F5 (2026-11-18): the reference point of the volume sum. The
+        // volume of the closed polyhedron is (1/3) sum_faces (p_0 - o) . a for
+        // every point o; the cap of the PLIC clip (the last clip) lies in the
+        // PLIC plane, so with o on that plane its term is zero and the cap
+        // is not built (capless): o = plic.x0 is then the reference of the
+        // sums. Round-off only; the dump branch builds the cap as before.
+        point volRef = xRef;
+        auto clipAll = [&](const halfSpace& hs, const scalar* sv, const bool capless)
         {
             static const label faceVertex[4][3] = {{0, 1, 2}, {3, 1, 0}, {3, 2, 1}, {3, 0, 2}};
             FixedList<point, 48>& cross = ws.cross;
@@ -616,7 +623,12 @@ inline scalar sweptPieceExactVolume
                 if (out.n >= 3) anyLeft = true;
             }
             pristine = false;
-            if (nCross >= 3 && nP < 16)
+            if (capless && nCross >= 3 && nP < 16)
+            {
+                volRef = hs.x0;
+                anyLeft = true;
+            }
+            else if (nCross >= 3 && nP < 16)
             {
                 // the plane's outward normal (the kept side is dist <= 0)
                 vector nrm = hs.n;
@@ -691,7 +703,7 @@ inline scalar sweptPieceExactVolume
         // crossing, no cap): skipped. None < 0: it lies in the closed
         // outer half-space and the clip leaves at most the vertices, edges
         // or faces on the plane (zero volume): empty. Otherwise clipped.
-        auto clipPlane = [&](const halfSpace& hs)
+        auto clipPlane = [&](const halfSpace& hs, const bool capless)
         {
             bool allIn = true, anyNeg = false;
             scalar sv[4] = {hs.dist(A), hs.dist(B), hs.dist(C), hs.dist(xRef)};
@@ -702,18 +714,18 @@ inline scalar sweptPieceExactVolume
             }
             if (allIn) return;
             if (!anyNeg) { anyLeft = false; return; }
-            clipAll(hs, sv);
+            clipAll(hs, sv, capless);
         };
         for (label i = 0; i < nc && anyLeft; ++i)
         {
             davofProf::clipTag = i;
-            clipPlane(cellPlanes[i]);
+            clipPlane(cellPlanes[i], false);
         }
         davofProf::clipTag = 99;
         const scalar vCell = (dbg && anyLeft) ? volNow() : 0;
         if (wetPlane && anyLeft)
         {
-            clipPlane(plic);
+            clipPlane(plic, !dbg);
         }
         if (dbg)
         {
@@ -734,7 +746,7 @@ inline scalar sweptPieceExactVolume
         {
             const poly& q = P[i];
             if (q.n < 3) continue;
-            v3 += (q.p[0] - xRef) & areaOf(q, xRef);
+            v3 += (q.p[0] - volRef) & areaOf(q, volRef);
         }
         vol += sgn*v3/3;
     }
