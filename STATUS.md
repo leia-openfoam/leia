@@ -8453,8 +8453,8 @@ The plan with the open decisions D1 to D7 is `docs/plan-3d-droplets-next-steps.m
    The first three folders hold 47 % of the files. In `davof`, 4,915,205 files are under
    `agents/`; in `openfoam-bayesopt-cht`, 3,225,310 under `studies/`; in
    `peng-interIsoLocalFoamLB`, 928,193 under `p3/`. The full table is
-   `$HOME/leia-filecount.d/totals.tsv` on the cluster. Twelve folders named `orm-*` hold
-   about 3.6 million files together (not all in the table above).
+   `$HOME/leia-filecount.d/totals.tsv` on the cluster. The eleven folders named `orm-*` among
+   the 25 largest hold 3.38 million files together (not all in the table above).
 4. **Lean field output (workflow and templates only, no solver change).**
    - Token `PURGE_WRITE` (controlDict `purgeWrite`), default 0; all 38 case templates had 0.
    - Workflow key `keep_fields`, default `all`. With `last`, a finished parallel case keeps
