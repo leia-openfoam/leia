@@ -459,20 +459,31 @@ inline scalar sweptPieceExactVolume
     auto clipOne = []
     (
         const poly& q, const halfSpace& hs, poly& out,
-        FixedList<point, 48>& cross, label& nCross, const scalar tol
+        FixedList<point, 48>& cross, label& nCross, const scalar tol,
+        const scalar* sPre
     )
     {
         out.n = 0;
+        // the distance of every vertex once (fix F3, 2026-11-18; every vertex was
+        // evaluated twice, as the end of one edge and the start of the next), or the
+        // snapped distances the caller already has (sPre, the pristine faces of a
+        // tetrahedron). A vertex within tol of the plane is ON the plane: its distance
+        // is zero for the classification and for the crossing (2026-11-15, diag2: the
+        // crossing of a vertex classified inside at s <= tol but computed for s = 0
+        // was extrapolated 1e3 edge lengths)
+        scalar sd[24];
+        for (label j = 0; j < q.n; ++j)
+        {
+            if (sPre) { sd[j] = sPre[j]; continue; }
+            scalar s = hs.dist(q.p[j]);
+            if (mag(s) <= tol) s = 0;
+            sd[j] = s;
+        }
         for (label j = 0; j < q.n; ++j)
         {
             const point& p0 = q.p[j];
             const point& p1 = q.p[(j + 1) % q.n];
-            scalar s0 = hs.dist(p0), s1 = hs.dist(p1);
-            // a vertex within tol of the plane is ON the plane: its distance is zero for the
-            // classification and for the crossing (2026-11-15, diag2: the crossing of a vertex
-            // classified inside at s <= tol but computed for s = 0 was extrapolated 1e3 edge lengths)
-            if (mag(s0) <= tol) s0 = 0;
-            if (mag(s1) <= tol) s1 = 0;
+            const scalar s0 = sd[j], s1 = sd[(j + 1) % q.n];
             const bool in0 = (s0 <= 0), in1 = (s1 <= 0);
 #ifdef DAVOF_CLIPONE_TRACE
             // diag2 follow-up (compiled only into davofTestPieceClip): every crossing edge of the PLIC clip
@@ -526,14 +537,14 @@ inline scalar sweptPieceExactVolume
             for (label i = 0; i < nc && b->n >= 3; ++i)
             {
                 ++nCovClipL;
-                ncr = 0; clipOne(*b, cellPlanes[i], *c, cr, ncr, tolL); Swap(b, c);
+                ncr = 0; clipOne(*b, cellPlanes[i], *c, cr, ncr, tolL, nullptr); Swap(b, c);
             }
             if (b->n >= 3)
             {
                 const scalar ab = mag(areaOf(*b, t[0]));
                 if (coverage) *coverage += ab;
                 if (covPre && (k % 4 == 1)) *covPre += ab;
-                if (wetPlane) { ncr = 0; clipOne(*b, plic, *c, cr, ncr, tolL); Swap(b, c); }
+                if (wetPlane) { ncr = 0; clipOne(*b, plic, *c, cr, ncr, tolL, nullptr); Swap(b, c); }
                 if (aPre && b->n >= 3 && (k % 4 == 1)) *aPre += areaOf(*b, t[0]);
             }
         }
@@ -574,8 +585,13 @@ inline scalar sweptPieceExactVolume
             return sgn*w3/3;
         };
         const scalar vInit = dbg ? volNow() : 0;
-        auto clipAll = [&](const halfSpace& hs)
+        // fix F3: while no clip has changed the tetrahedron its four faces are
+        // the pristine triangles of A, B, C and the apex, and the snapped vertex
+        // distances of the classification (sv: A, B, C, apex) are theirs
+        bool pristine = true;
+        auto clipAll = [&](const halfSpace& hs, const scalar* sv)
         {
+            static const label faceVertex[4][3] = {{0, 1, 2}, {3, 1, 0}, {3, 2, 1}, {3, 0, 2}};
             FixedList<point, 48>& cross = ws.cross;
             label nCross = 0;
             anyLeft = false;
@@ -586,9 +602,19 @@ inline scalar sweptPieceExactVolume
                 poly& out = Q[i];
                 if (q.n < 3) { out.n = 0; continue; }
                 ++nPolyClipL;
-                clipOne(q, hs, out, cross, nCross, tolL);
+                scalar sFace[3];
+                const scalar* sp = nullptr;
+                if (pristine && sv && i < 4)
+                {
+                    sFace[0] = sv[faceVertex[i][0]];
+                    sFace[1] = sv[faceVertex[i][1]];
+                    sFace[2] = sv[faceVertex[i][2]];
+                    sp = sFace;
+                }
+                clipOne(q, hs, out, cross, nCross, tolL, sp);
                 if (out.n >= 3) anyLeft = true;
             }
+            pristine = false;
             if (nCross >= 3 && nP < 16)
             {
                 // the plane's outward normal (the kept side is dist <= 0)
@@ -660,19 +686,15 @@ inline scalar sweptPieceExactVolume
         auto clipPlane = [&](const halfSpace& hs)
         {
             bool allIn = true, anyNeg = false;
+            scalar sv[4] = {hs.dist(A), hs.dist(B), hs.dist(C), hs.dist(xRef)};
+            for (label m = 0; m < 4; ++m)
             {
-                scalar s = hs.dist(A); if (mag(s) <= tolL) s = 0;
-                if (s > 0) allIn = false; else if (s < 0) anyNeg = true;
-                s = hs.dist(B); if (mag(s) <= tolL) s = 0;
-                if (s > 0) allIn = false; else if (s < 0) anyNeg = true;
-                s = hs.dist(C); if (mag(s) <= tolL) s = 0;
-                if (s > 0) allIn = false; else if (s < 0) anyNeg = true;
-                s = hs.dist(xRef); if (mag(s) <= tolL) s = 0;
-                if (s > 0) allIn = false; else if (s < 0) anyNeg = true;
+                if (mag(sv[m]) <= tolL) sv[m] = 0;
+                if (sv[m] > 0) allIn = false; else if (sv[m] < 0) anyNeg = true;
             }
             if (allIn) return;
             if (!anyNeg) { anyLeft = false; return; }
-            clipAll(hs);
+            clipAll(hs, sv);
         };
         for (label i = 0; i < nc && anyLeft; ++i)
         {
