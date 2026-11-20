@@ -18,7 +18,7 @@ X0R = 0.4 + math.sqrt(0.2**2 - 0.1**2)
 ARMS = {"clB": dict(v0=-0.2, c1=0.1, c2=-2.0, tau=0.0), "clC": dict(v0=-0.2, c1=0.1, c2=-2.0, tau=0.2), "clD": dict(v0=0.0, c1=0.0, c2=-2.0, tau=0.0)}
 NS = (128, 256, 512, 1024)
 COS = (0.2, 0.5, 0.95)
-ROWS = ("plicRDF", "pointIso")
+ROWS = ("plicRDF", "pointIso", "pointIso-davof")
 def ref(arm, t, side):
     """x_cl and theta of the exact solution; side 0 left ('-'), 1 right ('+')"""
     a = ARMS[arm]
@@ -75,7 +75,8 @@ def planes_boundary(c):
 def load():
     out = []
     for N in NS:
-        for c in sorted(glob.glob(os.path.join(REPO, "studies", "davof", "contactLine_N%d" % N, "*_[0-9][0-9][0-9][0-9][0-9]"))):
+        for c in sorted(glob.glob(os.path.join(REPO, "studies", "davof", "contactLine_N%d" % N, "*_[0-9][0-9][0-9][0-9][0-9]"))
+                        + glob.glob(os.path.join(REPO, "studies", "davof", "contactLineD_N%d" % N, "*_[0-9][0-9][0-9][0-9][0-9]"))):
             r = ka.read_case(c)
             if not r:
                 continue
@@ -90,7 +91,7 @@ def load():
             r["dir"] = c
             r["dx"] = 1.0/N
             for side in (0, 1):
-                errs_th, errs_x, miss = [], [], 0
+                errs_th, errs_x, miss, errs_th1 = [], [], 0, []
                 for row in rows:
                     t = row[0]
                     n_c, x, th = row[1 + 4*side], row[2 + 4*side], row[3 + 4*side]
@@ -99,7 +100,10 @@ def load():
                         continue
                     xr, thr = ref(r["arm"], t, side)
                     errs_th.append(abs(th - thr)); errs_x.append(abs(x - xr)/R0)
+                    if n_c == 1:
+                        errs_th1.append(abs(th - thr))
                 r["Eth%d" % side] = max(errs_th) if errs_th else None
+                r["Eth1c%d" % side] = max(errs_th1) if errs_th1 else None
                 r["Ecl%d" % side] = max(errs_x) if errs_x else None
                 r["miss%d" % side] = miss
                 r["multi%d" % side] = sum(1 for row in rows if row[1 + 4*side] > 1)
@@ -130,26 +134,26 @@ def main():
     for arm, title in (("clB", "Case B (Eq. 36, steady)"), ("clC", "Case C (Eq. 37, periodic, T = 2 tau)"), ("clD", "Case D (no slip, rolling)")):
         for co in COS:
             L.append("\n### %s, OpenFOAM Co target %s\n" % (title, co))
-            L.append("| row | N | ranks | OF Co | steps | status | E_theta L (rad / deg) | E_theta R (rad / deg) | E_cl L | E_cl R | miss L / R | multi L / R | E_1 | liquid volume |dev| | min alpha | max alpha - 1 | wall (s) |")
-            L.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+            L.append("| row | N | ranks | OF Co | steps | status | E_theta L (rad / deg) | E_theta R (rad / deg) | E_theta L, one candidate (rad) | E_theta R, one candidate (rad) | E_cl L | E_cl R | miss L / R | multi L / R | E_1 | liquid volume |dev| | min alpha | max alpha - 1 | wall (s) |")
+            L.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
             for row in ROWS:
                 for N in NS:
                     r = by.get((arm, row, N, co))
                     if r is None:
                         continue
-                    L.append("| %s | %d | %s | %s | %s | %s | %s / %s | %s / %s | %s | %s | %d / %d | %d / %d | %s | %s | %s | %s | %s |" % (
+                    L.append("| %s | %d | %s | %s | %s | %s | %s / %s | %s / %s | %s | %s | %s | %s | %d / %d | %d / %d | %s | %s | %s | %s | %s |" % (
                         row, N, r.get("np"), "%.3f" % r["ofCo"] if r.get("ofCo") else "-", r.get("steps"), r["status2"],
                         f(r["Eth0"]), "-" if r["Eth0"] is None else "%.3f" % math.degrees(r["Eth0"]),
                         f(r["Eth1"]), "-" if r["Eth1"] is None else "%.3f" % math.degrees(r["Eth1"]),
-                        f(r["Ecl0"]), f(r["Ecl1"]), r["miss0"], r["miss1"], r["multi0"], r["multi1"],
+                        f(r["Eth1c0"]), f(r["Eth1c1"]), f(r["Ecl0"]), f(r["Ecl1"]), r["miss0"], r["miss1"], r["multi0"], r["multi1"],
                         f(r["E1"]) if arm == "clC" else "-", f(r["dev"]), f(r["minA"]), f(r["maxA"]), "%.0f" % r["wall"] if r.get("wall") else "-"))
             L.append("\nOrders over dx/R0 (least squares over the completed rungs):\n")
-            L.append("| row | E_theta L | E_theta R | E_cl L | E_cl R | E_1 |")
-            L.append("|---|---|---|---|---|---|")
+            L.append("| row | E_theta L | E_theta R | E_theta L (one candidate) | E_theta R (one candidate) | E_cl L | E_cl R | E_1 |")
+            L.append("|---|---|---|---|---|---|---|---|")
             for row in ROWS:
                 rs = [by[(arm, row, N, co)] for N in NS if (arm, row, N, co) in by and by[(arm, row, N, co)]["status2"] == "completed"]
                 o = lambda k: order([(r["dx"]/R0, r[k]) for r in rs])
-                L.append("| %s | %s | %s | %s | %s | %s |" % (row, *["-" if o(k) is None else "%.2f" % o(k) for k in ("Eth0", "Eth1", "Ecl0", "Ecl1")], "-" if (arm != "clC" or o("E1") is None) else "%.2f" % o("E1")))
+                L.append("| %s | %s | %s | %s | %s | %s |" % (row, *["-" if o(k) is None else "%.2f" % o(k) for k in ("Eth0", "Eth1", "Eth1c0", "Eth1c1", "Ecl0", "Ecl1")], "-" if (arm != "clC" or o("E1") is None) else "%.2f" % o("E1")))
     # Gw1: step 0
     L.append("\n### Gw1: the initial reconstruction (step 0), N 128, Co 0.5\n")
     L.append("| case | row | side | x_num | x_ref | theta_num (deg) | theta_ref (deg) | candidates |")
@@ -185,9 +189,12 @@ def main():
                         d[0], d[1], d[2], xl, math.degrees(d[3]), math.degrees(tl), d[5], d[6], xr, math.degrees(d[7]), math.degrees(tr), d[9], d[10], d[11], d[12]))
     # verdict data
     L.append("\n### Data for the pre-registered statements\n")
-    L.append("- PW1 (case D, E_cl^inf ratio row (1) / row (2) = plicRDF / pointIso, per point; at least 2 required): ")
+    L.append("- PW1 (case D, E_cl^inf ratio row (1) / row (2) = plicRDF / pointIso, and row (1) / row (3) = plicRDF / pointIso-davof, per point; at least 2 required): ")
     for N in NS:
         for co in COS:
+            a3 = by.get(("clD", "pointIso-davof", N, co)); a1 = by.get(("clD", "plicRDF", N, co))
+            if a1 and a3 and a1.get("Ecl0") is not None and a3.get("Ecl0") is not None:
+                L.append("  - row (3) N %d Co %s: L %.3g, R %.3g (E_cl: row1 %s / %s, row3 %s / %s)" % (N, co, a1["Ecl0"]/a3["Ecl0"] if a3["Ecl0"] > 0 else float("inf"), a1["Ecl1"]/a3["Ecl1"] if a3["Ecl1"] > 0 else float("inf"), f(a1["Ecl0"]), f(a1["Ecl1"]), f(a3["Ecl0"]), f(a3["Ecl1"])))
             a1, a2 = by.get(("clD", "plicRDF", N, co)), by.get(("clD", "pointIso", N, co))
             if a1 and a2 and a1.get("Ecl0") is not None and a2.get("Ecl0") is not None:
                 rl = a1["Ecl0"]/a2["Ecl0"] if a2["Ecl0"] > 0 else float("inf")
