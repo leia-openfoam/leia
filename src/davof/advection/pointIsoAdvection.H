@@ -108,6 +108,8 @@ SourceFiles
 #include "bitSet.H"
 #include "zeroField.H"
 
+namespace Foam { namespace reconstruction { class davof; } }
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -186,6 +188,20 @@ class pointIsoAdvection
             //  Intended for debugging
             bool writeIsoFacesToFile_;
 
+        // Face fractions (declared before surf_: the davof reconstruction looks
+        // the registered field alphaf.<group> up when it is constructed)
+
+            //- Key faceFractions: the end-of-step wetted fraction of the swept
+            //  faces is the registered field alphaf.<group> (the t = 0 value
+            //  read from the time directory), the faces no plane sets take
+            //  the default of davofSwept (the upwind cell's new alpha, the
+            //  owner's on a boundary face); else the written field
+            //  pointIsoWetFraction, not used
+            bool faceFractions_;
+
+            //- End-of-step wetted fraction a_f(1)/|S_f| of the swept faces
+            surfaceScalarField wetFraction_;
+
         // Cell and face cutting
 
             //- List of surface cells
@@ -247,8 +263,15 @@ class pointIsoAdvection
             //- Edges of boundary faces of patches that prescribe a velocity
             bitSet bndEdge_;
 
-            //- End-of-step wetted fraction a_f(1)/|S_f| of the swept faces
-            surfaceScalarField wetFraction_;
+            //- Faces whose end-of-step fraction a plane set in this step
+            bitSet afSet_;
+
+            //- The faces with a non-zero face fraction, ascending
+            //  (handed to the davof reconstruction, setWetFaces)
+            labelList wetFaces_;
+
+            //- The davof reconstruction when surf_ is one, else nullptr
+            reconstruction::davof* davofPtr_;
 
             //- Mesh-point velocities of the step (volPointInterpolation)
             vectorField pointU_;
@@ -269,6 +292,17 @@ class pointIsoAdvection
             void extendMarkedCells(bitSet& markedCell) const;
 
             void setProcessorPatches();
+
+            //- The face-fraction field of the key faceFractions
+            static surfaceScalarField makeWetFraction
+            (
+                const volScalarField& alpha1,
+                const bool faceFractions
+            );
+
+            //- The default face fractions of the faces no plane set
+            //  (davofSwept's rule) and the wet-face list
+            void defaultFaceFractions();
 
             //- For each face calculate volumetric face transport during dt
             void timeIntegratedFlux();
@@ -397,7 +431,8 @@ class pointIsoAdvection
             (
                 surfaceScalarField& dVf,
                 const surfaceScalarField& phi,
-                bool returnSyncedFaces=false
+                bool returnSyncedFaces=false,
+                bool withAlphaf=false
             );
 
             //- Check if the face is on processor patch and append it to the

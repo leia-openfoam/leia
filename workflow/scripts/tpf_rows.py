@@ -118,6 +118,9 @@ ROWS = OrderedDict([
     # pointIso (2026-11-16, leia davof-point-iso): plicRDF reconstruction advected by pointIsoAdvection
     # (advectionScheme pointIsoAdvector, selected by materialize.py); the davof keys are inert
     ("pointIso",                 ("plicRDF",  "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
+    # pointIso-davof (2026-11-20): pointIsoAdvection's flux, its end-of-step wetted fractions as the face
+    # fractions alphaf of the DAVOF reconstruction (ring area normal, CCS positioning; key faceFractions)
+    ("pointIso-davof",           ("davof",    "ringArea",  "all",   "0",   "15",  "keep",     "plane",        "none")),
     # The eleventh element (2026-11-06, the fork branch davof-isoAdvector fab3805):
     # the plane positioning, the key `positioning` of the alpha dictionary, which
     # the davof scheme reads since 2026-11-04 and surfaceIteratorPLIC (plicRDF,
@@ -246,6 +249,7 @@ LABELS = OrderedDict([
     ("plicRDF",             "plicRDF"),
     ("isoAlpha",            "isoAlpha"),
     ("pointIso",            "plicRDF + pointIsoAdvection"),
+    ("pointIso-davof",      "DAVOF reconstruction + pointIsoAdvection"),
 ])
 
 COLORS = {
@@ -284,6 +288,7 @@ COLORS = {
     "plicRDF":             "#eb6834",   # plicRDF's orange (make_davof_normal_table.COLORS)
     "isoAlpha":            "#eda100",   # isoAlpha's yellow (make_davof_normal_table.COLORS)
     "pointIso":            "#6a3d9a",
+    "pointIso-davof":      "#1f78b4",
 }
 
 MARKERS = {
@@ -302,7 +307,7 @@ MARKERS = {
     "davof-paraboloidRing-ringFit": "p",
     "davof-paraboloidOne-exact": "+", "davof-paraboloidOne-cellLocal": "1",
     "davof-planeSurf-exact": "x", "davof-planeSurf-ringArea": "D",
-    "plicRDF": "^", "isoAlpha": "v", "pointIso": "o",
+    "plicRDF": "^", "isoAlpha": "v", "pointIso": "o", "pointIso-davof": "s",
     "plicRDF-ccs": "<", "davof-ringArea-vofCutCell": ">",
 }
 
@@ -364,6 +369,8 @@ ENRIGHT_SETTINGS = OrderedDict([
     ("pointIso",           ("closure",         "false", "none",    "normalOnly",         "false")),
     ("pointIsoCompare",    ("closure",         "false", "none",    "normalOnly",         "false")),
     ("pointIsoPoints",     ("closure",         "false", "none",    "normalOnly",         "false")),
+    # row pointIso-davof: the interface cells by normal and alpha as the standing pieces rows
+    ("pointIsoDavof",      ("closure",         "false", "none",    "normalAndAlpha",     "false")),
     ("recommendedProfile", ("signedTets",      "false", "scale",   "normalAndAlpha",     "false")),
     ("recommendedDump",    ("signedTets",      "false", "scale",   "normalAndAlpha",     "false")),
     ("recommendedPieceDump5035", ("signedTets", "false", "scale",   "normalAndAlpha",     "false")),
@@ -390,6 +397,7 @@ ENRIGHT_LABELS = OrderedDict([
     ("pointIso", "pointIsoAdvection"),
     ("pointIsoCompare", "pointIsoAdvection, comparison with isoAdvection"),
     ("pointIsoPoints", "pointIsoAdvection, polygon points printed"),
+    ("pointIsoDavof", "pointIsoAdvection with the DAVOF reconstruction"),
     ("recommendedProfile", "signedTets + scale + normalAndAlpha, phase timers"),
     ("recommendedDump", "signedTets + scale + normalAndAlpha, alpha dump"),
     ("recommendedPieceDump5035", "signedTets + scale + normalAndAlpha, piece dump"),
@@ -433,12 +441,14 @@ def enright_setting_tokens(name):
                 "\n        // diag2 (2026-11-15; leia davof-ccs-pieces): print-only face dump"
                 "\n        sweptPieceDump true;"
                 "\n        sweptPieceDumpStep " + name[len("recommendedPieceDump"):] + ";")
-        if name in ("pointIso", "pointIsoCompare", "pointIsoPoints"):
+        if name in ("pointIso", "pointIsoCompare", "pointIsoPoints", "pointIsoDavof"):
             out["TPF_ENRIGHT_KEYS"] = (
                 "\n        // pointIsoAdvection (leia davof-point-iso, 2026-11-16)"
                 "\n        pointVelocity edgeLinear;")
             if name == "pointIsoCompare":
                 out["TPF_ENRIGHT_KEYS"] += "\n        pointIsoCompare true;"
+            if name == "pointIsoDavof":
+                out["TPF_ENRIGHT_KEYS"] += "\n        faceFractions true;"
             if name == "pointIsoPoints":
                 out["TPF_ENRIGHT_KEYS"] += "\n        pointIsoPrintPoints true;"
         if name in DIAG_KEYS:

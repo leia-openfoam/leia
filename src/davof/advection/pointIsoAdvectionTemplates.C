@@ -502,6 +502,13 @@ void Foam::pointIsoAdvection::advect(const SpType& Sp, const SuType& Su)
     // Note: We should be able to write out alpha before this is done!
     applyBruteForceBounding();
 
+    // The default face fractions of the faces no plane set (key
+    // faceFractions), with alpha after the bounding
+    if (faceFractions_)
+    {
+        defaultFaceFractions();
+    }
+
     // Write surface cell set and bound cell set if required by user
     writeSurfaceCells();
 

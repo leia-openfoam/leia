@@ -7459,3 +7459,24 @@ Gw3: np 1 = np 8 for pointIso on case B, N 128, alpha to 1e-12.
   Youngs-type boundary normal and first order for boundary ELVIRA).
 - PW4 all rows keep the liquid volume to 1e-10 relative and alpha within 1e-8 of [0, 1].
 - PW5 wall clock of rows (2), (3) <= 2 x row (1).
+
+
+### POST HOC 2 of the contact line study (2026-11-20; decisions of the main session, recorded before the first run of row (3))
+
+1. The np 8 runs of the first pass (N 512, N 1024, the first Gw3) were invalid: davofInitContactLine wrote phi as a field that is not flagged oriented, so decomposePar
+   did not flip the sign of the processor patch values (max |div phi| 174 1/s in the np 8 case against round-off in the np 1 case; sum of the two sides of a processor
+   face 2 |phi| instead of 0; the same decomposed field of the standing shear2D case sums to 0). The utility now calls phi.setOriented() (the field written by fvc::flux
+   carries the flag); the np 8 studies are rerun. The rows (1) and (2) of N 128 and N 256 (1 rank) are not affected.
+2. Row (3), pointIso-DAVOF, uses the conventions of davofSwept unchanged, no new rule: (a) pointIso's end-of-step wetted fraction of the swept faces is the registered
+   field alphaf.<group> that the davof reconstruction reads, the t = 0 value read from initDavofFields; (b) a face that no interface cell's plane sweeps in the step takes the
+   default davofSwept uses (internal face: the new alpha (after the bounding) of its upwind cell, phi >= 0 the owner; boundary face: the owner's new alpha); a processor-patch
+   face swept on the other side takes the sender's fraction without a sign change (the exchange of the fluxes carries it); (c) the wet-face list (the faces with alpha_f != 0,
+   ascending) is handed to the reconstruction with setWetFaces as davofSwept does; the reconstruction is the standing one (ring area normal applied to all interface cells,
+   CCS positioning with ccsEndInterval cubic, relative tolerance 1e-12 and floor 1e-15, grazingCut openfoam, interfaceCellRule normalAndAlpha, wispTol 1e-3). Key
+   `faceFractions true` of the alpha dictionary (default false: the other rows are unchanged). If (a) to (c) are not enough, the work stops and is reported.
+3. Gates of row (3) before its study runs. Gr1: plane translation, the gate case of pointIso, N 20 and 40, OpenFOAM Co 0.2 and 0.5, both arms: L1(alpha_f) against the exact
+   plane (areaFractionError), reported with the statement whether it is at round-off. No pass value is pre-set. PREDICTION (the main session's, recorded before the run):
+   L1(alpha_f) between 1e-4 and 1e-2, not at round-off, because pointIso's flux is isoAdvector-like (the face fractions of the end-of-step plane are those of the translated plane
+   only to the order of the isoAdvector flux). Gr2: np 1 against np 8, case B, N 128, Co 0.5, alpha to 1e-12.
+4. Row (3) is added as separate configs contactLineD_N<N> (the CCS keys of its reconstruction differ from those of the rows (1) and (2), whose dictionaries stay unchanged):
+   36 further runs.

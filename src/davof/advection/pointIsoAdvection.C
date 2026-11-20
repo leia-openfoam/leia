@@ -29,6 +29,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "pointIsoAdvection.H"
+#include "davof.H"
 #include "volFields.H"
 #include "interpolationCellPoint.H"
 #include "volPointInterpolation.H"
@@ -105,6 +106,10 @@ Foam::pointIsoAdvection::pointIsoAdvection
     surfCellTol_(dict_.getOrDefault<scalar>("surfCellTol", 1e-8)),
     writeIsoFacesToFile_(dict_.getOrDefault("writeIsoFaces", false)),
 
+    // The face fractions (before surf_)
+    faceFractions_(dict_.getOrDefault<bool>("faceFractions", false)),
+    wetFraction_(makeWetFraction(alpha1, faceFractions_)),
+
     // Cell cutting data
     surfCells_(label(0.2*mesh_.nCells())),
     surf_(reconstructionSchemes::New(alpha1_, phi_, U_, dict_)),
@@ -128,21 +133,18 @@ Foam::pointIsoAdvection::pointIsoAdvection
     printPoints_(dict_.getOrDefault<bool>("pointIsoPrintPoints", false)),
     bndPoint_(mesh_.nPoints()),
     bndEdge_(mesh_.nEdges()),
-    wetFraction_
-    (
-        IOobject
-        (
-            "pointIsoWetFraction",
-            mesh_.time().timeName(),
-            mesh_,
-            IOobject::NO_READ,
-            IOobject::AUTO_WRITE
-        ),
-        mesh_,
-        dimensionedScalar(dimless, Zero)
-    ),
+    afSet_(),
+    wetFaces_(),
+    davofPtr_(nullptr),
     pointU_()
 {
+    davofPtr_ = dynamic_cast<reconstruction::davof*>(&surf_());
+    if (faceFractions_ && !davofPtr_)
+    {
+        FatalErrorInFunction
+            << "faceFractions needs the davof reconstruction, the scheme is "
+            << surf_().type() << exit(FatalError);
+    }
    cutFaceAdvect::debug = debug;
 
     if (pointVelocity_ != "edgeLinear")
@@ -247,6 +249,97 @@ Foam::pointIsoAdvection::pointIsoAdvection
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+Foam::surfaceScalarField Foam::pointIsoAdvection::makeWetFraction
+(
+    const volScalarField& alpha1,
+    const bool faceFractions
+)
+{
+    const fvMesh& mesh = alpha1.mesh();
+    if (faceFractions)
+    {
+        IOobject io
+        (
+            IOobject::groupName("alphaf", alpha1.group()),
+            mesh.time().timeName(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::AUTO_WRITE
+        );
+        if (io.typeHeaderOk<surfaceScalarField>(true))
+        {
+            return surfaceScalarField(io, mesh);
+        }
+        FatalErrorInFunction
+            << "faceFractions: the field " << io.name() << " is not in "
+            << mesh.time().timeName() << "/ (initDavofFields writes it)"
+            << exit(FatalError);
+    }
+    return surfaceScalarField
+    (
+        IOobject
+        (
+            "pointIsoWetFraction",
+            mesh.time().timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh,
+        dimensionedScalar(dimless, Zero)
+    );
+}
+
+
+void Foam::pointIsoAdvection::defaultFaceFractions()
+{
+    const scalarField& a = alpha1In_;
+    const labelList& own = mesh_.faceOwner();
+    const labelList& nei = mesh_.faceNeighbour();
+    const label nInt = mesh_.nInternalFaces();
+    const scalarField& phiIn = phi_.primitiveField();
+    scalarField& afIn = wetFraction_.primitiveFieldRef();
+
+    // The target of a face no plane set: alpha of its upwind cell after the
+    // bounding (the owner's on a boundary face), as davofSwept
+    for (label facei = 0; facei < nInt; ++facei)
+    {
+        if (!afSet_.test(facei))
+        {
+            afIn[facei] = (phiIn[facei] >= 0) ? a[own[facei]] : a[nei[facei]];
+        }
+    }
+
+    const polyBoundaryMesh& pbm = mesh_.boundaryMesh();
+    surfaceScalarField::Boundary& afb = wetFraction_.boundaryFieldRef();
+    DynamicLabelList wet;
+    for (label facei = 0; facei < nInt; ++facei)
+    {
+        if (afIn[facei] != 0) wet.append(facei);
+    }
+    forAll(afb, patchi)
+    {
+        fvsPatchScalarField& pf = afb[patchi];
+        if (pf.size() == 0) continue;
+        const label start = pbm[patchi].start();
+        forAll(pf, i)
+        {
+            const label facei = start + i;
+            if (!afSet_.test(facei))
+            {
+                pf[i] = a[own[facei]];
+            }
+            if (pf[i] != 0) wet.append(facei);
+        }
+    }
+    wetFaces_ = wet;
+    if (davofPtr_)
+    {
+        davofPtr_->setWetFaces(wetFaces_);
+    }
+}
+
 
 void Foam::pointIsoAdvection::setProcessorPatches()
 {
@@ -534,6 +627,8 @@ void Foam::pointIsoAdvection::timeIntegratedFlux()
 
     // The end-of-step wetted fraction of the swept faces
     wetFraction_ = dimensionedScalar(dimless, Zero);
+    afSet_.resize(mesh_.nFaces());
+    afSet_.reset();
 
     // Get necessary references
     const scalarField& phiIn = phi_.primitiveField();
@@ -697,6 +792,7 @@ void Foam::pointIsoAdvection::timeIntegratedFlux()
                             aEnd
                         );
                         wetIn[facei] = aEnd;
+                        afSet_.set(facei);
 
                         if (compareIso_)
                         {
@@ -767,6 +863,7 @@ void Foam::pointIsoAdvection::timeIntegratedFlux()
                     aEnd
                 );
                 wetb[patchi][patchFacei] = aEnd;
+                afSet_.set(facei);
 
                 if (compareIso_)
                 {
@@ -802,8 +899,9 @@ void Foam::pointIsoAdvection::timeIntegratedFlux()
         }
     }
 
-    // Synchronize processor patches
-    syncProcPatches(dVf_, phi_);
+    // Synchronize processor patches (with the face fractions of the key
+    // faceFractions)
+    syncProcPatches(dVf_, phi_, false, faceFractions_);
 
     writeIsoFaces(isoFacePts);
 
@@ -937,7 +1035,8 @@ Foam::DynamicList<Foam::label>  Foam::pointIsoAdvection::syncProcPatches
 (
     surfaceScalarField& dVf,
     const surfaceScalarField& phi,
-    bool returnSyncedFaces
+    bool returnSyncedFaces,
+    bool withAlphaf
 )
 {
     DynamicLabelList syncedFaces(0);
@@ -970,6 +1069,15 @@ Foam::DynamicList<Foam::label>  Foam::pointIsoAdvection::syncProcPatches
 
             UOPstream toNbr(nbrProci, pBufs);
             toNbr << surfCellFacesOnProcPatch << dVfPatch;
+            if (withAlphaf)
+            {
+                const UIndirectList<scalar> afPatch
+                (
+                    wetFraction_.boundaryField()[patchi],
+                    surfCellFacesOnProcPatch
+                );
+                toNbr << afPatch;
+            }
         }
 
         // Limited to involved neighbour procs
@@ -985,10 +1093,15 @@ Foam::DynamicList<Foam::label>  Foam::pointIsoAdvection::syncProcPatches
 
             List<label> faceIDs;
             List<scalar> nbrdVfs;
+            List<scalar> nbrAf;
 
             {
                 UIPstream fromNbr(nbrProci, pBufs);
                 fromNbr >> faceIDs >> nbrdVfs;
+                if (withAlphaf)
+                {
+                    fromNbr >> nbrAf;
+                }
             }
 
             if (returnSyncedFaces)
@@ -1016,6 +1129,12 @@ Foam::DynamicList<Foam::label>  Foam::pointIsoAdvection::syncProcPatches
             {
                 const label facei = faceIDs[i];
                 localFlux[facei] = - nbrdVfs[i];
+                if (withAlphaf)
+                {
+                    // the upwind side's face fraction, no sign change
+                    wetFraction_.boundaryFieldRef()[patchi][facei] = nbrAf[i];
+                    afSet_.set(procPatch.start() + facei);
+                }
                 if (debug && mag(localFlux[facei] + nbrdVfs[i]) > ROOTVSMALL)
                 {
                     Pout<< "localFlux[facei] = " << localFlux[facei]
