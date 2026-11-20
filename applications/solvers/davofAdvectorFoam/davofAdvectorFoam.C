@@ -159,6 +159,19 @@ int main(int argc, char *argv[])
 
         //Advance alpha1 from time t to t+dt
         #include "alphaSuSp.H"
+        if (mesh.solutionDict().subDict("isoAdvector").lookupOrDefault<Switch>("printDivU", false))
+        {
+            // print-only (contact line parallel diagnostic, 2026-11-19): the largest |div(phi)| and the
+            // sum of the boundary fluxes
+            scalar bsum = 0;
+            forAll(phi.boundaryField(), patchi)
+            {
+                bsum += sum(phi.boundaryField()[patchi]);
+            }
+            reduce(bsum, sumOp<scalar>());
+            Info<< "printDivU: max |div(phi)| = " << gMax(mag(divU.field()))
+                << ", sum over the boundary faces of phi = " << bsum << endl;
+        }
         advector->advect(Sp,(Su + divU*min(alpha1(), scalar(1)))());
 
         //Write total VOF and discrepancy from original VOF to log

@@ -103,6 +103,9 @@ int main(int argc, char *argv[])
         mesh,
         dimensionedScalar(dimVol/dimTime, Zero)
     );
+    // a flux: decomposePar flips the sign of its processor patch values only for an oriented field
+    // (the field written by fvc::flux carries the flag; a field built from a dimensionedScalar does not)
+    phi.setOriented();
     forAll(phi.primitiveFieldRef(), facei)
     {
         phi.primitiveFieldRef()[facei] =
