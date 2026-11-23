@@ -1,0 +1,92 @@
+# ============================================================================
+# AMR LINE, LADDER A1 WITH THE ALGEBRAIC RESCALING (2026-11-23, STATUS 11.44).
+# The twin of advTranslationAmr3D: one variable, SL_SOURCE none -> rescaling (order second, trigger
+# gradientDeviation, theta 0.1, the defaults of cases/default.parameter).
+#
+# WHY. MEASURED on advTranslationAmr3D (rescaling off): the band-gradient error (L1)
+# grows from 5e-4 to 5.2e-2 at finest h = 1/128, against 6.9e-3 on the uniform mesh, and
+# the shape error of the finest rung (1.80e-2) is above the middle rung (1.18e-2). At
+# t = 0.9985 the error |psi - distance|/h_fine on the finest level is 0.11 (leading
+# side) against 0.05 (trailing side) in the interface layer and rises to 0.33 in layers
+# 6 to 8 and 0.60 in the coarse cells ahead. HYPOTHESIS: psi ahead of the band is
+# transported on coarse cells, lags, and enters the fine band at its leading edge.
+#
+# PRE-REGISTERED READ-OUT (before the run). Metrics at t = T, norms L1 and L2 only.
+#   R1  every case completes; the log has at least one rescaling event per AMR case.
+#   R2  AMR with rescaling: the band-gradient error (L1) is at most 2 times the one of
+#       the uniform mesh WITHOUT rescaling at equal finest h (5.5e-2 at 1/64, 6.9e-3 at
+#       1/128), and the smallest |grad psi| in the band stays above 0.9.
+#   R3  AMR with rescaling: the shape error falls at every rung, with an order of at
+#       least 1.5 over both rung pairs.
+#   R4  uniform with rescaling: shape error and |volume error| at most 1.5 times the
+#       uniform values without rescaling (the rescaling does no harm on a uniform mesh).
+#   FALSIFIED (the rescaling does not remove the defect) if the AMR band-gradient error
+#   at h = 1/128 stays above 2e-2, or if the shape error of the finest rung is above
+#   the middle rung.
+#   The AMR volume error is NOT judged: its reference volume comes from the unrefined
+#   initial mesh (a measurement defect, STATUS 11.44).
+# ============================================================================
+study_name: advTranslationAmrRescale3D
+case: 3Dtranslation
+mesh: hex
+mode: parallel
+np: 16
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  N_CELLS:
+  - '16'
+  - '32'
+  - '64'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '1.0'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - translate
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - signedDistance
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - cubicLatticeQuadraticWeightedLeastSquares
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - rescaling
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - blastAMR
+  SL_MESH_TRANSFER:
+  - quadraticFit
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: processors
+studies_dir: studies/slAmr
