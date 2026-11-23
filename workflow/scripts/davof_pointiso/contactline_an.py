@@ -153,7 +153,7 @@ def main():
             for row in ROWS:
                 rs = [by[(arm, row, N, co)] for N in NS if (arm, row, N, co) in by and by[(arm, row, N, co)]["status2"] == "completed"]
                 o = lambda k: order([(r["dx"]/R0, r[k]) for r in rs])
-                L.append("| %s | %s | %s | %s | %s | %s |" % (row, *["-" if o(k) is None else "%.2f" % o(k) for k in ("Eth0", "Eth1", "Eth1c0", "Eth1c1", "Ecl0", "Ecl1")], "-" if (arm != "clC" or o("E1") is None) else "%.2f" % o("E1")))
+                L.append("| %s | %s | %s | %s | %s | %s | %s | %s |" % (row, *["-" if o(k) is None else "%.2f" % o(k) for k in ("Eth0", "Eth1", "Eth1c0", "Eth1c1", "Ecl0", "Ecl1")], "-" if (arm != "clC" or o("E1") is None) else "%.2f" % o("E1")))
     # Gw1: step 0
     L.append("\n### Gw1: the initial reconstruction (step 0), N 128, Co 0.5\n")
     L.append("| case | row | side | x_num | x_ref | theta_num (deg) | theta_ref (deg) | candidates |")
