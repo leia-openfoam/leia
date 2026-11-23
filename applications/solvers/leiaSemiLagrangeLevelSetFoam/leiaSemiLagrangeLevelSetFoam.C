@@ -134,6 +134,11 @@ int main(int argc, char *argv[])
 
     #include "errorCalculation.H"
 
+    if (dynamicMesh)
+    {
+        #include "initialAdaptation.H"
+    }
+
     while (runTime.run())
     {
         #include "CourantNo.H"

@@ -160,6 +160,10 @@ levelSet
 
         reconstruction      @!SL_RECONSTRUCTION!@;
 
+        // Transfer of psi to a refined, unrefined or redistributed mesh (RTS
+        // slMeshTransfer): none | quadraticFit. Read on a dynamic mesh only.
+        meshTransfer        @!SL_MESH_TRANSFER!@;
+
         // ---- correction strategy (RTS slCorrector) ----
         //   direct             : one reconstruction pass. Use with the stable value-fitting
         //                        reconstructions (quadraticWeightedLeastSquares). DEFAULT.

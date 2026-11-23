@@ -351,6 +351,15 @@ CURVATURE_INVERSE_GAUSSIAN yes;
 // what separates the two.
 PSI_SURFACE signedDistanceEllipse; // implicitSurface.type for the ellipse/ellipsoid gate cases
 WRITE_INTERVAL 0.02;    // controlDict writeInterval [s] (runTime write control)
+DYNAMIC_MESH staticMesh; // constant/dynamicMeshDict of 3Dtranslation, 3Dshear, 3Ddeformation:
+                        // staticMesh (default: the mesh does not change, as in every run
+                        // before 2026-11-23) | blastAMR (adaptive refinement with load
+                        // balancing, a uniform band of finest cells around the interface).
+                        // Measured: open, STATUS 11.44.
+SL_MESH_TRANSFER none;  // levelSet.semiLagrangian.meshTransfer: none | quadraticFit (psi on
+                        // new child cells and merged cells from the quadratic fit, exact
+                        // for a quadratic field). Read on a dynamic mesh only.
+                        // Measured: open, STATUS 11.44.
 PURGE_WRITE 0;          // controlDict purgeWrite: 0 keeps every written time (the value of
                         // every template before 2026-11-18, so the default is inert); 2 keeps
                         // the last two written times, enough to look at the state before a

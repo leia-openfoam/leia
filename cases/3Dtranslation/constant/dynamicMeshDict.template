@@ -1,0 +1,22 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     |
+    \\  /    A nd           |
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// The mesh of the run: DYNAMIC_MESH = staticMesh (default; the mesh does not change)
+// or blastAMR (adaptive refinement with load balancing, STATUS 11.44). The two
+// variants are the files dynamicMeshDict.<DYNAMIC_MESH> next to this one.
+#include "dynamicMeshDict.@!DYNAMIC_MESH!@"
+
+// ************************************************************************* //

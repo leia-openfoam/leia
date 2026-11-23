@@ -326,6 +326,10 @@ levelSet
         fit                 @!SL_FIT!@;
         reconstruction      @!SL_RECONSTRUCTION!@;
 
+        // Transfer of psi to a refined, unrefined or redistributed mesh (RTS
+        // slMeshTransfer): none | quadraticFit. Read on a dynamic mesh only.
+        meshTransfer        @!SL_MESH_TRANSFER!@;
+
         // Reconstruction stencil: point = cell-point-cell (default; required on
         // hex), face = cell-face-cell (polyhedra only -- compact, ~3-4x smaller).
         stencil             @!SL_STENCIL!@;
