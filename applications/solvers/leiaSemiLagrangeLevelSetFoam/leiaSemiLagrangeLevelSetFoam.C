@@ -48,6 +48,10 @@ Description
 #include "prescribedVelocityModels.H"
 #include "slAdvection.H"
 #include "velocityExtension.H"
+#include "slMeshTransfer.H"
+#include "slRefinementBand.H"
+#include "levelSetImplicitSurfaces.H"
+#include "profile.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -139,8 +143,18 @@ int main(int argc, char *argv[])
         Info<< "deltaT = " << runTime.deltaT().value() << nl << endl;
 
         // Mesh adaptation, before anything of this step reads the mesh. psi holds
-        // psi^n here. A static mesh returns false.
+        // psi^n here. A static mesh returns false, and none of the three blocks
+        // below runs for it.
+        if (dynamicMesh)
+        {
+            refinementBand->calc(psi);     // the indicator that the mesh reads
+            meshTransfer->store(psi);      // what the transfer of psi needs
+        }
         mesh.update();
+        if (dynamicMesh && mesh.topoChanging())
+        {
+            #include "rebuildAfterMeshChange.H"
+        }
 
         // u^{n+1}: rescale U (and phi) by cos(pi t^{n+1}/tau) for the reversed
         // (oscillating) test; identity for the steady case.
@@ -253,6 +267,10 @@ int main(int argc, char *argv[])
           < 0.5*runTime.deltaTValue();
         if (!reportAtWriteTimesOnly || runTime.writeTime() || finalStep)
         {
+            if (dynamicMesh)
+            {
+                #include "referenceOnPresentMesh.H"
+            }
             phaseInd->calcPhaseIndicator(alpha, psi);
 
             reportErrors(

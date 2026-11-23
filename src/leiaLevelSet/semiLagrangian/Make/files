@@ -27,6 +27,9 @@ pointValueScheme.C
 fluxFormScheme.C
 normalProjectedScheme.C
 slAdvection.C
+meshTransfer/slMeshTransfer.C
+meshTransfer/slQuadraticFitMeshTransfer.C
+meshTransfer/slRefinementBand.C
 source/slSource.C
 source/slGradientControlSource.C
 

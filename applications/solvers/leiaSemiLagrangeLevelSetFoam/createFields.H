@@ -83,3 +83,43 @@ U.write();
 // Semi-Lagrangian advection engine (reconstruction selected from
 // levelSet.semiLagrangian.reconstruction; default quadraticWeightedLeastSquares).
 autoPtr<slAdvection> slAdv = slAdvection::New(mesh);
+
+// ---- dynamic mesh (AMR line, STATUS 11.44) -------------------------------------
+// Nothing below changes a run on a static mesh: `none` is the inert transfer, and
+// the band and the reference profile are built for a dynamic mesh only.
+const bool dynamicMesh = mesh.dynamic();
+autoPtr<slMeshTransfer> meshTransfer = slMeshTransfer::New(mesh);
+autoPtr<slRefinementBand> refinementBand;
+// The exact reference of the error metrics on the PRESENT mesh: the profile of
+// the implicit surface, evaluated at x for a flow that returns and at x - U T for
+// `endReference translate` (the one-way translation). On a static mesh the
+// reference fields psiEnd/alphaEnd of the pre-processing are used, as before.
+autoPtr<implicitSurface> referenceSurface;
+autoPtr<profile> referenceProfile;
+vector referenceShift(Zero);
+if (dynamicMesh)
+{
+    refinementBand.reset(new slRefinementBand(mesh));
+    const dictionary& lsDict = mesh.solutionDict().subDict("levelSet");
+    const dictionary& surfDict = lsDict.subDict("implicitSurface");
+    referenceSurface = implicitSurface::New(surfDict.get<word>("type"), surfDict);
+    referenceProfile = profile::New(mesh, referenceSurface.ref());
+    const word endReference
+    (
+        mesh.solutionDict().getOrDefault<word>("endReference", "none")
+    );
+    if (endReference == "translate")
+    {
+        referenceShift =
+            mesh.solutionDict().subDict("velocityModel").get<vector>("velocity")
+           *runTime.endTime().value();
+    }
+    else if (endReference != "none")
+    {
+        FatalErrorInFunction
+            << "endReference " << endReference << ": none | translate"
+            << exit(FatalError);
+    }
+    Info<< "Dynamic mesh: meshTransfer " << meshTransfer->type()
+        << ", reference shift " << referenceShift << nl << endl;
+}

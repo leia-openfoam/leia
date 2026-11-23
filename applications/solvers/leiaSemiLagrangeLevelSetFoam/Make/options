@@ -4,7 +4,8 @@ EXE_INC = \
     -I$(LIB_SRC)/meshTools/lnInclude \
     -I$(LIB_SRC)/dynamicFvMesh/lnInclude \
     -I$(LIB_SRC)/sampling/lnInclude \
-    -I../../../src/leiaLevelSet/lnInclude
+    -I../../../src/leiaLevelSet/lnInclude \
+    -I../../../src/levelSetImplicitSurfaces/lnInclude
 
 EXE_LIBS = \
     -L$(FOAM_USER_LIBBIN) \
@@ -16,4 +17,5 @@ EXE_LIBS = \
     -lleiaVelocityExtension \
     -lleiaSemiLagrangian \
     -lleiaGradientControl \
-    -lleiaCore
+    -lleiaCore \
+    -llevelSetImplicitSurfaces
