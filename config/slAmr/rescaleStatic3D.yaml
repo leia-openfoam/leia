@@ -1,0 +1,82 @@
+# NOT RUNNABLE YET: a documented stub. Do not pass this file to snakemake.
+# ============================================================================
+# THE ALGEBRAIC RESCALING ON THE SEMI-LAGRANGIAN LINE, APPLIED ONCE, STATIC 3D
+# (work package 3 of the plan "SLLS on cubic meshes with dynamic AMR"; STATUS 11.44).
+#
+# WHAT. The static test of the slSource model `rescaling`
+# (src/leiaLevelSet/semiLagrangian/source/slRescalingSource.H): zero velocity, an
+# initial psi that is not a signed distance, ONE event of the map with the gradient and
+# the Hessian of the semi-Lagrangian fit, then the distance error of psi. The Eulerian
+# pattern is config/staticSource/staticSourceRescaleOnce2D.yaml on cases/2DstaticCircle.
+#
+# ONE VARIABLE. SL_RESCALE_ORDER first | second, against the control SL_SOURCE none.
+#
+# WHAT IS MISSING (each item is needed before this study can run):
+#   M1  A static 3D case for leiaSemiLagrangeLevelSetFoam. cases/2DstaticCircle is 2D
+#       and its per-case layer sets ADVECTION eulerian and solver leiaLevelSetFoam; no
+#       committed study runs it with the semi-Lagrangian solver. cases/3Dtranslation and
+#       cases/3Ddeformation with a zero end time are not a static test and are not used
+#       (CLAUDE.md "A wrong setup voids its data"). The case needs: u = 0 as problem
+#       data, the mesh patches checked in constant/polyMesh/boundary, zeroGradient psi
+#       on every patch.
+#   M2  The non-distance initial fields in 3D. The INIT_FIELD family of 2DstaticCircle
+#       (sdf, blendH2, blendH1, blend01, algNorm, alg, modM2, modM4) is written for the
+#       circle with setExprFields. The sphere needs its own set, with r^2 - R^2 (`alg`)
+#       as the start for which the second-order map is exact.
+#   M3  The static metrics for the semi-Lagrangian solver: dist3_2 = L2 of (psi - d)/h in
+#       |d| <= 3 h, the zero-crossing error and the Detrixhe-Aslam volume against those
+#       of d. The static-source post-processing reads the output of leiaLevelSetFoam.
+#   M4  A token for the key `maxEvents` of the model (the key exists, default -1). The
+#       once-test needs maxEvents 1 with SL_RESCALE_TRIGGER everyStep, or a start field
+#       that fires the trigger gradientDeviation in step 1. Add the token with the inert
+#       default -1 in cases/default.parameter and in every template, in one commit.
+#   M5  A check that the step at u = 0 is the identity for the semi-Lagrangian solver
+#       (psi after the characteristic step equals psi before it at tolerance 0), so that
+#       the only change of psi is the map. The Eulerian static test had a solver dead
+#       zone at u = 0 (void of 2026-10-14); the semi-Lagrangian step has no linear solve,
+#       but the identity must be measured, not assumed.
+#   M6  The built model. No compiler was available when the model was written.
+#
+# PRE-REGISTERED READ-OUT (2026-11-23, before any build or run; the criteria are those
+# of staticSourceRescaleOnce2D, R1 to R4, applied as written there: dist3_2 after one
+# event, least-squares order over the ladder, at N >= the second rung).
+#   PREDICTION (HYPOTHESIS, no measurement):
+#   S1  second order, start r^2 - R^2: dist3_2 after the event is at round-off if the
+#       quadratic fit reproduces a quadratic psi exactly; otherwise order >= 1.7.
+#   S2  second order, the other algebraic starts: order of dist3_2 >= 1.7.
+#   S3  first order: order of dist3_2 = 1 +- 0.3 (the model term -(B/2A) d^2).
+#   S4  the zero crossings and the Detrixhe-Aslam volume after the event are within 10 %
+#       of those of d on the same mesh (second order).
+#   S5  start d (a signed distance): the trigger gradientDeviation does not fire, and
+#       with trigger everyStep dist3_2 after one event is <= 1e-3.
+#   FALSIFIED IF
+#   SF1 second order: the order of dist3_2 is below 1.5 for a start that is not at
+#       round-off.
+#   SF2 a cell value changes its sign in the event (the factor is positive by
+#       construction; a sign change is a defect of the implementation).
+#   SF3 the SL_SOURCE none control changes psi at u = 0 (item M5 fails).
+#   REPORT L1 and L2 only. An error at round-off has no order.
+#
+# The keys below are the intended study. The case name is a placeholder that does not
+# exist, so a run of this file fails at the first rule.
+# ============================================================================
+study_name: rescaleStatic3D
+case: MISSING_static3D_SL_case   # item M1; cases/ has no such folder
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangeLevelSetFoam
+theme: semi-lagrangian-level-set
+studies_dir: studies/slAmr
+keep_fields: last
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
+axes_override:
+  SL_SOURCE: ["none", "rescaling"]
+  SL_RESCALE_ORDER: ["first", "second"]
+  SL_RESCALE_TRIGGER: ["everyStep"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  PHASE_INDICATOR: [detrixheAslam]
+  PURGE_WRITE: ['2']
