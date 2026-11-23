@@ -390,6 +390,18 @@ def band_check(case, mode, band_cells, alpha_name="alpha.water", toks=None,
                 "nBandOutsideFine": n_band_outside, "minPsiOverHfine": min_psi_over_h,
                 "fineLayersWorst": fine_layers,
                 "fineExtentOverHfine": (max(fine_psi) / h_fine) if fine_psi else 0.0})
+    # Two or more levels: the width of each intermediate level between the finest band
+    # and the next coarser level, in cells of that level. It is the difference of the
+    # nearest cell-centre distances |psi| of "level <= l" and of "level < l". REPORT
+    # ONLY: no status depends on it. Not executed for one level (top == 1), so the
+    # one-level refinedBand.csv is unchanged.
+    if mode == "hex" and top >= 2:
+        for l in range(top - 1, 0, -1):
+            inner = [abs(psi[i]) for i in range(n) if lev[i] <= l]
+            outer = [abs(psi[i]) for i in range(n) if lev[i] < l]
+            h_l = h_fine * 2 ** (top - l)
+            res[f"bufferCellsL{l}"] = ((min(outer) - min(inner)) / h_l
+                                       if inner and outer else float("inf"))
     # Where the grading ends, without a size threshold: median cell size in bands of
     # distance from the interface (in fine cells). On a cfMesh mesh the dual cells of one
     # octree level scatter in size, so a single fine/coarse split over-counts "fine"
