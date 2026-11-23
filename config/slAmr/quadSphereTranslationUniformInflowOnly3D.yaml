@@ -1,0 +1,84 @@
+# ============================================================================
+# AMR LINE, QUADRATIC SPHERE, PATCH FACES AS DATA ON INFLOW FACES ONLY (2026-11-23).
+# The twin of quadSphereTranslationUniform3D: SL_STENCIL_BOUNDARY_FACES include -> inflowOnly.
+#
+# WHY. RESULT of the `exclude` runs (drivers 57110319 to 57110322): every case diverges,
+# also on the uniform mesh (E_PSI 1e32 to 1e145). The fit without any patch face is
+# unstable (STATUS 11.41 measured an amplification of 1.25 per step with exclude), so
+# that test gives no information on the hypothesis. DERIVED estimate for the hypothesis:
+# a wrong datum on an OUTFLOW face excites the upstream mode of a centred second-order
+# scheme, which decays by about (1 - Co)/(1 + Co) per cell: 0.33 at Co 0.5 (fine cells),
+# 0.78 at Co 0.125 (level-0 cells). Six coarse cells give 0.22; the map has 2.6e-2 there
+# for a data error of about 5e-2.
+#
+# PRE-REGISTERED READ-OUT (before the run), E_PSI = max |psi - exact| in the interface
+# cells at t = T:
+#   I1  both cases complete without divergence.
+#   I2  AMR: E_PSI is at most 1e-2 times the value with `include` (1.6e-3), that is at
+#       most 1.6e-5. (Not round-off: the inflow faces keep the zeroGradient datum.)
+#   FALSIFIED (the outflow datum is not the cause) if the AMR E_PSI stays above 5e-4.
+# ============================================================================
+study_name: quadSphereTranslationUniformInflowOnly3D
+case: 3Dtranslation
+mesh: hex
+mode: parallel
+np: 48
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  N_CELLS:
+  - '128'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '1.0'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - translate
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - quadraticSphere
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - cubicLatticeQuadraticWeightedLeastSquares
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_STENCIL_BOUNDARY_FACES:
+  - inflowOnly
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - staticMesh
+  SL_MESH_TRANSFER:
+  - none
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: last
+studies_dir: studies/slAmr
