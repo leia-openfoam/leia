@@ -423,6 +423,38 @@ void Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::build()
         parentCentreFld_.primitiveFieldRef()[c] =
             parentPoint_[c] >= 0 ? pts[parentPoint_[c]] : mesh_.C()[c];
     }
+    // An INCOMPLETE parent: some of its children are refined again, so fewer
+    // than 2^d cells of this level share the parent centre point. The mean of
+    // the present children is the value of a linear field at the CENTROID of
+    // their centres, not at the parent centre. The datum of such a parent is
+    // placed at that centroid. MEASURED 2026-11-23 (leiaTestMeshTransfer, STATUS
+    // 11.44 item 12): with the datum at the parent centre the fit of a linear
+    // field had a gradient error of h/64 ... 1.6e-2 in the cells next to such a
+    // parent, on a blastAMR mesh with three levels.
+    label nIncomplete = 0;
+    {
+        const scalar full = scalar(label(1) << activeDirs_.size());
+        vectorField sumC(mesh_.nPoints(), Zero);
+        forAll(parentPoint_, c)
+        {
+            if (parentPoint_[c] >= 0) { sumC[parentPoint_[c]] += mesh_.C()[c]; }
+        }
+        syncTools::syncPointList(mesh_, sumC, plusEqOp<vector>(), vector::zero);
+        forAll(parentPoint_, c)
+        {
+            const label pp = parentPoint_[c];
+            if (pp >= 0 && parentCount_[pp] < full - 0.5)
+            {
+                parentCentreFld_.primitiveFieldRef()[c] =
+                    sumC[pp]/max(parentCount_[pp], scalar(1));
+                ++nIncomplete;
+            }
+        }
+        reduce(nIncomplete, sumOp<label>());
+    }
+    Info<< "cubicLatticeQuadraticWeightedLeastSquares: cells of an incomplete "
+        << "parent (datum at the centroid of the present children): "
+        << nIncomplete << endl;
     // A physical patch face has the level -1. This marks a boundary-face entry
     // of the stencil on every rank: the index test stencilIsBoundaryFace() finds
     // only the faces of the own rank, and a patch face of another rank looked
