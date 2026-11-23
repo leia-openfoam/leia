@@ -1,0 +1,104 @@
+# ============================================================================
+# THE ALGEBRAIC RESCALING ON THE SEMI-LAGRANGIAN LINE, 3D SHEAR, UNIFORM HEXAHEDRA
+# (work package 3 of the plan "SLLS on cubic meshes with dynamic AMR"; STATUS 11.44).
+#
+# WHAT. Case 3Dshear, mesh hex, solver leiaSemiLagrangeLevelSetFoam, N = 32, 64, 128.
+# The slSource model `rescaling` (src/leiaLevelSet/semiLagrangian/source/
+# slRescalingSource.H) multiplies psi_c by a positive factor after the characteristic
+# step, with the gradient g and the Hessian of the semi-Lagrangian fit:
+#   SL_RESCALE_ORDER first    psi_c <- psi_c/|g|
+#   SL_RESCALE_ORDER second   psi_c <- 2 psi_c/(|g| + sqrt(max(|g|^2 - 2 psi_c n.H.n, 0)))
+# Region: the registered NarrowBand (signChange) plus 3 layers of face neighbours.
+# Trigger: the map runs in a step only if max||g| - 1| > SL_RESCALE_THETA in the region.
+#
+# ONE VARIABLE. SL_SOURCE none | rescaling. Inside the rescaling arm the two axes of the
+# model: the order (first | second) and theta (0.05 | 0.1 | 0.2). Every other axis is
+# that of config/advConv3DshearHex.yaml, arm SL_VALUE_BOUND none: mesh, CFL, time-step
+# law, horizon, reconstruction, phase indicator. The reconstruction is
+# uncachedQuadraticWeightedLeastSquares, which implements fitDerivatives.
+#
+# CONTROL. The workflow renders the full product of the axes, so the SL_SOURCE none arm
+# appears 6 times per rung (the two SL_RESCALE axes are inert there). These copies are
+# the null arm: compare their metric CSVs with
+#   workflow/scripts/compare_metrics_csv.py A.csv B.csv --tol 0 \
+#       --skip ELAPSED_CPU_TIME,ELAPSED_CLOCK_TIME
+# A difference between two copies voids the study. The none arm must also reproduce
+# the none arm of advConv3DshearHex on the same commit and binaries.
+#
+# THE RECORD. On the Eulerian line the map applied every step failed and the map applied
+# once worked (docs/knowledge-base/concepts/algebraic-rescaling-eulerian.md; negative-log
+# 2026-10-31). The semi-Lagrangian form is not measured. This study does not use the
+# trigger everyStep.
+#
+# PRE-REGISTERED READ-OUT (2026-11-23, before any build or run). All norms are L1 or L2.
+# The metrics are read at t = END_TIME = 3.0 (the reversed flow: shape and volume at T).
+# Events = the number of "slRescalingSource: event" lines of the solver log.
+#   PREDICTION (HYPOTHESIS, no measurement):
+#   P1  every arm completes at every rung.
+#   P2  the order of E_GEOM_ALPHA_REL of every rescaling arm, over each rung pair, is
+#       within 0.3 of the order of the none arm.
+#   P3  E_GEOM_ALPHA_REL and |E_VOL_ALPHA_REL| of every rescaling arm are at most 2 times
+#       those of the none arm at N = 64 and N = 128. E_BOUND_ALPHA stays at round-off.
+#   P4  the number of events falls when theta rises, at every rung and for both orders,
+#       and at theta = 0.2 the events are fewer than half of the steps.
+#   P5  the second-order map changes the shape error less than the first-order map at
+#       N = 128 (the first-order map has the model error -(B/2A) d^2).
+#   FALSIFIED IF
+#   F1  a rescaling arm diverges (foam_log_state.sh: DIVERGED). This is the every-step
+#       failure of the Eulerian line on the semi-Lagrangian line.
+#   F2  the order of E_GEOM_ALPHA_REL of a rescaling arm is more than 0.3 below the none
+#       arm over the pair N = 64, 128, or its error is more than 2 times that of the none
+#       arm at N = 128. A lower error with a lower order is a floor, not a gain.
+#   F3  at theta = 0.2 the map runs in more than 90 % of the steps at N = 128. The
+#       trigger then does not select events, and the arm is the every-step map.
+#   F4  the skipped cells (|g| < gradFloor or fit order 0) exceed 1 % of the rescaled
+#       cells in any event. The floor then binds (CLAUDE.md "No free parameters", item 3).
+#   REPORT per arm and rung: E_GEOM_ALPHA_REL, E_VOL_ALPHA_REL, E_BOUND_ALPHA with the
+#   observed orders, the number of events, the largest max||g| - 1| of the event lines,
+#   the cells rescaled and skipped, and the wall clock. NEVER an L_inf order.
+#   NOT COVERED: the gradient error at T/2 (this config writes lean output); the
+#   polyhedral rung; a mesh with refinement. A pass here is not a pass of those.
+#
+# BEFORE THE CLUSTER: the model is not built yet. Build it, run the 4-rank check of
+# CLAUDE.md ("Run it on 4 ranks before it leaves the laptop") on Lichtenberg, and run
+# the advection regression set with SL_SOURCE none (bit-identity against the pre-change
+# state) before this study.
+#
+# LEAN OUTPUT: keep_fields last and PURGE_WRITE 2 (the file limit of the scratch file
+# system, STATUS 11.41 item 7).
+# ============================================================================
+study_name: rescaleShear3D
+case: 3Dshear
+mesh: hex
+mode: parallel
+np: 48
+solver: leiaSemiLagrangeLevelSetFoam
+theme: semi-lagrangian-level-set
+studies_dir: studies/slAmr
+solve_runtime: 1440
+keep_fields: last
+axes_override:
+  SL_SOURCE: ["none", "rescaling"]
+  SL_RESCALE_ORDER: ["first", "second"]
+  SL_RESCALE_THETA: ['0.05', '0.1', '0.2']
+  SL_RESCALE_TRIGGER: ["gradientDeviation"]
+  SL_VALUE_BOUND: ["none"]
+  SL_CONE_L_MODE: ["unity"]
+  SL_CONE_INADMISSIBLE: ["cellOnly"]
+  SL_CONE_L: [1]
+  SL_LIMITER: ["none"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_STENCIL: ["point"]
+  SL_CLIP: ["false"]
+  SL_CLIP_REGION: ["all"]
+  SL_CLIP_KEEP_EXTREMA: ["false"]
+  PHASE_INDICATOR: [detrixheAslam]
+  N_CELLS: [32, 64, 128]
+  CFL: [0.3]
+  END_TIME: [3.0]
+  PURGE_WRITE: ['2']
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

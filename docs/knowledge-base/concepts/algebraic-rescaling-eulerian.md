@@ -97,3 +97,6 @@ Settled on the Lichtenberg ladder (STATUS 11.28 items 7 and 8). R1 for r^2 - R^2
 reads FAIL as written because the order of a round-off error is meaningless and the read-out had
 no clause for it; the value is round-off. The report's earlier phrase "a pointwise map with no
 growth mechanism" was wrong and is corrected there.
+
+### 2026-11-23
+The semi-Lagrangian form is implemented as the slSource model `rescaling` (`src/leiaLevelSet/semiLagrangian/source/slRescalingSource.H`, tokens `SL_RESCALE_*`, configs `config/slAmr/`): the derivatives of the quadratic fit, a trigger on max||g| - 1| > theta. Not built and not measured (STATUS 11.44).

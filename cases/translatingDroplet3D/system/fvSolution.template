@@ -556,6 +556,11 @@ levelSet
         {
             type        @!SL_SOURCE!@;
             bandCells   @!SL_SOURCE_BAND_CELLS!@;
+            // rescaling only (inert for every other type): the algebraic rescaling
+            // of psi with the fit derivatives; it runs if max||g| - 1| > theta.
+            order       @!SL_RESCALE_ORDER!@;     // first | second
+            trigger     @!SL_RESCALE_TRIGGER!@;   // gradientDeviation | everyStep
+            theta       @!SL_RESCALE_THETA!@;
             qScheme     @!GC_Q_SCHEME!@;
             anchorInterface @!GC_ANCHOR_INTERFACE!@;
             strainNormal @!GC_STRAIN_NORMAL!@;

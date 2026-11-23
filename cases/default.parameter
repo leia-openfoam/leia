@@ -1115,6 +1115,20 @@ SL_TRACE_FLUX physical;
 // below, in the band |psi|/|grad psi| <= SL_SOURCE_BAND_CELLS*h (Phase D3).
 SL_SOURCE none;
 SL_SOURCE_BAND_CELLS 3;
+// SL_SOURCE rescaling (slRescalingSource, WP3 of the SLLS-AMR plan): the algebraic
+// rescaling of psi with the gradient g and the Hessian of the semi-Lagrangian fit.
+// INERT with SL_SOURCE none or gradientControl: only the model rescaling reads the
+// three entries. The model needs SL_RECONSTRUCTION (or SL_GEOMETRY_FIT) with
+// fitDerivatives: quadraticWeightedLeastSquares or uncachedQuadraticWeightedLeastSquares.
+// The order of the map: first (psi/|g|) | second (the quadratic root).
+// Measurement: open, STATUS 11.44.
+SL_RESCALE_ORDER second;
+// The threshold of the trigger, dimensionless: the map runs in a step only if
+// max||g| - 1| > theta in the band. Measurement: open, STATUS 11.44.
+SL_RESCALE_THETA 0.1;
+// The trigger: gradientDeviation (the threshold above) | everyStep (a research
+// instrument for the control arm). Measurement: open, STATUS 11.44.
+SL_RESCALE_TRIGGER gradientDeviation;
 // How the gradientControl source computes q = |grad psi| (inert default: centred, the
 // fvc::grad of the case's gradPsiSource scheme). upwindFit: the upwind-weighted mean of
 // the upwind face neighbours' fit gradients, evaluated at the cell centre (STATUS 11.26:
