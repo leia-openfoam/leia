@@ -1,0 +1,82 @@
+# STATIC GATE (C1): delivered face curvature on a triaxial ellipsoid, 3D, UNIFORM
+# hexahedral mesh. The uniform reference ladder of the pre-print on the semi-Lagrangian
+# level set with adaptive mesh refinement. The twin on the statically refined mesh is
+# config/slAmr/curvatureEllipsoidBand3D.yaml (study C2).
+#
+# WHAT IS MEASURED. The test application leiaTestMeanCurvature evaluates the face
+# curvature kappa_f once on an ellipsoid with the half-axes 0.21, 0.15, 0.107 (centre
+# 0.35 0.35 0.35, unit box). It scores every delivery on the active faces
+# (|snGrad(alpha)| > 1e-8 max) against the exact curvature at the closest point of the
+# interface. The output is leiaTestFaceCurvature.csv, one row per delivery.
+#
+# THE ROWS THAT THE PRE-PRINT SHOWS. The application has no curvature-model token: it
+# writes one row per delivery in one run, so this config has no model axis.
+#   solverCellCentreInverse     the production delivery: curvatureExtension
+#                               cellCentreInverse with the Gaussian curvature K
+#                               (CURVATURE_INVERSE_GAUSSIAN yes, the default).
+#   solverCellCentreInverseNoK  the control without K (first order in 3D).
+#   quadraticCellCentre, FOOT_POINT 1   the reference: the per-face inverse with K.
+# The curation reads only these rows. It reports L1 and L2, never an L_inf order.
+#
+# THE SETTLED NUMBERS (METHOD.md section 4.1, MEASURED 2026-09-29, laptop, v2512;
+# docs/knowledge-base/cases/curvature-static-gates.md; study faceCurvatureEllipsoid3D).
+# Active-face E_L2 [1/m] at N = 32 / 50 / 80 / 128:
+#   signed distance, solverCellCentreInverse:    0.698 / 0.166 / 0.0571 / 0.0231,
+#                                                fitted order 2.10 over N = 50 to 128
+#   signed distance, solverCellCentreInverseNoK: 1.82 / 1.30 / 0.825 / 0.508, order 1.00
+#   signed distance, per-face inverse:           0.643 / 0.193 / 0.0689 / 0.0286, order 2.03
+#   implicit psi, solverCellCentreInverse:       1.08 / 0.727 / 0.475 / 0.309, order 0.91
+#     (that foliation is not parallel; every delivery is first order there)
+#
+# THE VARIABLES: N_CELLS, and PSI_SURFACE as in config/faceCurvatureEllipsoid3D.yaml.
+# The pre-print shows the signed distance. The implicit psi stays as the control that
+# is first order by construction.
+#
+# THE LADDER is N = 32, 52, 80, 128. It differs from config/faceCurvatureEllipsoid3D.yaml
+# (32, 50, 80, 128) in one rung: 52 replaces 50. Reason: the banded twin has two
+# refinement levels, and its fine count must be divisible by 4. With 52 the fine h of
+# the two studies is equal rung by rung. All four counts are even.
+#
+# PRE-REGISTERED READ-OUT (written before any run of this study).
+#   PREDICTION, signed distance. solverCellCentreInverse: E_L2 equal to the settled
+#     0.698, 0.0571 and 0.0231 1/m at N = 32, 80 and 128 to within 1 % (the same mesh
+#     and the same application path; the binaries are v2606 now, v2512 then). Fitted
+#     E_L2 and E_L1 order >= 1.9 over N = 52, 80, 128. solverCellCentreInverseNoK:
+#     order 0.8 to 1.2.
+#   PREDICTION, implicit psi. Order 0.8 to 1.2 for every delivery.
+#   FALSIFIED IF, on the signed distance, the order of solverCellCentreInverse is below
+#     1.5, or a value at N = 32, 80 or 128 differs from the settled value by more than 1 %.
+#
+# NOT INERT UNTIL MEASURED. The blockMeshDict template of ellipsoidDroplet3D now renders
+# N_CELLS_BASE. A python-only render shows equal bytes for REFINE_LEVELS 0. DELTA_X of
+# the application has a new rule for refined meshes; that commit was not compiled.
+# Before this study runs: build, then compare leiaTestFaceCurvature.csv at N = 32
+# with the pre-change binary (compare_metrics_csv.py --tol 0).
+#
+# LEAN OUTPUT. keep_fields: last acts only on a parallel case; this study is serial,
+# so the key is without effect here. PURGE_WRITE 2 keeps at most two written times.
+#
+#   snakemake --workflow-profile profiles/slurm --configfile config/slAmr/curvatureEllipsoid3D.yaml
+study_name: slAmrCurvatureEllipsoid3D
+case: ellipsoidDroplet3D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaTestMeanCurvature
+theme:  sl-amr
+keep_fields: last
+setfields_args: "-alphaName alpha"
+axes_override:
+  N_CELLS: [32, 52, 80, 128]
+  PSI_SURFACE: [signedDistanceEllipsoid, implicitEllipsoid]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_STENCIL: [point]
+  PROFILE: [signedDistance]
+  DIV: [linear]
+  PHASE_INDICATOR: [detrixheAslam]
+  PURGE_WRITE: ['2']
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

@@ -60,6 +60,7 @@ Description
 \*---------------------------------------------------------------------------*/
 
 #include "fvCFD.H"
+#include "labelIOList.H"
 #include "fvSolution.H"
 #include "slAdvection.H"
 #include "narrowBand.H"
@@ -298,6 +299,51 @@ int main(int argc, char *argv[])
     // rows/columns in 3D (sentinel-empty CSV cells; the fig script tolerates
     // missing rows).
     const bool is2D = (mesh.nGeometricD() == 2);
+
+    // The mesh size of a statically refined mesh (mesh: hexRefined). The CSV
+    // columns DELTA_X / deltaX use the domain-average size on a uniform mesh.
+    // That size is wrong on a refined mesh: the interface lies in the finest
+    // cells. The rule: hCellMin and hCellMax are the global extremes of
+    // cbrt(V_c). A spread below 1e-9 hCellMax is a uniform mesh, and the
+    // existing expression stays as it is (bit-identical output). A mesh that
+    // is not uniform and that carries the hexRef8 file constant/polyMesh/
+    // cellLevel (refineHexMesh writes it) gets the size of the finest cell:
+    // cbrt(V_min) in 3D, and sqrt(V_min/thickness) on a pseudo-2D mesh. A
+    // polyhedral or perturbed mesh has no cellLevel and keeps the existing
+    // expression, so the studies on those meshes do not change.
+    const scalarField& cellVolumes = mesh.V();
+    const scalar cellVolumeMin = gMin(cellVolumes);
+    const scalar cellVolumeMax = gMax(cellVolumes);
+    const scalar hCellMin = Foam::cbrt(cellVolumeMin);
+    const scalar hCellMax = Foam::cbrt(cellVolumeMax);
+    const bool hasCellLevel =
+        IOobject
+        (
+            "cellLevel",
+            mesh.facesInstance(),
+            polyMesh::meshSubDir,
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false
+        ).typeHeaderOk<labelIOList>(false);
+    const bool meshIsUniform =
+        ((hCellMax - hCellMin) <= 1e-9*hCellMax) || !hasCellLevel;
+    scalar hFinest = hCellMin;
+    if (is2D)
+    {
+        const boundBox bbH(mesh.points());
+        const vector spanH(bbH.max() - bbH.min());
+        scalar thickness = 1;
+        for (direction d = 0; d < vector::nComponents; ++d)
+        {
+            if (mesh.geometricD()[d] == -1) { thickness *= spanH[d]; }
+        }
+        hFinest = Foam::sqrt(cellVolumeMin/max(thickness, VSMALL));
+    }
+    Info<< "mesh size: cbrt(V) min / max = " << hCellMin << " / " << hCellMax
+        << (meshIsUniform ? "  (DELTA_X = domain average)"
+                          : "  (hexRef8 levels: DELTA_X = finest cell)") << endl;
 
     // Foot-point HEIGHT-FUNCTION curvature (footPointCurvature.H): local parabola
     // fit of the linear-plane interface feet, delivered normal-constant by uniform
@@ -1280,11 +1326,13 @@ int main(int argc, char *argv[])
         const scalar LxR = bbR.max().x() - bbR.min().x();
         const scalar LyR = bbR.max().y() - bbR.min().y();
         const scalar LzR = bbR.max().z() - bbR.min().z();
-        const scalar dxR =
+        const scalar dxRUniform =
             (mesh.nCells() > 0)
           ? (is2D ? Foam::sqrt(LxR*LyR/mesh.nCells())
                   : Foam::cbrt(LxR*LyR*LzR/mesh.nCells()))
           : 0;
+        // refined mesh: the finest cell (see meshIsUniform above)
+        const scalar dxR = meshIsUniform ? dxRUniform : hFinest;
 
         // linear face alpha
         const surfaceScalarField alphaFlin(fvc::interpolate(alpha));
@@ -1845,12 +1893,14 @@ int main(int argc, char *argv[])
     const scalar Lx = bb.max().x() - bb.min().x();
     const scalar Ly = bb.max().y() - bb.min().y();
     const scalar Lz = bb.max().z() - bb.min().z();
-    const scalar dx =
+    const scalar dxUniform =
         (mesh.nCells() > 0)
       ? (is2D
          ? Foam::sqrt(Lx*Ly/mesh.nCells())
          : Foam::cbrt(Lx*Ly*Lz/mesh.nCells()))
       : 0;
+    // refined mesh: the finest cell (see meshIsUniform above)
+    const scalar dx = meshIsUniform ? dxUniform : hFinest;
 
     Info<< "band cells                    : " << label(nBand) << nl
         << "kappa_exact (reference)       : " << kappaRef << nl

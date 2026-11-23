@@ -28,6 +28,8 @@ _THEMES = {
     "gradient-controlled-level-set":      ("gradient-controlled-level-set",      "gcls-level-set",     "gcls-level-set.template.html"),
     # The PDE level-set direction of D. Bothe and K. Soga on the Eulerian line (2026-11-12).
     "pde-level-set":                      ("pde-level-set",                      "pde-level-set",      "pde-level-set.template.html"),
+    # The semi-Lagrangian level set with adaptive mesh refinement (pre-print, 2026-11).
+    "sl-amr":                             ("sl-amr",                             "sl-amr",             "sl-amr.template.html"),
 }
 
 # Themes whose deck reads figures/tables from ITS OWN presentation data/ folder
