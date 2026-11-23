@@ -12,6 +12,11 @@
 #   (leiaSetFields.csv), because the volume error crosses zero (STATUS 11.44 item 3).
 #   L_INF_E_PSI is reported, not judged. The wall clock per step of both arms is reported.
 #   FALSIFIED (the unit-cube operator is not the same fit) by a difference above 1e-10.
+#
+# RESULT 2026-11-23 (driver 57097202, binaries 5d54032f): PASS. 172 steps in both arms.
+#   gradPsiError.csv: at most 1.3e-12 relative. Volume-error difference divided by the
+#   reference volume: 7.3e-15 (the plain relative difference is 1.4e-10 in one early row
+#   where the error crosses zero). CPU time 11.1 s (unit-cube operator) against 20.6 s.
 # ============================================================================
 study_name: cubicRefinedBoxN64
 case: 3Dtranslation

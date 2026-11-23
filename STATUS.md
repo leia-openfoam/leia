@@ -8708,8 +8708,54 @@ pre-print, version 1, are in `docs/plan-sl-amr-preprint.md`. Clone
    evaluate the polynomial of the arrival cell, as the solver does (DERIVED from the
    script).
 
-6. **Open.** The bit-identity run of the inert composition root on the regression set
-   (drivers 57088373 and 57088376 run; the polyhedral arms are not submitted). The unit
-   gates of the transfer and of the unit-cube operator. Every study of the plan. Up to
+6. **Open** (state before items 7 to 11). The unit gate of the transfer. Every study of
+   the plan. Up to
    three fits per step (advection, transfer, rescaling trigger). The second pass of the
    initial adaptation refines to 136684 cells before it settles at 50472.
+
+7. **Unit-cube operator against the ghost-cell class** (`cubicRefinedBoxN64`, static
+   refined box, 8 ranks; MEASURED). PASS. The gradient CSV agrees within 1.3e-12
+   relative; the volume-error difference is 7.3e-15 of the reference volume. CPU time
+   11.1 s against 20.6 s.
+
+8. **The inert composition root** (regression set; MEASURED). Hexahedral rungs: 36 of
+   36 (`advConv2Dtranslation`) and 27 of 27 (`advConv3DshearHex`) metric CSV pairs
+   identical at tolerance 0 against the base b14c72b9. Polyhedral rung: 50 of 54 pairs
+   identical; 4 arms still run.
+
+9. **Ladder A1, 3D translation, T = 1, CFL 0.5, rescaling off** (MEASURED). The
+   pre-registered falsifier is met: the dynamic AMR line does not keep the accuracy of
+   the uniform mesh.
+
+   | finest h | uniform shape | AMR shape | uniform band gradient L1 | AMR band gradient L1 |
+   |---|---|---|---|---|
+   | 1/64 | 4.05e-2 | 4.82e-2 | 5.5e-2 | 8.0e-2 |
+   | 1/128 | 9.64e-3 | 1.18e-2 | 6.9e-3 | 5.2e-2 |
+   | 1/256 | 2.31e-3 | 1.80e-2 | 2.3e-3 | 7.4e-2 |
+
+   Uniform shape orders 2.07 and 2.06; AMR 2.03 and -0.61. The AMR band-gradient
+   error grows from t = 0.1. Map of |psi - distance|/h_fine at t = 0.9985, h = 1/128,
+   finest level: interface layer 0.11 (leading side) and 0.05 (trailing side); layers 6
+   to 8 0.33 and 0.12; coarse cells ahead 0.60. No coarser cell is nearer than 7.8
+   layers, so the band is as designed. The error enters at the leading edge of the
+   band. HYPOTHESIS: psi ahead of the band is transported on coarse cells (R/h = 4.8 on
+   the base mesh of this rung), lags, and drifts into the fine band.
+   VOID: the AMR volume error. It is 1.0e-1, 2.6e-2, 6.3e-3 at t = 0; the reference
+   volume belongs to the unrefined initial mesh.
+   Cost at the finest rung: 956804 cells (2.9 % of 33.5e6), 1173 s on 16 ranks against
+   954 s on 96 ranks.
+
+10. **Ladder A1 with the rescaling** (second order, trigger max||g| - 1| > 0.1 over the
+    region; MEASURED). Negative. An event does not clear the trigger (0.1136 before,
+    0.1145 one step later, uniform N = 64), so the map runs in every step from the
+    first event, and the field is destroyed within 5 steps (deviation 16, negative
+    discriminants). All AMR rungs and the uniform N = 64 rung end with a shape error
+    above 20. On the uniform N = 128 rung the only event is at the last step: the
+    band-gradient error falls from 6.9e-3 to 7.5e-4 and the shape error stays
+    (9.69e-3). One event improves the gradient; a trigger that its own action does not
+    clear is not usable.
+
+11. **Defects found.** The AMR run does not write the mesh at the last time after a
+    mesh change (the final fields cannot be read back). The parallel post-processing
+    `postProcess -func "grad(psi)"` on an AMR case did not end in 20 minutes.
+

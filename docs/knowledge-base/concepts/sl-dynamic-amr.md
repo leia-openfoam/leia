@@ -13,7 +13,7 @@ sources: ["STATUS 11.44", "docs/plan-sl-amr-preprint.md"]
 ---
 # Semi-Lagrangian level set on cubic cells with dynamic AMR
 
-> Verdict (2026-11-23, MEASURED, one small case). The kinematic semi-Lagrangian solver runs on a mesh that blastAMR adapts in every step, with two refinement levels and load balancing, on 4 ranks. The result does not depend on the decomposition or on a redistribution: the differences are at round-off (shape error 1.9e-12 relative, volume 6.8e-16 of the droplet volume). No convergence study exists yet, so no accuracy statement is made.
+> Verdict (2026-11-23, MEASURED). The kinematic semi-Lagrangian solver runs on a mesh that blastAMR adapts in every step, with two refinement levels and load balancing, and the result does not depend on the decomposition. As built, the line does NOT keep the accuracy of the uniform mesh: on the 3D translation ladder the shape error of the finest rung (1.80e-2) is above the middle rung (1.18e-2), because the error of psi enters the fine band at its leading edge. The algebraic rescaling with the max-deviation trigger does not repair this; it destroys the field.
 
 ## What it is
 
@@ -39,3 +39,4 @@ All numbers are in STATUS 11.44. Base N = 16, finest h = 1/64, T = 0.1, CFL 0.5,
 
 - 2026-11-23 · first 4-rank smoke passes; a cell with hanging nodes has no hexahedral shape, so the lattice comes from its 8 anchor points (4768 cells without a lattice before, 0 after) · STATUS 11.44
 - 2026-11-23 · serial against 4 ranks and the forced load balancing (15 redistributions against 5): equal cell counts at every mesh change, differences at round-off; both read-outs fail as written, because a relative difference of the volume error is not bounded where the error crosses zero · STATUS 11.44
+- 2026-11-23 · ladder A1 (3D translation) falsifies the line as built: AMR shape error 4.82e-2, 1.18e-2, 1.80e-2 against uniform 4.05e-2, 9.64e-3, 2.31e-3; the error of psi enters at the leading band edge. The rescaling with the max-deviation trigger is destructive (it fires in every step after the first event). The unit-cube operator equals the ghost-cell class; the inert root is identical on the hexahedral regression rungs · STATUS 11.44 items 7 to 11

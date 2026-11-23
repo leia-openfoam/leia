@@ -100,3 +100,4 @@ growth mechanism" was wrong and is corrected there.
 
 ### 2026-11-23
 The semi-Lagrangian form is implemented as the slSource model `rescaling` (`src/leiaLevelSet/semiLagrangian/source/slRescalingSource.H`, tokens `SL_RESCALE_*`, configs `config/slAmr/`): the derivatives of the quadratic fit, a trigger on max||g| - 1| > theta. Not built and not measured (STATUS 11.44).
+- 2026-11-23 · the semi-Lagrangian form repeats the record: one event improves the band gradient 9 times, the trigger max||g| - 1| > 0.1 is not cleared by an event and the repeated map destroys the field ([[concepts/sl-dynamic-amr]], STATUS 11.44 item 10).

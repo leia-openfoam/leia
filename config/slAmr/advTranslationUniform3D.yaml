@@ -28,6 +28,24 @@
 # RANKS. The domain is [0,2] x [0,1] x [0,1], so N = 256 has 33.5e6 cells. This file runs
 # N = 64 and 128 on 48 ranks; advTranslationUniformN256_3D runs N = 256 on 96 ranks
 # (memory: 10.2e6 cells did not fit on 8 ranks with 4 GB each on 2026-11-13).
+#
+# RESULT 2026-11-23 (binaries 5d54032f; drivers 57097112, 57102282 uniform, 57097094 AMR).
+#   Relative errors at t = 1, finest h = 1/64, 1/128, 1/256:
+#     uniform  shape 4.05e-2, 9.64e-3, 2.31e-3 (orders 2.07, 2.06);
+#              band gradient L1 5.5e-2, 6.9e-3, 2.3e-3; volume 3.56e-3, 8.09e-4, 1.04e-4
+#     AMR      shape 4.82e-2, 1.18e-2, 1.80e-2 (orders 2.03, -0.61);
+#              band gradient L1 8.0e-2, 5.2e-2, 7.4e-2
+#   P1 holds. P2 holds. P3 FAILS at the finest rung (ratio 7.8). P5 FAILS (ratios 1.4,
+#   7.6, 32). P4 and the volume part are NOT JUDGED: the AMR volume error is 1.0e-1,
+#   2.6e-2, 6.3e-3 at t = 0, so its reference volume belongs to the unrefined mesh (a
+#   measurement defect). P6: 956804 cells at the end of the finest AMR rung against
+#   33.5e6 (2.9 %), wall clock 1173 s on 16 ranks against 954 s on 96 ranks.
+#   VERDICT: FALSIFIED as pre-registered. The band-gradient error of the AMR runs grows
+#   from t = 0.1; the smallest |grad psi| in the band is 0.81 and 0.71 on the finer rungs
+#   (uniform 0.95, 0.99). At t = 0.9985, finest h = 1/128, the error |psi - distance|/h
+#   on the finest level is 0.11 (leading) and 0.05 (trailing) in the interface layer,
+#   0.33 in layers 6 to 8 and 0.60 in the coarse cells ahead; no coarser cell is nearer
+#   than 7.8 layers. The error enters at the leading edge of the band.
 # ============================================================================
 study_name: advTranslationUniform3D
 case: 3Dtranslation
