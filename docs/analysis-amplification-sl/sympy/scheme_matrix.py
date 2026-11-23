@@ -581,6 +581,9 @@ def bloch(mesh, n, ent, target):
     TH = np.array(list(itertools.product(*[np.linspace(-np.pi, np.pi, m, endpoint=False) for m in nth])))
     TH = TH[[i for i, t in enumerate(TH) if tuple(t) >= tuple(-t) or np.any(np.isclose(np.abs(t), np.pi))]]
     flat = I*n + J
+    if len(W) > 50*n*n:          # chained ghost values repeat (row, column, shift): add their weights first
+        K, inv = np.unique(np.column_stack([flat, SH]), axis=0, return_inverse=True)
+        W = np.bincount(inv.ravel(), W, len(K)); flat = K[:, 0].astype(int); SH = K[:, 1:]
     for ch in np.array_split(TH, max(1, len(TH)*n*n*16//200_000_000)):
         ph = W[None, :]*np.exp(1j*(ch@SH.T)); A = np.zeros((len(ch), n*n), complex)
         for t in range(len(ch)): A[t] = np.bincount(flat, ph[t].real, n*n) + 1j*np.bincount(flat, ph[t].imag, n*n)

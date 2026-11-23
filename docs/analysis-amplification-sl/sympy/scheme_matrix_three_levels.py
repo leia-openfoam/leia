@@ -74,6 +74,8 @@ PRE-REGISTERED (2026-11-23, before any run on a mesh with three cell sizes).
     P6a. Where growth factor - 1 <= 1e-12 (neutral or damped): P_max < 10.
     P6b. Where the growth factor g is above 1: ||A^n|| grows like g^n, so the maximum is at
          n = N; the script reports P_max with its n and the ratio P_max / g^N.
+    (The tables hold the growth factor with 8 decimals, so "<= 1e-12" reads as "the table
+    value is at most 1.00000000".)
     FALSIFIED IF a case with growth factor - 1 <= 1e-12 has a P_max that grows with N:
     P_max(N = 2000) > 1.05 P_max(N = 1000) (algebraic growth from a defective eigenvalue).
     The columns pmax_Co*, npmax_Co*, pmaxhalf_Co* are APPENDED to the tables; no existing
@@ -89,7 +91,7 @@ PRE-REGISTERED (2026-11-23, before any run on a mesh with three cell sizes).
   with 4 times the waves per direction and reports the difference. A difference above 5 %
   of growth - 1 means that the table values are a lower bound, and the report says so.
 
-Usage: scheme_matrix_three_levels.py --gates | --run [--dim 2 3] [--jobs N] | --powers [--dim 2 3] | --verdict | --waves [--dim 2 3]
+Usage: scheme_matrix_three_levels.py --gates | --run [--dim 2 3] [--jobs N] | --powers [--dim 2 3] | --verdict | --waves [--dim 2 3] [--mesh NAME ...] | --wide | --scan
 """
 import argparse, csv, os, sys
 import scheme_matrix as sm          # first: it limits the BLAS threads before numpy loads
@@ -190,7 +192,7 @@ def verdict():
 
 SAMPLING = {2: [(2, 12), (8, 12), (2, 48), (8, 48), (8, 96), (8, 192)],        # waves normal, tangential (period 4)
             3: [(2, 6, 6), (4, 6, 6), (2, 12, 12), (2, 24, 24), (4, 24, 24)]}
-def waves(dims, wide=False):
+def waves(dims, wide=False, only=None):
     """C-Cp/L2+g and C-Cp/I+g with more waves per direction. The first sampling is the one
     of the tables (for the three-level meshes). The tangential count is per period 4; a mesh
     with the tangential period 2 gets half the count, which gives the same wave numbers.
@@ -198,9 +200,11 @@ def waves(dims, wide=False):
     for d in dims:
         names = [ONE[d]] + [f"{PREFIX[d]}3lev_b{k}" for k in (1, 2, 3)]
         if wide: names = [f"{PREFIX[d]}3lev_b{k}" for k in (4, 6)]
+        if only: names = [n for n in names if n in only]
         path = os.path.join(TABLES, f"scheme_matrix_three_levels_waves{'_wide' if wide else ''}_{d}d.csv")
-        with open(path, "w") as fh:
-            fh.write("mesh,scheme,waves," + ",".join(f"growth_minus_1_Co{c}" for c in COS) + "," + ",".join(f"direction_Co{c}" for c in COS) + "\n")
+        new = not (only and os.path.exists(path))              # --mesh appends to the table (one run per mesh)
+        with open(path, "w" if new else "a") as fh:
+            if new: fh.write("mesh,scheme,waves," + ",".join(f"growth_minus_1_Co{c}" for c in COS) + "," + ",".join(f"direction_Co{c}" for c in COS) + "\n")
             for name in names:
                 if name in sm.MESHES: build, dirs, _ = sm.MESHES[name]; mesh = build()
                 else: mesh = sm.three_level_mesh(d, int(name.split("_b")[1]), name); dirs = sm.TR2 if d == 2 else sm.TR3
@@ -217,6 +221,25 @@ def waves(dims, wide=False):
                             if x > g[i]: g[i] = x; wd[i] = "(%s)" % " ".join(f"{y:g}" for y in v)
                         fh.write(f"{name},{sch},{'x'.join(map(str, nt))}," + ",".join(f"{x:.6e}" for x in g) + "," + ",".join(wd) + "\n"); fh.flush()
                         print(f"{name:12s} {sch:10s} {'x'.join(map(str, nt)):9s} " + " / ".join(f"{x:.3e}" for x in g) + "   " + " ".join(wd), flush=True)
+
+def scan():
+    """NOT pre-registered, exploratory, 2D, C-Cp/L2+g: how the growth factor depends on the
+    widths of the strips of the periodic block. One transition (sizes 2 and 1) and three
+    levels. Waves: 4 normal, 48 per tangential period 2 (96 per period 4)."""
+    path = os.path.join(TABLES, "scheme_matrix_three_levels_scan_2d.csv")
+    cases = [(0, nc, nf) for nc in (2, 3, 4, 5, 6, 8) for nf in (4, 6, 8, 12, 16)]
+    cases += [(k, nc, nf) for k in (1, 2, 3, 4, 5, 6, 8, 10) for nc, nf in ((3, 4), (3, 8), (4, 4), (5, 8), (4, 12))]
+    with open(path, "w") as fh:
+        fh.write("sizes,buffer_k,cells_coarsest,cells_finest,unknowns," + ",".join(f"growth_minus_1_Co{c}" for c in COS) + "\n")
+        for k, nc, nf in cases:
+            sizes = (4, 2, 1) if k else (2, 2, 1); mesh = sm.three_level_mesh(2, k, "scan", sizes, (nc, nf)); g = np.full(len(COS), -1.0)
+            for v in sm.TR2:
+                v = np.array(v, float); rules = {}
+                for i, Co in enumerate(COS):
+                    n, ent, pos = sm.assemble_g(mesh, "C-Cp/L2+g", Co*v/np.linalg.norm(v), rules)
+                    g[i] = max(g[i], sm.growth(mesh, n, ent, (4, 96 if k else 48)) - 1)
+            line = f"{'4-2-1' if k else '2-1'},{k},{nc},{nf},{n}," + ",".join(f"{x:.6e}" for x in g)
+            fh.write(line + "\n"); fh.flush(); print(line, flush=True)
 
 PSCH = ("C-Cp/L2+g", "C-Cp/I+g")
 def powers(meshes, N=2000):
@@ -241,6 +264,27 @@ def powers(meshes, N=2000):
             print(f"{name} {r[3]} {r[4]}: P_max " + " / ".join(f"{p[0]:.3e}@{p[1]}" for p in P), flush=True)
         open(table(name), "w", newline="").write("".join(o + e for o, e in zip(out, end)))
 
+def powers_long(meshes, N=16000):
+    """The neutral cases that miss P6 at N = 2000 (P_max >= 10, or more than 5 % above the
+    value at N/2), again with N = 16000. A defective eigenvalue of magnitude 1 gives a
+    P_max that doubles with N. Writes scheme_matrix_three_levels_powers_long.csv."""
+    path = os.path.join(TABLES, "scheme_matrix_three_levels_powers_long.csv"); new = not os.path.exists(path)
+    with open(path, "a") as fh:
+        if new: fh.write("mesh,scheme,direction,Co,growth," + ",".join(f"pmax_N{N >> i}" for i in (3, 2, 1, 0)) + ",npmax\n")
+        for name in meshes:
+            rows = list(csv.DictReader(l for l in open(table(name)) if not l.startswith("#")))
+            mesh = sm.MESHES[name][0](); d = mesh.d
+            for q in rows:
+                if q["scheme"] not in PSCH: continue
+                for c in COS:
+                    pq, ph = float(q[f"pmax_Co{c}"]), float(q[f"pmaxhalf_Co{c}"])
+                    if float(q[f"growth_Co{c}"]) - 1 > 1e-12 or not (pq >= 10 or pq > 1.05*ph): continue
+                    v = np.array([float(x) for x in q["direction"].strip("()").split()])
+                    n, ent, pos = sm.assemble_g(mesh, q["scheme"], c*v/np.linalg.norm(v), {})
+                    P = [sm.power_bound(mesh, n, ent, {2: 48, 3: 24}[d], N >> i) for i in (3, 2, 1, 0)]
+                    line = f"{name},{q['scheme']},{q['direction']},{c},{q[f'growth_Co{c}']}," + ",".join(f"{p[0]:.6e}" for p in P) + f",{P[-1][1]}"
+                    fh.write(line + "\n"); fh.flush(); print(line, flush=True)
+
 def powers_verdict(meshes, N=2000):
     bad = False
     for name in meshes:
@@ -264,15 +308,18 @@ def main():
     ap.add_argument("--gates", action="store_true"); ap.add_argument("--gates-hex21patch", action="store_true")
     ap.add_argument("--run", action="store_true"); ap.add_argument("--verdict", action="store_true")
     ap.add_argument("--waves", action="store_true"); ap.add_argument("--powers", action="store_true"); ap.add_argument("--wide", action="store_true")
+    ap.add_argument("--scan", action="store_true"); ap.add_argument("--powers-long", action="store_true"); ap.add_argument("--mesh", nargs="+")
     ap.add_argument("--dim", type=int, nargs="+", default=[2, 3]); ap.add_argument("--jobs", type=int, default=1)
     a = ap.parse_args()
     if a.gates or a.gates_hex21patch:
         if not gates(a.gates_hex21patch): return 1
     if a.run: run(a.dim, a.jobs)
-    if a.waves or a.wide: waves(a.dim, a.wide)
+    if a.waves or a.wide: waves(a.dim, a.wide, a.mesh)
+    if a.scan: scan()
     pm = [m for m in ["quad21", "hex21"] + [f"{PREFIX[d]}3lev_b{k}" for d in (2, 3) for k in (1, 2, 3)]
           if (3 if m.startswith("hex") else 2) in a.dim and os.path.exists(table(m))]
-    if a.powers: powers(pm)
+    if a.powers: powers([m for m in pm if not a.mesh or m in a.mesh])
+    if a.powers_long: powers_long([m for m in pm if not a.mesh or m in a.mesh])
     if a.verdict: verdict(); powers_verdict(pm)
     return 0
 
