@@ -320,6 +320,7 @@ amp-reproduce: ## regenerate every number of the amplification report (sympy/num
 	python3 $(ANA_AMP)/sympy/multipoint_perturbed.py --dim 2 \
 	    --csv $(ANA_AMP)/data/tables/multipoint_perturbed.csv
 	python3 $(ANA_AMP)/sympy/scheme_matrix.py --smoke
+	python3 $(ANA_AMP)/sympy/scheme_matrix_three_levels.py --gates --verdict
 	@echo "the scheme matrix on every mesh runs on Lichtenberg: $(ANA_AMP)/sympy/scheme_matrix.sbatch"
 
 amp-open: article-amplification ## open the amplification review copy (never overwrites it)

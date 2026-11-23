@@ -2256,6 +2256,90 @@ $2.1\cdot10^{-1}$ and $2.3\cdot10^{-1}$ without ghost cells. The margin to the t
 $4.41\cdot10^{-3}$ is small in 3D. The growth is not zero, and the worst direction is
 tangential to the transition. On the refined patches it is at most $2.2\cdot10^{-4}$.
 
+\subsection{Two refinement levels}
+\label{sec:threelevels}
+
+Dynamic refinement with two levels above the base mesh gives three cell sizes, $4h$, $2h$
+and $h$. A buffer of $k$ cells of size $2h$ separates the cells of size $4h$ from the cells
+of size $h$. The solver design uses $k=2$. The periodic block holds, normal to the
+transitions, 3 cells of size $4h$, $k$ cells of size $2h$, 4 cells of size $h$ and $k$
+cells of size $2h$. Its tangential period is one cell of size $4h$. The Courant number is
+defined with $h$. The ghost values are applied level by level. A prolongation reads only
+cells that are larger than the cell that asks, so the dependency ends at the largest size
+and has no cycle. The longest chain is 1 for $k\ge2$ and 2 for $k=1$. For $k=1$ a cell of
+size $2h$ has a larger and a smaller cell in its cell-point-cell stencil (4 cells of the
+block in 2D, 8 in 3D); for $k=2$ and $k=3$ no cell has both.
+
+Four gates pass before any number of this subsection is read: the changed code reproduces
+the four \texttt{+g} tables of the one-transition meshes to all 8 decimals; the constructor
+with three equal sizes returns the growth factor 1; a linear function is returned exactly
+on every three-level mesh ($\le 3\cdot10^{-13}$); the statement on the stencils above is
+asserted. The predictions were written before the runs (header of
+\texttt{sympy/scheme\_matrix\_three\_levels.py}).
+
+\begin{table}[h]
+\centering
+\caption{\texttt{C-Cp/L2+g} with three cell sizes: growth factor minus 1, the largest of
+five flow directions, at the finest wave sampling. ``one'' is the one-transition mesh.
+The worst direction is given for the largest entry of the row; $t$ is tangential to the
+transitions, $n$ is normal.}
+\label{tab:threelevels}
+\begin{tabular}{llrrrrrl}
+\toprule
+ & buffer & Co 0.0164 & Co 0.1 & Co 0.3 & Co 0.5 & Co 1.0 & worst \\
+\midrule
+2D & one    & 4.3e-4 & 1.9e-3 & 3.0e-3 & 3.2e-3 & 3.3e-3 & $t$ \\
+2D & $k=1$  & 3.3e-4 & 5.3e-4 & 1.2e-4 & 3.3e-6 & 0      & (2,1) \\
+2D & $k=2$  & 3.9e-4 & 1.2e-3 & 1.3e-3 & 1.6e-3 & 1.7e-3 & $t$ \\
+2D & $k=3$  & 3.6e-4 & 1.6e-3 & 2.8e-3 & 3.3e-3 & 3.7e-3 & $t$ \\
+\midrule
+3D & one    & 4.6e-4 & 2.2e-3 & 3.9e-3 & 4.4e-3 & 3.7e-3 & $t$ \\
+3D & $k=1$  & 4.1e-4 & 1.4e-3 & 2.2e-3 & 1.2e-3 & 0      & $n$ \\
+3D & $k=2$  & 2.8e-4 & 9.0e-4 & 1.7e-3 & 2.1e-3 & 2.4e-3 & $t$ \\
+3D & $k=3$  & 3.6e-4 & 1.7e-3 & 3.6e-3 & 4.5e-3 & 5.2e-3 & $t$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\measured{} With the buffer $k=2$, \texttt{C-Cp/L2+g} passes: the largest growth factor
+minus 1 is $1.7\cdot10^{-3}$ in 2D and $2.4\cdot10^{-3}$ in 3D, below the threshold
+$4.41\cdot10^{-3}$ and below the one-transition value at every Courant number. The
+prediction that $k=1$ is worse than $k=2$ is falsified: in 2D $k=1$ has the smaller growth
+at every Courant number, and in 3D it has the larger growth at Co 0.3 ($2.2\cdot10^{-3}$
+against $1.7\cdot10^{-3}$) and the smaller growth at Co 0.5. The prediction that $k=3$
+equals $k=2$ within 10~\% is missed: $k=3$ has about twice the growth of $k=2$, and in 3D
+it is above the pass threshold at Co 0.5 and 1.0 ($4.5\cdot10^{-3}$, $5.2\cdot10^{-3}$) and
+below the fail threshold $1.03\cdot10^{-2}$, so the symbol does not decide there.
+\texttt{C-Cp/I+g} has at most $1.4\cdot10^{-3}$ on every three-level mesh.
+
+\measured{} The growth factor depends on the widths of the strips of the block, and not
+monotonically. A scan in 2D that was not pre-registered (30 one-transition blocks, 40
+three-level blocks, $k$ from 1 to 10) gives values from $2.2\cdot10^{-4}$ to
+$3.7\cdot10^{-3}$ for the largest growth factor minus 1 of a block; the largest value is the block $k=3$ of Table~\ref{tab:threelevels}.
+The one-transition value itself falls from $3.3\cdot10^{-3}$ to $6.6\cdot10^{-4}$ when the
+fine strip has 6 cells instead of 4. So a table value is the value of one block. It is
+not a bound for every width. The wave sampling of the earlier tables gives 2 waves normal
+to the transitions on these long blocks; a finer sampling raises single entries by up to
+33~\% in 2D and from 0 to $2.4\cdot10^{-3}$ in 3D (Co 1.0, $k=2$), so the table uses the
+finest sampling.
+
+\measured{} Power-boundedness. The largest eigenvalue magnitude does not bound the powers of
+a matrix that is not normal. For every Bloch wave the script computes
+$P_{\max}=\max_{n\le N}\|A_\theta^n\|_2$ with $N=2000$. Where the growth factor $g$ is
+above 1, $P_{\max}$ is reached at $n=N$ and equals $g^N$ times a factor of 1.3 to 36.
+Where the growth factor is at most 1, $P_{\max}$ is at most 9.2 in 2D and at most 18.5 in
+3D at $N=2000$. The predicted bound 10 is missed in 3D. The cases that still grew between
+$N=1000$ and $N=2000$ were repeated with $N=16000$: every one of the nine cases is constant
+from $N=8000$ on (the largest value is 18.5), so the runs show no algebraic growth from a
+defective eigenvalue.
+
+\derived{} Which cell's polynomial. For a scheme with \texttt{OWN} = \texttt{C}, with and
+without \texttt{+g}, the script evaluates the polynomial of the \emph{arrival} cell at the
+departure point, also when the departure point lies outside the arrival cell (a Courant
+number above 0.5 in one direction). This is what the solver does. Only the schemes with
+point unknowns locate the host cell of the departure point. The \texttt{+g} tables
+therefore represent the solver in this respect.
+
 \subsection{What is known}
 
 A literature survey (\texttt{literature-survey.md}, next to this document) compared these
@@ -2598,6 +2682,7 @@ cd docs/analysis-amplification-sl/sympy
 python3 scheme_matrix.py --smoke                      # the gates of the scheme matrix
 python3 scheme_matrix.py --mesh quad21 --variant all  # one mesh, every variant
 python3 scheme_matrix_tables.py                       # the LaTeX tables
+python3 scheme_matrix_three_levels.py --gates --run --waves --powers --verdict  # three cell sizes
 
 workflow/scripts/fit_amplification_probe.sh \
     studies/popinet3D_La12000_hex_smoke4/popinetTranslating3D_00000 reuse <out>

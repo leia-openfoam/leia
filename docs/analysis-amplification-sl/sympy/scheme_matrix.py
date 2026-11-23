@@ -95,6 +95,21 @@ PRE-REGISTERED FOR THE +g VARIANT (2026-11-12, before its first run).
         stencil of a cell at the transition is irregular; with ghost cells it is the
         stencil of the lattice. FALSIFIED IF growth - 1 >= 1.03e-2 at any Co <= 0.5.
 
+THREE CELL SIZES (2026-11-23). The meshes `quad3lev_b<k>` and `hex3lev_b<k>` have cells of
+size 4, 2 and 1 and a buffer of k cells of size 2 between the size 4 and the size 1 cells.
+The +g variant then uses the two ghost rules level by level:
+    restriction   the value of a block of size s that is refined: the mean of the values of
+                  its 2^d blocks of size s/2. A block of size s/2 is a cell, or it is refined
+                  and the rule applies again. Only cell values enter.
+    prolongation  the value at a position inside a LARGER cell: the reconstruction of that
+                  cell on its own uniform stencil. A position of that stencil is a cell of
+                  the same size, a refined block (restriction), or a position inside a still
+                  larger cell (prolongation again).
+  A prolongation reads only cells that are larger than the cell that asks. The chain ends at
+  the largest size, so the dependency has no cycle and its length is at most the number of
+  sizes minus 1. This is the order of the solver: it fits the coarsest level first.
+  The gates, the prediction P5 and the driver are in scheme_matrix_three_levels.py.
+
 Usage: scheme_matrix.py --mesh NAME [--variant free|constrained|ghost|both|all] [--csv FILE] [--jobs N]
        | --smoke | --list
 """
@@ -266,6 +281,17 @@ def strip_mesh(d, name, **kw):
     boxes += [((6+i,) + j, 1) for i in range(4) for j in itertools.product((0, 1), repeat=t)]
     return box_mesh(d, boxes, (10,) + (2,)*t, name, **kw)
 
+def three_level_mesh(d, k, name, sizes=(4, 2, 1), counts=(3, 4), **kw):
+    """x: 3 cells of sizes[0], k cells of sizes[1], 4 cells of sizes[2], k cells of sizes[1].
+    Tangential period: one cell of sizes[0]. The convention of strip_mesh, with a buffer.
+    counts: other numbers of cells of sizes[0] and sizes[2] (the default is 3 and 4)."""
+    sc, sm, sf = sizes; t = d - 1; boxes = []; x = 0
+    for s, n in ((sc, counts[0]), (sm, k), (sf, counts[1]), (sm, k)):
+        for i in range(n):
+            boxes += [((x,) + tuple(s*a for a in j), s) for j in itertools.product(range(sc//s), repeat=t)]
+            x += s
+    return box_mesh(d, boxes, (x,) + (sc,)*t, name, **kw)
+
 def patch_mesh(d, name, **kw):
     """4^d coarse cells (size 2), the central 2^d of them refined: transition edges and corners."""
     boxes = []
@@ -300,9 +326,16 @@ MESHES = {   # name: (builder, flow directions, [(amplitude, seed)])
     "hexPert":       (lambda **k: lattice_mesh(3, 3, "hexPert", **k), AX3, [(0.05, 1), (0.10, 1), (0.20, 1)]),
     "hex21":         (lambda **k: strip_mesh(3, "hex21", **k), TR3, [(0, 0)]),
     "hex21patch":    (lambda **k: patch_mesh(3, "hex21patch", **k), TR3, [(0, 0)]),
+    "quad3lev_u":    (lambda **k: three_level_mesh(2, 2, "quad3lev_u", (1, 1, 1), **k), TR2, [(0, 0)]),
+    "hex3lev_u":     (lambda **k: three_level_mesh(3, 2, "hex3lev_u", (1, 1, 1), **k), TR3, [(0, 0)]),
     "honeycomb":     (lambda **k: honeycomb_mesh(1, 1, "honeycomb", **k), HEX, [(0, 0)]),
     "honeycombPert": (lambda **k: honeycomb_mesh(3, 2, "honeycombPert", **k), HEX, PERT),
 }
+
+for _d, _p in ((2, "quad"), (3, "hex")):
+    for _k in (1, 2, 3):
+        MESHES[f"{_p}3lev_b{_k}"] = (lambda d=_d, k=_k, n=f"{_p}3lev_b{_k}", **kw: three_level_mesh(d, k, n, **kw),
+                                     TR2 if _d == 2 else TR3, [(0, 0)])
 
 # ---------------------------------------------------------------------------- the spaces
 def exps(d, k):
@@ -432,28 +465,43 @@ def assemble_g(mesh, name, c, rules):
     if not R.ok: return None
     if "size" not in mesh.hcache:
         mesh.hcache["size"] = [float(np.ptp(np.vstack(P)[:, 0])) for P in mesh.plain]
-    size = mesh.hcache["size"]; uid = mesh.uid["C"]; smin = min(size)
-    kids = 0.5*smin*np.array(list(itertools.product((-1, 1), repeat=d)))
+    size = mesh.hcache["size"]; uid = mesh.uid["C"]; nlev = len(set(size))
+    corners = np.array(list(itertools.product((-1, 1), repeat=d)))
     def real(q, sz):
         k, s = mesh.key(q); j = uid.get(k)
         return (j, s) if j is not None and size[j] == sz else None
-    def stencil(j, xc, x, w, out, depth=0):
-        """Add w times the reconstruction of cell j (centre xc) read at x."""
-        if depth > 2: raise RuntimeError("ghost values depend on each other")
-        sz = size[j]
+    # A ghost value does not depend on the flow: it is kept per position of the block and size.
+    memo = mesh.hcache.setdefault(("ghost", name), {})
+    def value(q, sz, depth):
+        """The value of the block of size sz with centre q: [(cell, shift, position, weight)],
+        and the length of the prolongation chain below it."""
+        k, s0 = mesh.key(q); j = uid.get(k)
+        if j is not None and size[j] == sz: return [(j, s0, q, 1.0)], 0
+        if (k, sz) not in memo:
+            q0 = q - s0*mesh.box; jA, sA = mesh.locate(q0)
+            if size[jA] < sz:                            # restriction: the mean of the 2^d blocks of size sz/2
+                lst = []; chain = 0
+                for dq in 0.25*sz*corners:
+                    l2, c2 = value(q0 + dq, sz/2, depth); chain = max(chain, c2)
+                    lst += [(jj, ss, pp, ww/len(corners)) for jj, ss, pp, ww in l2]
+            elif size[jA] > sz:                          # prolongation: the larger cell's reconstruction
+                lst, chain = stencil(jA, mesh.cells[jA]["c"] + sA*mesh.box, q0, depth+1); chain += 1
+            else: raise RuntimeError("ghost position in a cell of the same size")
+            memo[(k, sz)] = (lst, chain)
+        lst, chain = memo[(k, sz)]
+        return [(jj, ss + s0, pp + s0*mesh.box, ww) for jj, ss, pp, ww in lst], chain
+    def stencil(j, xc, x, depth=0):
+        """The reconstruction of cell j (centre xc) read at x."""
+        if depth >= nlev: raise RuntimeError("ghost values depend on each other")
+        sz = size[j]; out = []; chain = 0
         for q, wi in zip(np.vstack([xc, xc + sz*R.offs]), R.weights((x - xc)/sz)):
-            r = real(q, sz)
-            if r: out.append((r[0], r[1], q, w*wi))
-            elif sz > smin:                              # restriction: the mean of the fine values
-                for dq in kids:
-                    jj, ss = real(q + dq, smin); out.append((jj, ss, q + dq, w*wi/len(kids)))
-            else:                                        # prolongation: the coarse cell's reconstruction
-                jA, sA = mesh.locate(q)
-                if size[jA] == sz: raise RuntimeError("ghost position not in a coarse cell")
-                stencil(jA, mesh.cells[jA]["c"] + sA*mesh.box, q, w*wi, out, depth+1)
+            l2, c2 = value(q, sz, depth); chain = max(chain, c2)
+            out += [(jj, ss, pp, wi*ww) for jj, ss, pp, ww in l2]
+        return out, chain
     ent = []; pos = []
     for j, x in enumerate(mesh.upos["C"]):
-        lst = []; stencil(j, x, x - c, 1.0, lst); ent.append((j, lst)); pos.append(x)
+        lst, chain = stencil(j, x, x - c); ent.append((j, lst)); pos.append(x)
+        mesh.hcache["depth"] = max(mesh.hcache.get("depth", 0), chain)
     return len(ent), ent, np.array(pos)
 
 def hanging(mesh, pt):
@@ -524,18 +572,40 @@ def assemble(mesh, name, c, rules):
             ent.append((off[t] + u, lst)); pos.append(x)
     return n, ent, np.array(pos)
 
-def growth(mesh, n, ent, target):
+def bloch(mesh, n, ent, target):
+    """The update matrices of the Bloch waves of the block, in chunks of shape (waves, n, n)."""
     I = np.array([r for r, lst in ent for _ in lst]); J = np.array([e[0] for _, lst in ent for e in lst])
     SH = np.array([e[1] for _, lst in ent for e in lst], float); W = np.array([e[3] for _, lst in ent for e in lst])
-    nth = [max(2, int(round(target/L))) for L in mesh.box]
+    # target: waves per unit length of the reciprocal block; a sequence gives the count per direction
+    nth = list(target) if np.ndim(target) else [max(2, int(round(target/L))) for L in mesh.box]
     TH = np.array(list(itertools.product(*[np.linspace(-np.pi, np.pi, m, endpoint=False) for m in nth])))
     TH = TH[[i for i, t in enumerate(TH) if tuple(t) >= tuple(-t) or np.any(np.isclose(np.abs(t), np.pi))]]
-    flat = I*n + J; worst = 0.0
+    flat = I*n + J
+    if len(W) > 50*n*n:          # chained ghost values repeat (row, column, shift): add their weights first
+        K, inv = np.unique(np.column_stack([flat, SH]), axis=0, return_inverse=True)
+        W = np.bincount(inv.ravel(), W, len(K)); flat = K[:, 0].astype(int); SH = K[:, 1:]
     for ch in np.array_split(TH, max(1, len(TH)*n*n*16//200_000_000)):
         ph = W[None, :]*np.exp(1j*(ch@SH.T)); A = np.zeros((len(ch), n*n), complex)
         for t in range(len(ch)): A[t] = np.bincount(flat, ph[t].real, n*n) + 1j*np.bincount(flat, ph[t].imag, n*n)
-        worst = max(worst, np.abs(np.linalg.eigvals(A.reshape(len(ch), n, n))).max())
-    return worst
+        yield A.reshape(len(ch), n, n)
+
+def growth(mesh, n, ent, target):
+    return max(np.abs(np.linalg.eigvals(A)).max() for A in bloch(mesh, n, ent, target))
+
+def power_bound(mesh, n, ent, target, N=2000, dense=200, stride=10):
+    """max over the waves and over the sampled n <= N of the 2-norm of A^n, the n of the
+    maximum, and the same maximum over n <= N/2. Sampled n: every n up to `dense`, then
+    every `stride`-th n."""
+    best, nbest, half = 0.0, 0, 0.0
+    for A in bloch(mesh, n, ent, target):
+        P = A.copy()
+        for k in range(1, N+1):
+            if k > 1: P = P@A
+            if k <= dense or k % stride == 0:
+                v = float(np.linalg.norm(P, 2, axis=(1, 2)).max())
+                if v > best: best, nbest = v, k
+                if k <= N//2: half = max(half, v)
+    return best, nbest, half
 
 def step_error(ent, pos, c, kappa):
     kv = kappa*c/np.linalg.norm(c); f = lambda x: np.sin(x@kv + 0.3)
