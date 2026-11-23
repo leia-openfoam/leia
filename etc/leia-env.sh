@@ -108,3 +108,22 @@ if [ -d "$_leia_tpf/bin" ]; then
     fi
 fi
 unset _leia_tpf
+
+# blastAMR (libamrDynamicFvMesh and its siblings): the dynamic adaptive mesh refinement
+# with load balancing of the AMR line (dynamicMeshDict `adaptiveFvMesh`, STATUS 11.44).
+# A sibling build like cfMesh, not part of this clone: $LEIA_BLASTAMR_DIR, default
+# $HOME/OpenFOAM/blastAMR-$WM_PROJECT_VERSION, built with WM_PROJECT_USER_DIR set to that
+# directory, so its libraries are in its own platforms/$WM_OPTIONS/lib. Appended AFTER
+# leia's own directories. Absent, or stamped (platforms/.foamVersion, written by
+# blastAMR's Allwmake) for another OpenFOAM version: skipped.
+LEIA_BLASTAMR_DIR="${LEIA_BLASTAMR_DIR:-$HOME/OpenFOAM/blastAMR-$WM_PROJECT_VERSION}"; export LEIA_BLASTAMR_DIR
+_leia_amr="$LEIA_BLASTAMR_DIR/platforms/$WM_OPTIONS"
+if [ -d "$_leia_amr/lib" ]; then
+    if [ -f "$LEIA_BLASTAMR_DIR/platforms/.foamVersion" ] && [ "$(cat "$LEIA_BLASTAMR_DIR/platforms/.foamVersion")" != "$WM_PROJECT_VERSION" ]; then
+        echo "leia-env.sh: WARNING: $LEIA_BLASTAMR_DIR is built for OpenFOAM-$(cat "$LEIA_BLASTAMR_DIR/platforms/.foamVersion"), not $WM_PROJECT_VERSION; not added to the search paths" >&2
+    else
+        [ -d "$_leia_amr/bin" ] && case ":$PATH:" in *":$_leia_amr/bin:"*) ;; *) export PATH="$PATH:$_leia_amr/bin" ;; esac
+        case ":$LD_LIBRARY_PATH:" in *":$_leia_amr/lib:"*) ;; *) export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$_leia_amr/lib" ;; esac
+    fi
+fi
+unset _leia_amr
