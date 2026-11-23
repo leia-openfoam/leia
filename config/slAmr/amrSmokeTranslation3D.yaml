@@ -1,0 +1,84 @@
+# ============================================================================
+# AMR LINE, 4-RANK SMOKE (2026-11-23, branch feature/slls-amr, STATUS 11.44)
+#
+# The first run of leiaSemiLagrangeLevelSetFoam on a dynamic mesh: cases/3Dtranslation
+# (sphere R = 0.15, U = (1 0 0), one way), base mesh N = 16 (32 x 16 x 16 cells), blastAMR
+# with two refinement levels (finest h = 1/64) in a band of 6 cell layers around the
+# interface, load balancing on 4 ranks, the reconstruction
+# cubicLatticeQuadraticWeightedLeastSquares and the mesh transfer quadraticFit.
+# Horizon 0.1 (the sphere moves 0.1 = 6.4 finest cells: the band must follow it).
+# NOT A MEASUREMENT: the sphere has R/h = 9.6 at the finest level and the horizon is short.
+#
+# PRE-REGISTERED READ-OUT (before the run).
+#   PASS if (1) the solver completes (foam_log_state COMPLETED); (2) the initial
+#   adaptation ends with cells of the levels 0, 1 and 2 and prints its cell count;
+#   (3) the mesh changes in the time loop and the solver prints "Mesh changed" with a
+#   cell count that stays within 20 % of the count after the initial adaptation; (4) the
+#   reconstruction reports 0 linear and 0 constant fits; (5) the relative volume error
+#   and the shape error at the end are finite and below 5e-2 and 5e-2.
+#   FALSIFIED by a crash, by a fatal error of the transfer or the reconstruction, or by a
+#   cell count that grows without bound.
+# keep_fields is `all` here on purpose: the fields of the smoke are looked at.
+# ============================================================================
+study_name: amrSmokeTranslation3D
+case: 3Dtranslation
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 20
+setfields_args: -alphaName alpha
+axes_override:
+  N_CELLS:
+  - '16'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '0.1'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - translate
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - signedDistance
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - cubicLatticeQuadraticWeightedLeastSquares
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - blastAMR
+  SL_MESH_TRANSFER:
+  - quadraticFit
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: all
+studies_dir: studies/slAmr
