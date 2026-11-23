@@ -18,7 +18,16 @@
 #   and the shape error at the end are finite and below 5e-2 and 5e-2.
 #   FALSIFIED by a crash, by a fatal error of the transfer or the reconstruction, or by a
 #   cell count that grows without bound.
-# keep_fields is `all` here on purpose: the fields of the smoke are looked at.
+# keep_fields is `processors`: reconstructPar cannot reconstruct a changed mesh.
+#
+# RESULT 2026-11-23 (driver 57090766, binaries 831f3f55, 4 ranks): PASS on (1) to (5).
+#   (1) COMPLETED, 56 steps, 15 s. (2) The initial adaptation takes 4 mesh updates
+#   (8192 -> 40420 -> 123384 -> 57584 -> 50472 cells); 3 levels. (3) 16 mesh changes in
+#   the time loop, 46104 to 50472 cells. (4) 0 linear and 0 constant fits. (5) Relative
+#   volume error 2.0e-5, relative shape error 3.7e-3 at t = 0.1.
+#   NOT TESTED by this run: load balancing (the largest imbalance was 15.3 %, below the
+#   limit of 20 %, so no redistribution ran). The workflow step reconstruct failed
+#   (reconstructPar on a changed mesh); keep_fields processors replaces it.
 # ============================================================================
 study_name: amrSmokeTranslation3D
 case: 3Dtranslation
@@ -80,5 +89,5 @@ axes_override:
   - 'false'
 collapse_other_axes: true
 export_slides: false
-keep_fields: all
+keep_fields: processors
 studies_dir: studies/slAmr

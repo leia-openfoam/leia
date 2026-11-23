@@ -374,6 +374,48 @@ void Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::build()
         lattice_[c] = tensor(a[0], a[1], a[2]);
     }
 
+    // -- a cell with hanging nodes is not a hexahedron in the cell-shape sense: a
+    //    cell next to a finer cell has split faces. Its lattice comes from its
+    //    eight anchor points (the points of a level not above the cell's level,
+    //    which are the corners of the original hexahedron): the three edges
+    //    from one anchor to its three nearest anchors.
+    label nAnchorLattice = 0;
+    forAll(shapes, c)
+    {
+        if (shapes[c].model() == hex) { continue; }
+        DynamicList<label> anchors(8);
+        forAll(cp[c], i)
+        {
+            if (pointLevel[cp[c][i]] <= cellLevel_[c]) { anchors.append(cp[c][i]); }
+        }
+        if (anchors.size() != 8) { continue; }
+        const point& p0 = pts[anchors[0]];
+        label near[3] = {-1, -1, -1};
+        scalar dist[3] = {GREAT, GREAT, GREAT};
+        for (label i = 1; i < 8; ++i)
+        {
+            const scalar d = magSqr(pts[anchors[i]] - p0);
+            for (label k = 0; k < 3; ++k)
+            {
+                if (d < dist[k])
+                {
+                    for (label m = 2; m > k; --m) { dist[m] = dist[m-1]; near[m] = near[m-1]; }
+                    dist[k] = d; near[k] = anchors[i];
+                    break;
+                }
+            }
+        }
+        const vector a0 = pts[near[0]] - p0;
+        const vector a1 = pts[near[1]] - p0;
+        const vector a2 = pts[near[2]] - p0;
+        if (mag(a0 & (a1 ^ a2)) > 1e-6*Foam::pow(dist[2], 1.5))
+        {
+            lattice_[c] = tensor(a0, a1, a2);
+            ++nAnchorLattice;
+        }
+    }
+    reduce(nAnchorLattice, sumOp<label>());
+
     // -- the static fields of the stencil entries
     forAll(cellLevel_, c)
     {
@@ -463,6 +505,8 @@ void Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::build()
     Info<< "cubicLatticeQuadraticWeightedLeastSquares: " << maxLevel_ + 1
         << " refinement level(s); refined cells without a parent point: "
         << nNoParent << "; cells that are not a hexahedron: " << nNoHex
+        << " (" << nAnchorLattice << " of the cells with hanging nodes have a"
+        << " lattice from their anchor points)"
         << "; cubes: " << nCube << "; cells with the 26 cells of their own"
         << " level around them: " << nSlot << endl;
     built_ = true;
@@ -593,7 +637,9 @@ void Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::fitCell
     }
     else if (coarse.size())
     {
-        // not a hexahedron: keep the coarse cells as they are
+        // no lattice: keep the coarse cells as they are (counted: the stencil
+        // of such a cell mixes two cell sizes)
+        ++nMixed_;
         forAll(coarse, j)
         {
             X.append(stencilC(c, coarse[j])); V.append(s[coarse[j]]);
@@ -742,6 +788,7 @@ cubicLatticeQuadraticWeightedLeastSquaresReconstruction
     nUnitSlot_(0),
     nUnitMatched_(0),
     nPerCell_(0),
+    nMixed_(0),
     nGhost_(0),
     nRestricted_(0),
     nLinear_(0),
@@ -794,6 +841,7 @@ void Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::update
     //    the levels done so far are exchanged before the next level
     nGhost_ = nRestricted_ = nLinear_ = nConstant_ = 0;
     nUnitSlot_ = nUnitMatched_ = nPerCell_ = 0;
+    nMixed_ = 0;
     for (label L = 0; L <= maxLevel_; ++L)
     {
         if (L > 0)
@@ -824,7 +872,8 @@ void Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::update
         Info<< "cubicLatticeQuadraticWeightedLeastSquares: unit operator in "
             << us << " cells of one level and " << um
             << " cells with restricted or ghost data; fit per cell in " << pc
-            << " cells" << endl;
+            << " cells; cells that keep coarser cells in their stencil: "
+            << returnReduce(nMixed_, sumOp<label>()) << endl;
         reported_ = true;
     }
 

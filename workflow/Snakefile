@@ -71,10 +71,16 @@ if POST_SOLVE:
 # and reconstructPar -latestTime without -withZero then selects no time and fails
 # (MEASURED 2026-11-18, the smoke of the 3D gate).
 KEEP_FIELDS = str(config.get("keep_fields", "all"))
-if KEEP_FIELDS not in ("all", "last"):
-    raise ValueError(f"keep_fields must be all or last, not {KEEP_FIELDS!r}")
+# `processors` (2026-11-23): nothing is reconstructed and the processor directories stay.
+# For a run on a dynamic mesh with refinement and load balancing: reconstructPar cannot
+# reconstruct a mesh that changed (MEASURED 2026-11-23, the AMR smoke: "Size 12067 is not
+# equal to the expected length 2043"). The verdicts read CSVs; with PURGE_WRITE 2 the
+# processor directories hold the last two written times.
+if KEEP_FIELDS not in ("all", "last", "processors"):
+    raise ValueError(f"keep_fields must be all, last or processors, not {KEEP_FIELDS!r}")
 _RECONSTRUCT = (
     ["reconstructPar -withZero"] if KEEP_FIELDS == "all" else
+    ["echo '[leia] keep_fields processors: not reconstructed'"] if KEEP_FIELDS == "processors" else
     ["if [ -f .leia_solver_failed ]; then "
      "echo '[leia] failed case: not reconstructed, processor directories kept'; "
      "else reconstructPar -time 0 -withZero && reconstructPar -latestTime -withZero "

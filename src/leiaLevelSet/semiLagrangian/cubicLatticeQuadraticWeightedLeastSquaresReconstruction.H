@@ -112,6 +112,9 @@ class cubicLatticeQuadraticWeightedLeastSquaresReconstruction
     //  through slot_, through the matched data, and per cell.
     label nUnitSlot_, nUnitMatched_, nPerCell_;
 
+    //- Cells without a lattice that keep coarser cells in their stencil.
+    label nMixed_;
+
     //- Lattice position 0..25 of the lattice coordinates xi, or -1 if xi is
     //  not within 0.05 of a lattice position other than the centre.
     static label latticeSlot(const vector& xi);
