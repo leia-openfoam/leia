@@ -1,0 +1,87 @@
+# ============================================================================
+# AMR LINE, QUADRATIC SPHERE WITHOUT THE PATCH FACES IN THE FIT (2026-11-23, STATUS 11.44).
+# The twin of quadSphereTranslationUniform3D: one variable, SL_STENCIL_BOUNDARY_FACES include -> exclude.
+#
+# WHY. MEASURED on quadSphereTranslationAmr3D: the error of the quadratic psi in the
+# interface cells is 1.6e-3 on the AMR mesh and 1.6e-12 on the uniform mesh. The map at
+# t = 0.9985 has the largest error (3.35 fine cells = 2.6e-2) in level-0 cells on the
+# axis AHEAD of the sphere, 6 coarse cells from the outflow patch; the error falls
+# toward the interface (0.064 fine cells leading, 0.017 trailing in the interface
+# layer). HYPOTHESIS: the zeroGradient patch value is wrong data of the fit in the
+# boundary cells (error g h/2, with the COARSE h on the AMR mesh), and the error travels
+# through the coarse cells into the fine band.
+#
+# PRE-REGISTERED READ-OUT (before the run), E_PSI = max |psi - exact| in the interface
+# cells at t = T:
+#   X1  every case completes.
+#   X2  translation, AMR and uniform: E_PSI at most 1e-9.
+#   X3  rotation: E_PSI on the AMR mesh within 10 % of the uniform mesh (the two runs
+#       have different time steps, so 10 % is a coarse criterion; reported with the
+#       step counts).
+#   FALSIFIED (the patch data are not the cause) if the AMR translation keeps an E_PSI
+#   above 1e-6.
+# ============================================================================
+study_name: quadSphereTranslationUniformExcl3D
+case: 3Dtranslation
+mesh: hex
+mode: parallel
+np: 48
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  N_CELLS:
+  - '128'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '1.0'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - translate
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - quadraticSphere
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - cubicLatticeQuadraticWeightedLeastSquares
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_STENCIL_BOUNDARY_FACES:
+  - exclude
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - staticMesh
+  SL_MESH_TRANSFER:
+  - none
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: last
+studies_dir: studies/slAmr

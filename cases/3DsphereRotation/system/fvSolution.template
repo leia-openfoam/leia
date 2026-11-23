@@ -163,6 +163,9 @@ levelSet
         traceFlux           @!SL_TRACE_FLUX!@;
 
         reconstruction      @!SL_RECONSTRUCTION!@;
+        // Patch faces as data of the fit: include (default) | exclude | inflowOnly.
+        // A zeroGradient patch value is not exact data; see default.parameter.
+        stencilBoundaryFaces @!SL_STENCIL_BOUNDARY_FACES!@;
 
         // Transfer of psi to a refined, unrefined or redistributed mesh (RTS
         // slMeshTransfer): none | quadraticFit. Read on a dynamic mesh only.
