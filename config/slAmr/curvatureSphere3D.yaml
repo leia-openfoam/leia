@@ -1,0 +1,86 @@
+# STATIC GATE (C1): delivered face curvature on a sphere, 3D, UNIFORM hexahedral mesh.
+# The uniform reference ladder of the pre-print on the semi-Lagrangian level set with
+# adaptive mesh refinement. The twin on the statically refined mesh is
+# config/slAmr/curvatureSphereBand3D.yaml (study C2).
+#
+# WHAT IS MEASURED. The test application leiaTestMeanCurvature evaluates the face
+# curvature kappa_f once on the exact signed distance of a sphere (R = 0.15, centre
+# 0.35 0.35 0.35, unit box). It scores every delivery on the active faces
+# (|snGrad(alpha)| > 1e-8 max) against the exact value 2/R. The output is
+# leiaTestFaceCurvature.csv, one row per delivery (MODEL, FOOT_POINT, DELTA_X, E_L1,
+# E_L2, E_LINF). The norms are |Sf|-weighted.
+#
+# THE ROWS THAT THE PRE-PRINT SHOWS. The application has no curvature-model token: it
+# writes one row per delivery in one run, so this config has no model axis.
+#   solverCellCentreInverse     the production delivery: curvatureExtension
+#                               cellCentreInverse with the Gaussian curvature K
+#                               (CURVATURE_INVERSE_GAUSSIAN yes, the default).
+#   solverCellCentreInverseNoK  the control without K (first order in 3D).
+#   quadraticCellCentre, FOOT_POINT 1   the reference: the per-face inverse with K
+#                               (5.25e-3 1/m at N = 128 on the sphere, order 1.95).
+# The curation reads only these rows. It reports L1 and L2, never an L_inf order.
+#
+# THE SETTLED NUMBERS (METHOD.md section 4.1, MEASURED 2026-09-29;
+# docs/knowledge-base/cases/curvature-static-gates.md):
+#   Sphere, production delivery: one rung only, N = 32: E_L2 0.079 1/m with K and
+#     1.87 1/m without K (the inertness check in the header of
+#     config/faceCurvatureEllipsoid3D.yaml). No curated ladder of the production
+#     delivery exists on the sphere. The orders h^1.95 (with K, 5.25e-3 1/m at
+#     N = 128) and h^1.02 (without K) belong to the per-face inverse (METHOD 4.3).
+#   Ellipsoid: see config/slAmr/curvatureEllipsoid3D.yaml.
+#
+# THE ONE VARIABLE: N_CELLS.
+#
+# THE LADDER is N = 32, 52, 80, 128. It differs from config/faceCurvatureSphere3D.yaml
+# (32, 50, 80, 128) in one rung: 52 replaces 50. Reason: the banded twin has two
+# refinement levels, and its fine count must be divisible by 4. With 52 the fine h of
+# the two studies is equal rung by rung. All four counts are even.
+#
+# PRE-REGISTERED READ-OUT (written before any run of this study).
+#   PREDICTION. solverCellCentreInverse: fitted E_L2 and E_L1 order >= 1.9 over
+#     N = 52, 80, 128. solverCellCentreInverseNoK: near first order (0.8 to 1.2).
+#     At N = 32 the E_L2 of the production row equals the settled 0.079 1/m to the
+#     printed digits (the same mesh, the same application path).
+#   FALSIFIED IF the order of solverCellCentreInverse is below 1.5, or the N = 32
+#     value differs from 0.079 1/m by more than 1 %.
+#
+# NOT INERT UNTIL MEASURED. The blockMeshDict template of 3Ddeformation now renders
+# N_CELLS_BASE. A python-only render shows equal bytes for REFINE_LEVELS 0. DELTA_X of
+# the application has a new rule for refined meshes; that commit was not compiled.
+# Before this study runs: build, then compare leiaTestFaceCurvature.csv at N = 32
+# with the pre-change binary (compare_metrics_csv.py --tol 0).
+#
+# LEAN OUTPUT. keep_fields: last acts only on a parallel case; this study is serial,
+# so the key is without effect here. PURGE_WRITE 2 keeps at most two written times.
+#
+#   snakemake --workflow-profile profiles/slurm --configfile config/slAmr/curvatureSphere3D.yaml
+study_name: slAmrCurvatureSphere3D
+case: 3Ddeformation
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestMeanCurvature
+theme:  sl-amr
+keep_fields: last
+
+# The 3D cases initialise the field named "alpha" (not alpha.water).
+setfields_args: "-alphaName alpha"
+
+axes_override:
+  N_CELLS: [32, 52, 80, 128]
+  # LOAD-BEARING pins, as in config/faceCurvatureSphere3D.yaml:
+  #   the uncached quadratic reconstruction is the only one with footPointDistance and
+  #   fitDerivatives; the point stencil gives enough neighbours for the quadratic fit on
+  #   hexahedra; the signed-distance profile is the premise of the parallel-surface inverse.
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_STENCIL: [point]
+  PROFILE: [signedDistance]
+  DIV: [linear]
+  PHASE_INDICATOR: [detrixheAslam]
+  PURGE_WRITE: ['2']
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

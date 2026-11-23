@@ -1,0 +1,111 @@
+# STATIC GATE (C2): delivered face curvature on a sphere, 3D, STATICALLY REFINED
+# hexahedral mesh with TWO refinement levels and a uniform band of finest cells around
+# the interface. The band-width sweep that must CONFIRM the derived width N_band = 6.
+# The uniform twin is config/slAmr/curvatureSphere3D.yaml (study C1,
+# slAmrCurvatureSphere3D): the same case, the same N_CELLS, the same pins.
+#
+# WHAT IS MEASURED. As in the uniform twin: leiaTestFaceCurvature.csv, the rows
+# solverCellCentreInverse (production), solverCellCentreInverseNoK (control) and
+# quadraticCellCentre with FOOT_POINT 1 (per-face inverse). E_L1 and E_L2 on the
+# active faces. All active faces lie in the finest cells.
+#
+# THE MESH (workflow/scripts/leiaRefineHexMesh.py, mesh: hexRefined). blockMesh builds
+# N_CELLS/4 cells per direction. Two passes of [leiaSetFields; topoSet; refineHexMesh]
+# follow. Each pass selects the cells with 0 < alpha < 1 and adds face dilations until
+# every cell that is not selected has 2|psi|/h - 1 >= REFINE_BAND_CELLS, with h the
+# size of that cell before the split. leiaSetFields then writes the fields on the
+# final mesh. N_CELLS is the FINE count: the fine h is 1/N_CELLS, equal to the uniform
+# twin rung by rung.
+#   What the driver guarantees (DERIVED from the code, not measured here):
+#   1. Finest band: at least REFINE_BAND_CELLS complete finest layers on each side of
+#      the interface at the worst point. The final band check measures it as
+#      fineLayersWorst = min|psi| of the cells below the top level / h_fine - 1
+#      (refinedBand.csv). The mesh rule FAILS below 4 layers and WARNS below the request.
+#   2. The width is a LOWER bound. Face dilation adds whole cell layers of the mesh
+#      before the split, so the built band is wider than the request by up to about
+#      one layer (MEASURED at N = 60, one level: 3 / 4 / 5 dilations give 4.6 / 5.8 /
+#      7.0 layers). The read-out therefore uses the MEASURED fineLayersWorst of each
+#      case, not the requested number.
+#   3. Level-1 buffer: pass 1 gives at least REFINE_BAND_CELLS complete layers of
+#      level >= 1 cells, in units of the level-1 size 2 h_fine. The finest band takes
+#      about REFINE_BAND_CELLS/2 of them. The buffer is then about REFINE_BAND_CELLS/2
+#      level-1 cells: 2 for N_band = 4, 3 for 6, 4 for 8. hexRef8 keeps the 2:1
+#      balance between the levels. The band check reports the built buffer as
+#      bufferCellsL1 (report only, no status depends on it).
+#   4. The dilation count has a cap of REFINE_BAND_CELLS + 2 per pass. At the cap the
+#      driver continues with a narrower band, and the band check then WARNS.
+#   5. The N_CELLS pin check of the band check needs the token DOMAIN_LENGTH. This case
+#      does not have it, so that check does not run. The fine h is 1/N_CELLS by
+#      construction (unit box, two halvings of 4/N_CELLS).
+#
+# THE DERIVED BAND WIDTH. N_band = 6 finest layers on each side of the interface:
+#   3  layers that the face curvature reads,
+#   +1 layer for the stencil of the quadratic fit,
+#   +1 guard layer, so that no band cell reads a ghost value,
+#   +1 layer for the travel of the interface between two adaptations at CFL <= 1.
+# The count is in cells. It is one value for every case (CLAUDE.md, "No free
+# parameters"). This static study has no transport: it tests the first five layers.
+# The sixth layer needs a kinematic study.
+#
+# THE ONE VARIABLE: REFINE_BAND_CELLS = 4, 5, 6, 8, at every rung of N_CELLS.
+# CONTROL: the uniform twin on the same commit and the same binaries.
+#
+# ADMISSIBLE FINE COUNTS. materialize.py refuses an N_CELLS that 2^REFINE_LEVELS = 4
+# does not divide. The ladder 32, 52, 80, 128 has the base counts 8, 13, 20, 32. The
+# rung 50 of the older uniform configs is not admissible.
+#
+# PRE-REGISTERED READ-OUT (written before any run of this study).
+#   PREDICTION. For the cases with a measured band of 6 layers or more (the arms
+#     N_band = 6 and 8), E_L1 and E_L2 of solverCellCentreInverse are within 5 % of the
+#     uniform twin at the same N_CELLS, at every rung. The fitted order over
+#     N = 52, 80, 128 is within 0.3 of the uniform order. Expected in fact: a
+#     difference near round-off, because no stencil of an active face then reads a
+#     cell outside the finest band.
+#   PREDICTION. For N_band = 4 a larger error is expected. The study reports it; it is
+#     not a failure of the study. N_band = 5 has no prediction.
+#   FALSIFIED IF the E_L1 or the E_L2 error at N_band = 6 or 8 differs by more than
+#     5 % from the uniform value at any rung, or the fitted L1 or L2 order drops by
+#     more than 0.3 against the uniform order.
+#   NOT A CRITERION: E_LINF and any L_inf order.
+#   ALSO REPORTED: fineLayersWorst and bufferCellsL1 of every case, the cell count,
+#     and DELTA_X (it must equal 1/N_CELLS; the uniform twin gives the same number).
+#
+# BEFORE THIS STUDY RUNS (nothing of it is measured yet):
+#   1. Build. The DELTA_X change of leiaTestMeanCurvature was written without a compiler.
+#   2. One smoke case (N = 32, N_band = 6): the mesh rule passes, refinedBand.csv shows
+#      topLevel 2, and DELTA_X equals 0.03125.
+#   3. The curation of the sweep (join of leiaTestFaceCurvature.csv, refinedBand.csv
+#      and the uniform twin, per REFINE_BAND_CELLS) has no script yet.
+#      make_face_curvature_fig.py does not separate the band arms.
+#   The application is serial (it refuses a parallel run), so the 4-rank gate does
+#   not apply to this study.
+#
+# LEAN OUTPUT. keep_fields: last acts only on a parallel case; this study is serial,
+# so the key is without effect here. PURGE_WRITE 2 keeps at most two written times.
+#
+#   snakemake --workflow-profile profiles/slurm --configfile config/slAmr/curvatureSphereBand3D.yaml
+study_name: slAmrCurvatureSphereBand3D
+case: 3Ddeformation
+mesh: hexRefined
+mode: serial
+np: 1
+solver: leiaTestMeanCurvature
+theme:  sl-amr
+keep_fields: last
+setfields_args: "-alphaName alpha"
+axes_override:
+  N_CELLS: [32, 52, 80, 128]
+  REFINE_LEVELS: [2]
+  REFINE_SOURCE: [interface]
+  REFINE_BAND_CELLS: [4, 5, 6, 8]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_STENCIL: [point]
+  PROFILE: [signedDistance]
+  DIV: [linear]
+  PHASE_INDICATOR: [detrixheAslam]
+  PURGE_WRITE: ['2']
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
