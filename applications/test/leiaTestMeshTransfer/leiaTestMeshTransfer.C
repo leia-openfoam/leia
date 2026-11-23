@@ -39,6 +39,8 @@ Description
 #include "dynamicFvMesh.H"
 #include "slMeshTransfer.H"
 #include "slRefinementBand.H"
+#include "slReconstruction.H"
+#include "labelIOList.H"
 
 using namespace Foam;
 
@@ -133,6 +135,62 @@ int main(int argc, char *argv[])
         reduce(eL1Near, sumOp<scalar>());
         reduce(vNear, sumOp<scalar>());
         worstNear = max(worstNear, eMaxNear);
+
+        // FIT CHECK on the new mesh: the gradient and the value of the fit of the
+        // EXACT field, per refinement level, for the cells near the sphere.
+        if (fieldType != "sphere")
+        {
+            volScalarField ex("psiExact", psi);
+            forAll(C, c) { ex.primitiveFieldRef()[c] = exact(C[c]); }
+            ex.correctBoundaryConditions();
+            autoPtr<slReconstruction> rec(slReconstruction::New(mesh));
+            rec->update(ex);
+            const labelIOList& lev = mesh.lookupObject<labelIOList>("cellLevel");
+            const labelListList& cc = mesh.cellCells();
+            scalarList gErr(4, Zero), vErr(4, Zero);
+            labelList nBad(4, Zero), nLev(4, Zero);
+            label printed = 0;
+            forAll(C, c)
+            {
+                if (mag(C[c] - xc) >= radius + 0.15) { continue; }
+                const label L = min(lev[c], label(3));
+                vector g; symmTensor H;
+                rec->fitDerivatives(c, g, H);
+                const vector r(C[c] - x0);
+                const scalar eg = mag(g - (b + (A & r)));
+                const point xs(C[c] + 0.3*Foam::cbrt(V[c])*vector(1, -1, 1));
+                const scalar ev = mag(rec->evaluateRaw(c, xs) - exact(xs));
+                ++nLev[L];
+                gErr[L] = max(gErr[L], eg);
+                vErr[L] = max(vErr[L], ev);
+                if (eg > 1e-9)
+                {
+                    ++nBad[L];
+                    if (printed < 6)
+                    {
+                        ++printed;
+                        label lo = 99, hi = -1;
+                        for (const label n : cc[c]) { lo = min(lo, lev[n]); hi = max(hi, lev[n]); }
+                        Pout<< "  bad fit: cell " << c << " centre " << C[c]
+                            << " level " << lev[c] << " face-neighbour levels "
+                            << lo << ".." << hi << " faces " << mesh.cells()[c].size()
+                            << " |dg| " << eg << " H " << H << endl;
+                    }
+                }
+            }
+            for (label L = 0; L < 4; ++L)
+            {
+                reduce(nLev[L], sumOp<label>()); reduce(nBad[L], sumOp<label>());
+                reduce(gErr[L], maxOp<scalar>()); reduce(vErr[L], maxOp<scalar>());
+                if (nLev[L])
+                {
+                    Info<< "  fit check level " << L << ": cells " << nLev[L]
+                        << ", gradient error above 1e-9 in " << nBad[L]
+                        << ", max gradient error " << gErr[L]
+                        << ", max value error " << vErr[L] << endl;
+                }
+            }
+        }
         Info<< "pass " << pass << ": cells "
             << returnReduce(mesh.nCells(), sumOp<label>())
             << ", changed " << n

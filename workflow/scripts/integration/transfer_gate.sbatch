@@ -22,8 +22,8 @@ W=studies/slAmr/u1TransferGate; rm -rf $W; mkdir -p $W/serial $W/np4
 cp -r $SERIAL/0 $SERIAL/constant $SERIAL/system $W/serial/
 cp -r $PAR/constant $PAR/system $W/np4/
 for p in $PAR/processor*; do mkdir -p $W/np4/$(basename $p); cp -r $p/0 $p/constant $W/np4/$(basename $p)/; done
-for f in linear harmonic quadratic sphere; do
-  ( cd $W/serial && leiaTestMeshTransfer -field $f > log.u1.$f 2>&1; echo "== serial $f rc=$?"; grep -E "^pass|leiaTestMeshTransfer field|PASS|FAIL|REPORT|FOAM FATAL" -A0 log.u1.$f | tail -18 )
+for f in ${FIELDS:-linear harmonic quadratic sphere}; do
+  ( cd $W/serial && leiaTestMeshTransfer -field $f > log.u1.$f 2>&1; echo "== serial $f rc=$?"; grep -E "^pass|fit check|bad fit|leiaTestMeshTransfer field|PASS|FAIL|REPORT|FOAM FATAL|cubicLattice.*refinement level" log.u1.$f | tail -70 )
   ( cd $W/np4 && mpirun -np 4 leiaTestMeshTransfer -parallel -field $f > log.u1.$f 2>&1; echo "== np4 $f rc=$?"; grep -c "Successfully distributed" log.u1.$f; grep -E "^pass|leiaTestMeshTransfer field|PASS|FAIL|REPORT|FOAM FATAL" log.u1.$f | tail -18 )
 done
 } > int.u1.log 2>&1
