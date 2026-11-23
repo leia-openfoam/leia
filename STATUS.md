@@ -8647,3 +8647,69 @@ The plan with the open decisions D1 to D7 is `docs/plan-3d-droplets-next-steps.m
    - Not done: collated file handling, binary format, and a smaller set of written fields
      (steps 3 to 5 of the plan).
 
+### 11.44 The AMR line: SLLS on cubic cells with dynamic AMR, first runs (2026-11-23, Lichtenberg, special00005)
+
+Branch `feature/slls-amr` (from `development` 835b8728). The plan and the scope of the
+pre-print, version 1, are in `docs/plan-sl-amr-preprint.md`. Clone
+`/work/scratch/tm83tomy/leia-amr-dev`, binaries 5d54032f; blastAMR is the own clone
+`$HOME/OpenFOAM/blastAMR-v2606` (fork at 9c4f667, built for OpenFOAM-v2606).
+
+1. **What the branch adds.** Every item is a new run-time-selectable class or a
+   composition root; the defaults are inert (`DYNAMIC_MESH staticMesh`,
+   `SL_MESH_TRANSFER none`, `SL_SOURCE none`).
+   - `leiaSemiLagrangeLevelSetFoam` constructs a dynamic mesh and calls `mesh.update()`.
+     After a change of the topology the solver constructs its semi-Lagrangian objects,
+     the narrow band, the velocity model and the phase indicator again.
+   - `cubicLatticeQuadraticWeightedLeastSquares`: the fit of the ghost-cell class, with
+     one operator of the unit cube (9 x 26) for every cube that has the 26 lattice
+     positions filled. It reads the levels from the registry and supports three levels.
+   - `slMeshTransfer quadraticFit`: a child cell gets the value of the parent's
+     quadratic; a merged cell gets the mean of its children minus (h_c^2/8) tr(H).
+   - `slRefinementBand`: the field `amrBand`, 1 within 6 cell layers of the interface
+     (3 for the face curvature, 1 for the fit stencil, 1 guard against ghost values,
+     1 for the travel at CFL <= 1). blastAMR refines on it: two levels, 2 buffer cells.
+   - `slSource rescaling`: the algebraic rescaling with the trigger
+     max| |grad psi| - 1 | > theta over the band. Written, not yet run in a study.
+
+2. **Smoke, 4 ranks** (`config/slAmr/amrSmokeTranslation3D.yaml`, base N = 16, finest
+   h = 1/64, T = 0.1, CFL 0.5; MEASURED). PASS. 56 steps in 14 s. The initial
+   adaptation takes 4 mesh updates and ends at 50472 cells; the time loop has 16 mesh
+   changes with 46104 to 50472 cells. No linear fit, no constant fit, no cell without a
+   lattice, no cell that keeps a coarser cell in its stencil. At t = 0.1 the relative
+   volume error is 2.03e-5 and the relative shape error is 3.73e-3. The first run of the
+   smoke (binaries 831f3f55) reported 4768 cells "not a hexahedron": a cell with hanging
+   nodes has no hexahedral shape. The lattice now comes from the 8 anchor points.
+
+3. **Serial against 4 ranks** (`amrDecompSerial3D`, `amrDecompNp4_3D`; MEASURED). Not a
+   pass as written. Equal: 56 steps, the cell count at each of the 20 mesh changes. The
+   gradient CSV differs by at most 1.0e-12 relative, the shape error by 1.9e-12. The
+   volume error differs by 5.2e-8 relative in one row, where it changes its sign and is
+   1.67e-10; the absolute difference is 8.7e-18, 6.8e-16 of the droplet volume. The
+   criterion (1e-9 relative for every metric) cannot hold for a metric that crosses
+   zero. The next check divides the difference by the reference volume.
+
+4. **Load balancing** (`amrBalance3D`, `allowableImbalance 0.02`; MEASURED). 15
+   redistributions against 5 in the standard run. The gradient CSV and the shape error
+   are identical to the standard run; the volume error differs as in item 3 (1.0e-17
+   absolute). A redistribution does not change the result.
+   RETRACTED: "the smoke did not exercise load balancing" (the first reading of the
+   smoke). Its log has 5 redistributions, 2 of them in the time loop.
+
+5. **Amplification with three cell sizes** (`docs/analysis-amplification-sl`, numerical
+   matrix symbol, laptop; MEASURED, branch `wp-analysis/three-levels`, merged). Growth
+   factor - 1 of `C-Cp/L2+g` in 3D at Co 0.5 / 1.0: one transition 4.4e-3 / 3.7e-3;
+   buffer of 1 cell 1.2e-3 / 0; 2 cells 2.1e-3 / 2.4e-3; 3 cells 4.5e-3 / 5.2e-3. The
+   buffer of 2 cells of the AMR line passes the criterion 4.41e-3 in 2D and 3D (P5a,
+   P5b hold). P5c is falsified: the buffer of 1 cell is not worse. P5d is missed: the
+   buffer of 3 cells is 1.3 to 2.2 times the buffer of 2. Each value belongs to one
+   block geometry and is not a bound (a 2D scan of 70 blocks gives 2.2e-4 to 3.7e-3).
+   The powers of the update matrix over 2000 steps follow the growth factor; the neutral
+   cases stay bounded (at most 18.5 in 3D), with no algebraic growth. The tables
+   evaluate the polynomial of the arrival cell, as the solver does (DERIVED from the
+   script).
+
+6. **Open.** The bit-identity run of the inert composition root on the regression set
+   (drivers 57088373 and 57088376 run; the polyhedral arms are not submitted). The unit
+   gates of the transfer and of the unit-cube operator. Every study of the plan. Up to
+   three fits per step (advection, transfer, rescaling trigger). The second pass of the
+   initial adaptation refines to 136684 cells before it settles at 50472.

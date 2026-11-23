@@ -10,6 +10,18 @@
 #   metric agrees with amrDecompNp4_3D (the same case without a redistribution) within
 #   1e-9 relative, with the same cell counts.
 #   FALSIFIED by a crash after a redistribution, or by a metric difference above 1e-9.
+#
+# CORRECTION 2026-11-23: "the smoke did not redistribute" above is wrong. The smoke log
+#   has 5 redistributions: 3 in the initial adaptation (imbalance 62.1, 46.6 and 20.4 %)
+#   and 2 in the time loop (20.7 and 22.4 %). The first reading took only the last value.
+#
+# RESULT 2026-11-23 (driver 57091290, binaries 5d54032f, 4 ranks).
+#   NOT A PASS AS WRITTEN, for the reason of amrDecompNp4_3D. The solver completes (56
+#   steps). The log has 15 redistributions (amrDecompNp4_3D: 5); the imbalance stays below
+#   7.9 % after the initial adaptation. The cell counts are equal at every mesh change.
+#   gradPsiError.csv and the shape error are IDENTICAL to amrDecompNp4_3D (difference 0).
+#   The volume error differs by 6.2e-8 relative in the one row where it crosses zero
+#   (absolute 1.0e-17); every other row is below 1e-9.
 # ============================================================================
 axes_override:
   ADVECTION:

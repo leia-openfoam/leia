@@ -10,6 +10,17 @@
 #   difference of every metric is at most 1e-9 (L_INF_E_PSI is reported, not judged).
 #   FALSIFIED by a different cell count at any mesh change (the refinement would then
 #   depend on the decomposition) or by a metric difference above 1e-9.
+#
+# RESULT 2026-11-23 (drivers 57091288 serial, 57091289 4 ranks; binaries 5d54032f).
+#   NOT A PASS AS WRITTEN. Both runs complete with 56 steps. The cell count is equal after
+#   the initial adaptation (50472) and after each of the 20 mesh changes. gradPsiError.csv:
+#   largest relative difference 1.0e-12. Solver CSV: shape error 1.9e-12; volume error
+#   5.2e-8 in ONE row (t = 0.0379), where the volume error changes its sign and is
+#   1.67e-10. The absolute difference there is 8.7e-18, which is 6.8e-16 of the droplet
+#   volume 1.276e-2 (summation order). The next largest row has 6.7e-10. The criterion
+#   form was wrong: a relative difference of a metric that crosses zero is not bounded.
+#   For the next decomposition check the volume-error difference is divided by the
+#   reference volume. No dependence on the decomposition is measured.
 # ============================================================================
 axes_override:
   ADVECTION:

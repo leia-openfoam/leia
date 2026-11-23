@@ -25,9 +25,15 @@
 #   (8192 -> 40420 -> 123384 -> 57584 -> 50472 cells); 3 levels. (3) 16 mesh changes in
 #   the time loop, 46104 to 50472 cells. (4) 0 linear and 0 constant fits. (5) Relative
 #   volume error 2.0e-5, relative shape error 3.7e-3 at t = 0.1.
-#   NOT TESTED by this run: load balancing (the largest imbalance was 15.3 %, below the
-#   limit of 20 %, so no redistribution ran). The workflow step reconstruct failed
+#   RETRACTED 2026-11-23: "NOT TESTED by this run: load balancing (the largest imbalance
+#   was 15.3 %, so no redistribution ran)". The log has 5 redistributions: 3 in the
+#   initial adaptation (62.1, 46.6, 20.4 %) and 2 in the time loop (20.7, 22.4 %). The workflow step reconstruct failed
 #   (reconstructPar on a changed mesh); keep_fields processors replaces it.
+# RESULT 2026-11-23, second run (driver 57091287, binaries 5d54032f, lattice from the
+#   anchor points): PASS. 0 cells without a lattice (before: 4768 "not a hexahedron");
+#   260 to 3248 cells with hanging nodes take the lattice from their anchor points; 0
+#   cells keep a coarser cell in their stencil in all 37 reports; 0 linear and 0 constant
+#   fits. Same cell counts, same errors (2.03e-5 volume, 3.73e-3 shape, relative).
 # ============================================================================
 study_name: amrSmokeTranslation3D
 case: 3Dtranslation
