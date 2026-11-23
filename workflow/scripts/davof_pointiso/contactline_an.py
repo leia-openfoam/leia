@@ -18,6 +18,8 @@ X0R = 0.4 + math.sqrt(0.2**2 - 0.1**2)
 ARMS = {"clB": dict(v0=-0.2, c1=0.1, c2=-2.0, tau=0.0), "clC": dict(v0=-0.2, c1=0.1, c2=-2.0, tau=0.2), "clD": dict(v0=0.0, c1=0.0, c2=-2.0, tau=0.0)}
 NS = (128, 256, 512, 1024)
 COS = (0.2, 0.5, 0.95)
+COS_IN = (0.2, 0.5)      # the method's range (rule of 2026-11-23)
+COS_OUT = (0.95,)         # outside the method's range: a separate block, not used for orders or the PW data
 ROWS = ("plicRDF", "pointIso", "pointIso-davof")
 def ref(arm, t, side):
     """x_cl and theta of the exact solution; side 0 left ('-'), 1 right ('+')"""
@@ -135,8 +137,10 @@ def main():
     L = []
     L.append("Contact line study, rows: plicRDF = plicRDF + isoAdvector (OpenFOAM), pointIso = pointIsoAdvection + plicRDF. Ranks: 1 for N 128 and 256, 8 for N 512 and 1024 (the same for both rows).")
     L.append("Errors: E_theta^inf in rad (deg in the second column), E_cl^inf = max |x_num - x_ref|/R0, per contact point (left L, right R), over the steps with a detected contact cell; 'miss' = steps without one; 'multi' = steps with more than one candidate cell on a side.")
+    Lmain, Lout = L, []
     for arm, title in (("clB", "Case B (Eq. 36, steady)"), ("clC", "Case C (Eq. 37, periodic, T = 2 tau)"), ("clD", "Case D (no slip, rolling)")):
         for co in COS:
+            L = Lout if co in COS_OUT else Lmain
             L.append("\n### %s, OpenFOAM Co target %s\n" % (title, co))
             L.append("| row | N | ranks | OF Co | steps | status | E_theta L (rad / deg) | E_theta R (rad / deg) | E_theta L, one candidate (rad) | E_theta R, one candidate (rad) | E_cl L | E_cl R | miss L / R | multi L / R | E_1 | liquid volume |dev| | min alpha | max alpha - 1 | wall (s) |")
             L.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
@@ -151,6 +155,9 @@ def main():
                         f(r["Eth1"]), "-" if r["Eth1"] is None else "%.3f" % math.degrees(r["Eth1"]),
                         f(r["Eth1c0"]), f(r["Eth1c1"]), f(r["Ecl0"]), f(r["Ecl1"]), r["miss0"], r["miss1"], r["multi0"], r["multi1"],
                         f(r["E1"]) if arm == "clC" else "-", f(r["dev"]), f(r["minA"]), f(r["maxA"]), "%.0f" % r["wall"] if r.get("wall") else "-"))
+            Lsave = L
+            if co in COS_OUT:
+                L = []
             L.append("\nOrders over dx/R0 (least squares over the completed rungs):\n")
             L.append("| row | E_theta L | E_theta R | E_theta L (one candidate) | E_theta R (one candidate) | E_cl L | E_cl R | E_1 |")
             L.append("|---|---|---|---|---|---|---|---|")
@@ -158,6 +165,8 @@ def main():
                 rs = [by[(arm, row, N, co)] for N in NS if (arm, row, N, co) in by and by[(arm, row, N, co)]["status2"] == "completed"]
                 o = lambda k: order([(r["dx"]/R0, r[k]) for r in rs])
                 L.append("| %s | %s | %s | %s | %s | %s | %s | %s |" % (row, *["-" if o(k) is None else "%.2f" % o(k) for k in ("Eth0", "Eth1", "Eth1c0", "Eth1c1", "Ecl0", "Ecl1")], "-" if (arm != "clC" or o("E1") is None) else "%.2f" % o("E1")))
+            L = Lsave
+    L = Lmain + ["\n## OpenFOAM Co 0.95: outside the method's range (Co 0.2 and 0.5 only); shown for reference, not used for the orders or the PW data\n"] + Lout
     # the time of occurrence of the maximum angle error, case D
     L.append("\n### Case D: step and time of the maximum of |theta_num - theta_ref| (E_theta^inf), left / right, Co 0.2\n")
     L.append("| row | N | step (L / R) | t (L / R) | E_theta L / R (rad) | candidates of that step (L / R) |")
@@ -205,7 +214,7 @@ def main():
     L.append("\n### Data for the pre-registered statements\n")
     L.append("- PW1 (case D, E_cl^inf ratio row (1) / row (2) = plicRDF / pointIso, and row (1) / row (3) = plicRDF / pointIso-davof, per point; at least 2 required): ")
     for N in NS:
-        for co in COS:
+        for co in COS_IN:
             a3 = by.get(("clD", "pointIso-davof", N, co)); a1 = by.get(("clD", "plicRDF", N, co))
             if a1 and a3 and a1.get("Ecl0") is not None and a3.get("Ecl0") is not None:
                 L.append("  - row (3) N %d Co %s: L %.3g, R %.3g (E_cl: row1 %s / %s, row3 %s / %s)" % (N, co, a1["Ecl0"]/a3["Ecl0"] if a3["Ecl0"] > 0 else float("inf"), a1["Ecl1"]/a3["Ecl1"] if a3["Ecl1"] > 0 else float("inf"), f(a1["Ecl0"]), f(a1["Ecl1"]), f(a3["Ecl0"]), f(a3["Ecl1"])))
@@ -217,14 +226,14 @@ def main():
     L.append("- PW2 (cases B, C: orders of E_cl^inf of pointIso >= 1 and E_cl row (2) <= row (1)): see the order tables; pointwise E_cl row2 <= row1:")
     for arm in ("clB", "clC"):
         for N in NS:
-            for co in COS:
+            for co in COS_IN:
                 a1, a2 = by.get((arm, "plicRDF", N, co)), by.get((arm, "pointIso", N, co))
                 if a1 and a2 and a1.get("Ecl0") is not None and a2.get("Ecl0") is not None:
                     L.append("  - %s N %d Co %s: L %s <= %s %s, R %s <= %s %s" % (arm, N, co, f(a2["Ecl0"]), f(a1["Ecl0"]), a2["Ecl0"] <= a1["Ecl0"], f(a2["Ecl1"]), f(a1["Ecl1"]), a2["Ecl1"] <= a1["Ecl1"]))
     L.append("- PW3 (E_theta^inf row (3) <= row (1)): row (3) is not wired (see the report); E_theta row (2) <= row (1):")
     for arm in ARMS:
         for N in NS:
-            for co in COS:
+            for co in COS_IN:
                 a1, a2 = by.get((arm, "plicRDF", N, co)), by.get((arm, "pointIso", N, co))
                 if a1 and a2 and a1.get("Eth0") is not None and a2.get("Eth0") is not None:
                     L.append("  - %s N %d Co %s: L %s vs %s (%s), R %s vs %s (%s)" % (arm, N, co, f(a2["Eth0"]), f(a1["Eth0"]), a2["Eth0"] <= a1["Eth0"], f(a2["Eth1"]), f(a1["Eth1"]), a2["Eth1"] <= a1["Eth1"]))
@@ -237,7 +246,7 @@ def main():
     L.append("- PW5 (wall clock row (2) / row (1), at most 2):")
     for arm in ARMS:
         for N in NS:
-            for co in COS:
+            for co in COS_IN:
                 a1, a2 = by.get((arm, "plicRDF", N, co)), by.get((arm, "pointIso", N, co))
                 if a1 and a2 and a1.get("wall") and a2.get("wall"):
                     L.append("  - %s N %d Co %s: %.2f (%s s / %s s)" % (arm, N, co, a2["wall"]/a1["wall"], "%.0f" % a2["wall"], "%.0f" % a1["wall"]))
