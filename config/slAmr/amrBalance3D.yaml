@@ -1,0 +1,75 @@
+# ============================================================================
+# AMR LINE, LOAD BALANCING TEST (2026-11-23, branch feature/slls-amr, STATUS 11.44)
+# The case of amrSmokeTranslation3D on 4 ranks with DYNAMIC_MESH blastAMRbalanceTest:
+# allowableImbalance 0.02 in place of 0.2 (a test instrument), so that blastAMR
+# redistributes the mesh in this small case. The smoke did not redistribute (largest
+# imbalance 15.3 %).
+#
+# PRE-REGISTERED READ-OUT (before the run).
+#   PASS if the solver completes, the log shows at least one redistribution, and every
+#   metric agrees with amrDecompNp4_3D (the same case without a redistribution) within
+#   1e-9 relative, with the same cell counts.
+#   FALSIFIED by a crash after a redistribution, or by a metric difference above 1e-9.
+# ============================================================================
+axes_override:
+  ADVECTION:
+  - semiLagrangian
+  CFL:
+  - '0.5'
+  DYNAMIC_MESH:
+  - blastAMRbalanceTest
+  END_REFERENCE:
+  - translate
+  END_TIME:
+  - '0.1'
+  FLUX_PROJECTION:
+  - none
+  N_CELLS:
+  - '16'
+  OSCILLATION:
+  - 'off'
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - signedDistance
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+  SDPLS_SOURCE:
+  - noSource
+  SL_CLIP:
+  - 'false'
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_LIMITER:
+  - none
+  SL_MESH_TRANSFER:
+  - quadraticFit
+  SL_RECONSTRUCTION:
+  - cubicLatticeQuadraticWeightedLeastSquares
+  SL_SCHEME:
+  - pointValue
+  SL_SOURCE:
+  - none
+  SL_STENCIL:
+  - point
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_VALUE_BOUND:
+  - none
+  SOURCE_SCHEME:
+  - explicit
+case: 3Dtranslation
+collapse_other_axes: true
+export_slides: false
+keep_fields: processors
+mesh: hex
+mode: parallel
+np: 4
+setfields_args: -alphaName alpha
+solve_runtime: 20
+solver: leiaSemiLagrangeLevelSetFoam
+studies_dir: studies/slAmr
+study_name: amrBalance3D
+theme: sl-amr

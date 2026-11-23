@@ -1,0 +1,48 @@
+// Included by constant/dynamicMeshDict (DYNAMIC_MESH blastAMRbalanceTest).
+// A TEST INSTRUMENT: the file dynamicMeshDict.blastAMR with allowableImbalance 0.02,
+// so that the load balancing runs often in a small case. Not a method setting.
+// Adaptive refinement of hexahedra with load balancing (blastAMR, a sibling build,
+// etc/leia-env.sh LEIA_BLASTAMR_DIR). Every number below is derived or is a default
+// of blastAMR; none is tuned to a case (CLAUDE.md "No free parameters").
+dynamicFvMesh       adaptiveFvMesh;
+dynamicFvMeshLibs   (amrDynamicFvMesh amrDynamicMesh amrIndicators amrLoadPolicies);
+
+refiner             hexRefiner;
+
+// The solver writes the registered field amrBand before every mesh update: 1 in the
+// cells within refinementBandLayers cell layers of the interface (default 6, derived
+// from the stencils, src/leiaLevelSet/semiLagrangian/meshTransfer/slRefinementBand.H),
+// 0 elsewhere. Refine where it is 1, unrefine where it is 0.
+errorEstimator      fieldValue;
+fieldName           amrBand;
+lowerRefineLevel    0.5;
+upperRefineLevel    1.5;
+unrefineLevel       0.5;
+upperUnrefineLevel  1.5;
+
+// Two refinement levels (supervisor, 2026-11-23). Two cells of the middle level
+// between the finest and the coarsest level, so that no cell has a finer and a
+// coarser cell in one cell-point-cell stencil.
+maxRefinement       2;
+nBufferLayers       2;
+nRefinementBufferLayers   2;
+nUnrefinementBufferLayers 2;
+
+// The band holds one layer for the travel of the interface at CFL <= 1 between two
+// adaptations, so the mesh adapts in every step.
+refineInterval      1;
+unrefineInterval    1;
+
+// Load balancing (acts on more than one rank only); 0.2 is the default of blastAMR.
+balance             yes;
+balanceInterval     1;
+allowableImbalance  0.02;
+loadPolicy          cellCount;
+
+// The solver sets the prescribed flux again on the new mesh
+// (rebuildAfterMeshChange.H); the mesh must not replace it.
+correctFluxes
+(
+    (phi none)
+    (phi0 none)
+);

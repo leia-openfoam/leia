@@ -1,0 +1,75 @@
+# ============================================================================
+# AMR LINE, DECOMPOSITION CHECK D1 (2026-11-23, branch feature/slls-amr, STATUS 11.44)
+# The case of amrSmokeTranslation3D (base N = 16, two refinement levels, T = 0.1), in SERIAL.
+# Its twin is amrDecompNp4_3D. The two files differ in study_name, mode and np only.
+#
+# PRE-REGISTERED READ-OUT (before the runs). Compare the two metric CSVs of the solver and
+# of gradPsiErrorCSV with workflow/scripts/integration/column_differences.py.
+#   PASS if both runs complete with the same number of steps, the same cell count after
+#   the initial adaptation and after every mesh change, and the largest relative
+#   difference of every metric is at most 1e-9 (L_INF_E_PSI is reported, not judged).
+#   FALSIFIED by a different cell count at any mesh change (the refinement would then
+#   depend on the decomposition) or by a metric difference above 1e-9.
+# ============================================================================
+axes_override:
+  ADVECTION:
+  - semiLagrangian
+  CFL:
+  - '0.5'
+  DYNAMIC_MESH:
+  - blastAMR
+  END_REFERENCE:
+  - translate
+  END_TIME:
+  - '0.1'
+  FLUX_PROJECTION:
+  - none
+  N_CELLS:
+  - '16'
+  OSCILLATION:
+  - 'off'
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - signedDistance
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+  SDPLS_SOURCE:
+  - noSource
+  SL_CLIP:
+  - 'false'
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_LIMITER:
+  - none
+  SL_MESH_TRANSFER:
+  - quadraticFit
+  SL_RECONSTRUCTION:
+  - cubicLatticeQuadraticWeightedLeastSquares
+  SL_SCHEME:
+  - pointValue
+  SL_SOURCE:
+  - none
+  SL_STENCIL:
+  - point
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_VALUE_BOUND:
+  - none
+  SOURCE_SCHEME:
+  - explicit
+case: 3Dtranslation
+collapse_other_axes: true
+export_slides: false
+keep_fields: processors
+mesh: hex
+mode: serial
+np: 1
+setfields_args: -alphaName alpha
+solve_runtime: 20
+solver: leiaSemiLagrangeLevelSetFoam
+studies_dir: studies/slAmr
+study_name: amrDecompSerial3D
+theme: sl-amr
