@@ -96,3 +96,4 @@ Created.
 
 ### 2026-09-29
 Pinned the two STATUS 11.17 links to commit aaa0a7dd (the branch they named is pruned).
+- 2026-11-18 · the 3D gate ran for the first time, baseline only, on the supervisor's instruction and without a 2D pass (STATUS 11.42): 16 of 16 cases completed; the stationary droplet meets four of five proposed criteria, the oscillating droplet misses the period and the volume criterion, the translating droplet ends inside a blow-up. The 3D Lamb period of the summary script was wrong and is corrected (8.232 ms).

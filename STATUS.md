@@ -8463,4 +8463,140 @@ This closes item 7 of 11.38 as a measurement; the merge waits for the supervisor
    run as DIVERGED. All outputs of that window are void and were repeated. An archive job
    packed finished check directories of this session into tar files
    (`leia-integration/archives_20261118/`, member counts verified before removal).
+### 11.42 The first 3D baseline of the method gate: stationary, translating and oscillating droplet (2026-11-18, Lichtenberg, special00005)
+
+Branch `work/droplets3D` (NOT in `development`). Supervisor, 2026-11-18: "work until we can
+simulate the 3D stationary, translating and oscillating droplet accurately". The 2D gate has
+no pass; this run is the supervisor's decision to measure 3D now. Clone
+`/work/scratch/tm83tomy/leia-drop3d`, binaries c2301068, OpenFOAM-v2606, hexahedral
+blockMesh, 6 mm box, R = 1 mm, 32 ranks, viscosity `geo_lin` (the open item of
+`methodGate3D.yaml`). The proposed criteria A and the predictions P1 to P3 are in the header
+of `config/gates/methodGate3D.yaml`, written before the run (1284c499). The number 11.41 is
+used on the branch `fix/sl-remote-patch-faces`.
+
+**Summary.** The stationary droplet is accurate except for one criterion. The oscillating
+droplet completes, but its period is 1.4 to 2.7 % short and moves away under refinement. The
+translating droplet is NOT accurate: it ends inside a blow-up, and two separate defects are
+measured. The reference period of the 3D oscillating droplet in the record was wrong and is
+corrected (item 4).
+
+1. **Runs.** 4-rank smoke first (11 of 11 cases completed, 8 ranks against 4 ranks 9e-12).
+   Full gate, driver 56597106: 16 of 16 cases completed; exact 1D arm passes (2.5e-6); shear
+   16 ranks against 32 ranks 7e-12 (PASS). The first full run failed on the scratch file
+   quota and is void (`*_VOID_quota_20261118`). Tables:
+   `docs/gradient-controlled-level-set/gcls-level-set-article/data/tables/methodGate3D_baseline_*.csv`.
+2. **Stationary droplet (T = 0.025 s; N = 60, 78, 102; R/h = 10, 13, 17).**
+
+   | metric | N = 60 | N = 78 | N = 102 | fitted order |
+   |---|---|---|---|---|
+   | shape error / R (L2 of the zero set) | 5.51e-4 | 2.84e-4 | 1.85e-4 | 2.06 |
+   | relative pressure-jump error | 1.01e-3 | 4.78e-4 | 3.01e-4 | 2.28 |
+   | curvature error in the band (L2, relative) | 1.10e-3 | 7.08e-4 | 3.78e-4 | 2.02 |
+   | band gradient error | 2.17e-3 | 1.28e-3 | 7.42e-4 | 2.02 |
+   | relative volume error | 6.2e-7 | 9.9e-7 | 2.8e-7 | not monotone |
+   | spurious current, L2 [m/s] | 1.15e-6 | 1.09e-6 | 1.85e-6 | -0.90 |
+   | spurious current, L1 [m/s] | 2.4e-7 | 2.0e-7 | 4.9e-7 | -1.33 |
+
+   A-stationary: four of five criteria hold. The end-time current does not fall with N
+   (P1 holds). Its size is 1.9e-6 m/s (capillary number about 2.5e-8).
+3. **Translating droplet (U0 = 0.05 m/s, T = 0.02 s = 1 R of travel).** Every rung
+   completes, but the end time lies inside a blow-up, so the end-time numbers are not errors
+   of a converged solution and their orders mean nothing: shape error / R 8.8e-2, 2.6e-2,
+   1.8e-2; L2 disturbance velocity 7.7e-2, 1.1e-2, 9.6e-3 m/s (19 % of U0 at N = 102);
+   relative volume error 2.6e-3, 2.9e-4, 4.4e-4; pressure-jump error 1.4e-2, 7.1e-3, 8.6e-3.
+   A-translating FAILS. P2 named the right weak points and did not predict the blow-up.
+   - **Defect 1, the growth of the curvature error (MEASURED).** The standard deviation of
+     the band curvature (exact value 2000 1/m) is flat until t = 0.008 s and then doubles
+     about every 2 ms:
+
+     | t [s] | 0.010 | 0.012 | 0.014 | 0.016 | 0.018 | 0.020 |
+     |---|---|---|---|---|---|---|
+     | 6 mm box, N = 60, BDF2 | 4.2 | 7.5 | 14 | 28 | 94 | 3502 |
+     | 6 mm box, N = 102, BDF2 | 2.9 | 5.0 | 10.6 | 20 | 40 | 1645 |
+     | 6 mm box, N = 60, Euler (instrument) | 3.0 | 6.4 | 13 | 27 | 94 | 4483 |
+     | 8 mm box, N = 80 (same h as N = 60), BDF2 | 4.2 | 7.5 | 14 | 26 | 41 | 42 |
+
+     The rate does not depend on h (N = 60 against 102), on the time scheme, or, until
+     t = 0.016 s, on the box. The extreme curvature and velocity sit at the band edge on the
+     trailing diagonals until t = 0.014 s and at the leading pole from t = 0.016 s
+     (`fieldMinMax` on the written times). The band gradient error grows linearly in time
+     from the first step (L2: 2.2e-3 to 5.9e-3 at t = 0.01 s on N = 60; 7.5e-4 to 9.0e-3 on
+     N = 102, larger on the finer mesh), and the ratio max/min of |grad psi| in the band
+     reaches 1.05 and 1.11. On the stationary droplet the same error stays at 2.2e-3 and the
+     curvature deviation falls from 2.2 to 0.5. HYPOTHESIS: the curvature error is driven by
+     the loss of the signed-distance property under translation, the open mechanism of the
+     gradient-control line ([[hubs/gradient-control]]); not tested here.
+     - H-ddt (`config/droplets3D/translatingEulerHorizon3D.yaml`): FALSIFIED. With Euler in
+       both equations the growth is the same (third table row).
+     - H-outlet (`config/droplets3D/translatingBox8mm3D.yaml`): the pre-registered case
+       "between 20 and 100: both mechanisms act". On the 8 mm box the deviation is 42 1/m at
+       t = 0.02 s (6 mm box: 3502) and the largest disturbance velocity is 7.9e-3 m/s (6 mm
+       box: 2.9 m/s). The growth until t = 0.016 s is the same in both boxes, so it does not
+       come from the outlet. The last factor of 37 in 2 ms on the 6 mm box appears only when
+       the leading pole is about 1.1 mm from the outlet.
+       After t = 0.02 s the 8 mm run gives 29, 58, 5240 1/m at t = 0.024, 0.028, 0.032 s: it
+       blows up between t = 0.028 and 0.032 s, when the pole is about 1.5 mm from the
+       outlet. My prediction "not before t = 0.034 s" (a fixed distance of 1.1 mm) is
+       FALSIFIED. The blow-up comes later in the larger box, but neither a fixed outlet
+       distance nor the time alone gives its onset. The inlet and the side walls are also
+       1 mm farther away in the 8 mm box, and this study cannot separate them from the
+       outlet. The cause of the final blow-up is NOT established.
+   - **Defect 2, the disturbance at step 2 (MEASURED,
+     `config/droplets3D/translatingKickDdt3D.yaml`).** The largest disturbance velocity is
+     2.3e-4 m/s after step 1 and 1.6e-2 m/s after step 2 on N = 60 (4.3e-5 and 9.0e-2 m/s on
+     N = 102, 1.8 U0). Step 2 is the first step with the three-level formula. Largest value
+     over steps 2 to 5 on N = 60, (momentum scheme, density scheme): (backward, backward)
+     1.95e-2; (backward, Euler) 1.95e-2; (Euler, backward) 6.0e-3; (Euler, Euler) 3.8e-4 m/s.
+     The pre-registered prediction holds (limit 1e-3). With the backward density scheme the
+     auxiliary density equation has, at step 2 only, a relative mass residual of 4.1e-3 (L1)
+     and a clip of 8.7e-5; at every other step the residual is about 1e-10. The disturbance
+     decays slowly: the largest value stays near 6e-3 m/s (12 % of U0) until the blow-up,
+     against 5e-4 m/s with Euler. DERIVED from `rhoLENTEqn.H` and `resetRhoLENT.H`: the
+     density of the old time levels is the geometric density after the end-of-step reset,
+     and the BDF2 form of `ddt(rho U)` needs two old levels that are consistent with the
+     mass flux. HYPOTHESIS: at step 2 the level n-1 is the initial density, which is not
+     consistent with the reset density of step 1. Not tested: the same run with the initial
+     density taken from the reset.
+4. **Oscillating droplet (prolate spheroid a = 1.1 R, T = 0.025 s).** Every rung completes.
+
+   | metric | N = 60 | N = 78 | N = 102 |
+   |---|---|---|---|
+   | period [ms] | 8.120 | 8.088 | 8.011 |
+   | period against Lamb, 8.232 ms | -1.4 % | -1.8 % | -2.7 % |
+   | damping rate [1/s] | 6.94 | 4.04 | 5.14 |
+   | relative volume error | 4.3e-3 | 3.6e-3 | 2.4e-3 |
+   | band gradient error | 0.065 | 0.049 | 0.059 |
+
+   A-oscillating FAILS: the period error is above 2 % at the finest rung and grows under
+   refinement (Celik: divergent), and the volume error is above 1e-3 (order 1.1). The damping
+   rate is not monotone; Lamb's rate for a viscous drop without an outer fluid,
+   (n - 1)(2n + 1) nu / R^2 = 5.0 1/s, is a reference that the record did not have (DERIVED,
+   air neglected). The Laplace pressure drifts from 145.0 to 147.9 Pa on N = 102.
+   **RETRACTION.** The record gave the Lamb period of the 3D mode as 11.65 ms. The formula in
+   `make_gate_summary.py` was `n (n - 1)(n + 2) sigma / ((n rho_d + (n + 1) rho_a) R^3)`.
+   Lamb's formula is `n (n + 1)(n - 1)(n + 2) sigma / (((n + 1) rho_d + n rho_a) R^3)`; for
+   rho_a -> 0 it is Rayleigh's `8 sigma / (rho_d R^3)` at n = 2. The correct period is
+   8.232 ms and `T_REF` is 1.310e-3 s. The gate summary of this run printed -30 to -31 %
+   against the wrong value; the table above uses the correct one. P3 ("period error above
+   2 %") was written against the wrong reference; it holds against the correct one at the
+   finest rung only. The 2D value (9.508 ms) is not affected. No earlier result used the 3D
+   value.
+5. **Shear arm (kinematic, reversed, T = 3).** Shape error 1.5e-2, 6.5e-3, 2.7e-3 (order
+   3.1); volume error 2.9e-3, 1.2e-3, 3.1e-4 (order 4.1); the band gradient error at the end
+   time grows, 2.4, 3.3, 53.
+6. **Assessment, and what I propose.**
+   - Stationary: usable. Open: the current that does not fall with N (the two-factor law of
+     the 2D record).
+   - Translating: two defects, both measured, neither removed. (a) The step-2 disturbance
+     has a cheap test: take the density of the level n-1 at step 2 from the same reset as
+     every later step, as a run-time-selectable start-up option of the mass-flux family,
+     inert by default. (b) The curvature growth is the 3D form of the gradient drift; the
+     routes are the gradient-control candidates (all failed the 2D gate) and the PDE
+     level-set line with a velocity extension (in progress in another session). A
+     redistancing instrument is not selectable in the 3D templates (`type noRedistancing`
+     is written into them).
+   - Oscillating: the period error needs a discriminator between transport (gradient drift)
+     and force; none ran.
+   - Not measured in 3D: the viscosity model `alg_lin` (the templates have no token), any
+     candidate, the Eulerian line, a polyhedral mesh, a horizon longer than 0.025 s.
 

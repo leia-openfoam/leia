@@ -140,7 +140,12 @@ def lamb_period(dims, R, sigma, rho_d, rho_a, n=2):
     if dims == 2:
         w2 = (n ** 3 - n) * sigma / ((rho_d + rho_a) * R ** 3)
     else:
-        w2 = n * (n - 1) * (n + 2) * sigma / ((n * rho_d + (n + 1) * rho_a) * R ** 3)
+        # Lamb (Hydrodynamics, art. 275): a drop of density rho_d in a medium of density
+        # rho_a. CORRECTED 2026-11-18 (STATUS 11.42): the earlier line had n (n - 1)(n + 2)
+        # over (n rho_d + (n + 1) rho_a), which gives omega^2 = 4 sigma/(rho_d R^3) for
+        # n = 2 and rho_a -> 0 in place of Rayleigh's 8 sigma/(rho_d R^3); its period was
+        # too long by a factor of about sqrt(2) (11.65 ms in place of 8.23 ms).
+        w2 = n * (n + 1) * (n - 1) * (n + 2) * sigma / (((n + 1) * rho_d + n * rho_a) * R ** 3)
     return 2.0 * math.pi / math.sqrt(w2)
 
 

@@ -1,0 +1,80 @@
+# ============================================================================
+# 3D TRANSLATING DROPLET: does the blow-up at t = 0.018 to 0.02 s need the BDF2 defect?
+# (2026-11-18, branch work/droplets3D, STATUS 11.42). A RESEARCH INSTRUMENT: Euler is not a
+# production setting (CLAUDE.md, BDF2 everywhere).
+#
+# MEASURED (translatingKickDdt3D, N = 60): the largest disturbance velocity over steps 2 to
+# 5 is 1.95e-2 m/s with (momentum, rho) = (backward, backward) and (backward, Euler),
+# 6.0e-3 m/s with (Euler, backward) and 3.8e-4 m/s with (Euler, Euler). The uniform
+# translation is not preserved by the BDF2 momentum equation with a moving density.
+#
+# ONE VARIABLE against the N = 60 rung of the gate's translating arm (same mesh, tokens,
+# binaries, horizon 0.02 s): both time schemes are Euler.
+#
+# PRE-REGISTERED READ-OUT (before the run).
+#   H-ddt: the late growth of the curvature error is driven by that disturbance.
+#     PREDICTION: at t = 0.02 s kappaStdDevBand < 20 1/m and maxMagUPrime < 0.01 m/s
+#     (baseline N = 60: 3502 1/m and 2.9 m/s).
+#   FALSIFIED if kappaStdDevBand > 100 1/m at t = 0.02 s.
+#   This run and translatingBox8mm3D (H-outlet) are read together: both can hold.
+#   RESULT 2026-11-18 (STATUS 11.42). FALSIFIED: kappaStdDevBand 3.0, 6.4, 13, 27, 94,
+#   4483 1/m at t = 0.010 to 0.020 s, the same growth as with BDF2; maxMagUPrime 2.1 m/s.
+# ============================================================================
+study_name: translatingEulerHorizon3D
+case: translatingDroplet3D
+mesh: hex
+mode: parallel
+np: 32
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme: gradient-controlled-level-set
+solve_runtime: 120
+axes_override:
+  N_CELLS:
+  - '60'
+  MASS_FLUX:
+  - rhoLENT
+  MASS_FLUX_ALPHAF_SOURCE:
+  - donorPlane
+  MASS_FLUX_ALPHAF_TIME_LEVEL:
+  - new
+  MASS_FLUX_BOUND_RHO:
+  - 'true'
+  MASS_FLUX_PROJECT:
+  - 'false'
+  MOMENTUM_DDT_SCHEME:
+  - Euler
+  RHO_DDT_SCHEME:
+  - Euler
+  MOMENTUM_DIV_SCHEME:
+  - upwind
+  N_OUTER_CORRECTORS:
+  - '3'
+  PSI_OUTER_CORRECTORS:
+  - 'yes'
+  CAPILLARY_FORCE_CENTRING:
+  - endStep
+  SURFACE_TENSION_FORCE:
+  - reconstructedCurvature
+  FACE_CURVATURE_SOURCE:
+  - model
+  CURVATURE_INVERSE_GAUSSIAN:
+  - 'yes'
+  CAPILLARY_DT_COEFF:
+  - '0.010861'
+  PSI_FILTER:
+  - none
+  CURVATURE_EXTENSION:
+  - cellCentreInverse
+  END_TIME:
+  - '0.02'
+  TRANSLATION_SPEED:
+  - '0.05'
+  WRITE_INTERVAL:
+  - '0.002'
+  SL_RECONSTRUCTION:
+  - uncachedQuadraticWeightedLeastSquares
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+collapse_other_axes: true
+export_slides: false
+setfields_args: -alphaName alpha.water
