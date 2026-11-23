@@ -18,7 +18,7 @@ axes_override:
   TPF_ROW: [pointIso-davof]
   TPF_ENRIGHT_SETTING: [pointIsoDavof]
   TPF_VELOCITY_ARM: [clB, clC, clD]
-  TARGET_ADVECTIVE_CO: [0.2, 0.5, 0.95]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
   TPF_GRAZING_CUT: [openfoam]
   TPF_CCS_END_INTERVAL: [cubic]
   TPF_CCS_TOLERANCE: [relative]
