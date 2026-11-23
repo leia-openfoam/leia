@@ -7499,3 +7499,13 @@ marked) and the 10 wall cells around the chosen one (alpha_k and alphaf). Report
 outside (1e-3, 1 - 1e-3); (c) E_theta^inf and E_cl^inf re-evaluated with the largest-|m_k| choice (HO3) for row (3) and, as control, row (1) (it must not change row (1) by more than a few per cent);
 (d) for the single worst step of case C N 1024 the wall-face alphaf and alpha_k of the 10 wall cells around the true contact point (row (1): alpha_k only). The alternative choice is an analysis variant only,
 reported next to the standing measure.
+
+
+### Contact cell by the largest |m_k|: the whole study re-evaluated (2026-11-24; analysis variant next to the standing measure; Co 0.2 and 0.5 only; no method change)
+
+The six dumps of the outlier follow-up show that the outermost-candidate choice picks round-off wisp cells (alpha_k 1e-14 to 1e-27, |m| about 0) that row (3) gives a plane and row (1) does not, so the standing
+measure does not compare the rows on the same footing. The whole study is rerun with the print-only key dumpCandidates (cases B, C, D x N 128, 256, 512, 1024 x Co 0.2, 0.5 x rows (1), (2), (3): 72 runs, the same
+ranks as before, one orchestrator at a time) and evaluated next to the standing measure with the tolerance-free variant "contact cell = the candidate with the largest |m_k|". Each run's standing (outermost) values must
+reproduce the committed tables to the printed digits. A second complete set of tables follows: E_cl^inf and E_theta^inf left and right per row, N and Co with orders; the ratios row (1) / row (3) and row (1) / row (2);
+the count of steps where the two choices differ, per row; the data of PW1 to PW3 under this choice.
+PREDICTION (main session): under the largest-|m_k| choice rows (1) and (2) change by less than 5 % in every value; row (3) has positive orders in every column, E_cl_inf right of cases B and D below row (1) at every N, and E_theta_inf within 2 times row (1) in at least 80 % of the values; falsifier for the last: fewer than 80 %, and then the 5 worst (case, N, Co, side) cells are dumped with their candidates.
