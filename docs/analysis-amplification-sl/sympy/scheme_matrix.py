@@ -281,11 +281,12 @@ def strip_mesh(d, name, **kw):
     boxes += [((6+i,) + j, 1) for i in range(4) for j in itertools.product((0, 1), repeat=t)]
     return box_mesh(d, boxes, (10,) + (2,)*t, name, **kw)
 
-def three_level_mesh(d, k, name, sizes=(4, 2, 1), **kw):
+def three_level_mesh(d, k, name, sizes=(4, 2, 1), counts=(3, 4), **kw):
     """x: 3 cells of sizes[0], k cells of sizes[1], 4 cells of sizes[2], k cells of sizes[1].
-    Tangential period: one cell of sizes[0]. The convention of strip_mesh, with a buffer."""
+    Tangential period: one cell of sizes[0]. The convention of strip_mesh, with a buffer.
+    counts: other numbers of cells of sizes[0] and sizes[2] (the default is 3 and 4)."""
     sc, sm, sf = sizes; t = d - 1; boxes = []; x = 0
-    for s, n in ((sc, 3), (sm, k), (sf, 4), (sm, k)):
+    for s, n in ((sc, counts[0]), (sm, k), (sf, counts[1]), (sm, k)):
         for i in range(n):
             boxes += [((x,) + tuple(s*a for a in j), s) for j in itertools.product(range(sc//s), repeat=t)]
             x += s
@@ -575,7 +576,8 @@ def bloch(mesh, n, ent, target):
     """The update matrices of the Bloch waves of the block, in chunks of shape (waves, n, n)."""
     I = np.array([r for r, lst in ent for _ in lst]); J = np.array([e[0] for _, lst in ent for e in lst])
     SH = np.array([e[1] for _, lst in ent for e in lst], float); W = np.array([e[3] for _, lst in ent for e in lst])
-    nth = [max(2, int(round(target/L))) for L in mesh.box]
+    # target: waves per unit length of the reciprocal block; a sequence gives the count per direction
+    nth = list(target) if np.ndim(target) else [max(2, int(round(target/L))) for L in mesh.box]
     TH = np.array(list(itertools.product(*[np.linspace(-np.pi, np.pi, m, endpoint=False) for m in nth])))
     TH = TH[[i for i, t in enumerate(TH) if tuple(t) >= tuple(-t) or np.any(np.isclose(np.abs(t), np.pi))]]
     flat = I*n + J

@@ -188,19 +188,35 @@ def verdict():
         falsified |= not (a and c)
     print("P5: " + ("FALSIFIED" if falsified else "not falsified (see the lines above for each part)"))
 
-def waves(dims, factor=4):
-    """C-Cp/L2+g with `factor` times the waves per direction, against the table."""
+SAMPLING = {2: [(2, 12), (8, 12), (2, 48), (8, 48), (8, 96), (8, 192)],        # waves normal, tangential (period 4)
+            3: [(2, 6, 6), (4, 6, 6), (2, 12, 12), (2, 24, 24), (4, 24, 24)]}
+def waves(dims, wide=False):
+    """C-Cp/L2+g and C-Cp/I+g with more waves per direction. The first sampling is the one
+    of the tables (for the three-level meshes). The tangential count is per period 4; a mesh
+    with the tangential period 2 gets half the count, which gives the same wave numbers.
+    wide: the buffers k = 4 and 6 (NOT pre-registered, exploratory)."""
     for d in dims:
-        for k in (1, 2, 3):
-            name = f"{PREFIX[d]}3lev_b{k}"; build, dirs, _ = sm.MESHES[name]; mesh = build()
-            ref = worst(read(table(name)), "C-Cp/L2+g")[0]; g = np.zeros(len(COS))
-            for v in dirs:
-                v = np.array(v, float); rules = {}
-                for i, Co in enumerate(COS):
-                    n, ent, pos = sm.assemble_g(mesh, "C-Cp/L2+g", Co*v/np.linalg.norm(v), rules)
-                    g[i] = max(g[i], sm.growth(mesh, n, ent, factor*{2: 48, 3: 24}[d]) - 1)
-            print(f"{name}: {factor} times the waves: " + " / ".join(f"{x:.3e}" for x in g)
-                  + "   relative to the table: " + " / ".join(f"{x:.3f}" for x in g/ref), flush=True)
+        names = [ONE[d]] + [f"{PREFIX[d]}3lev_b{k}" for k in (1, 2, 3)]
+        if wide: names = [f"{PREFIX[d]}3lev_b{k}" for k in (4, 6)]
+        path = os.path.join(TABLES, f"scheme_matrix_three_levels_waves{'_wide' if wide else ''}_{d}d.csv")
+        with open(path, "w") as fh:
+            fh.write("mesh,scheme,waves," + ",".join(f"growth_minus_1_Co{c}" for c in COS) + "," + ",".join(f"direction_Co{c}" for c in COS) + "\n")
+            for name in names:
+                if name in sm.MESHES: build, dirs, _ = sm.MESHES[name]; mesh = build()
+                else: mesh = sm.three_level_mesh(d, int(name.split("_b")[1]), name); dirs = sm.TR2 if d == 2 else sm.TR3
+                for sch in PSCH:
+                    A = {}
+                    for v in dirs:
+                        v = np.array(v, float); rules = {}
+                        for i, Co in enumerate(COS): A[(tuple(v), i)] = sm.assemble_g(mesh, sch, Co*v/np.linalg.norm(v), rules)
+                    for nth in SAMPLING[d][-2:] if wide else SAMPLING[d]:
+                        nt = (nth[0],) + tuple(max(2, int(round(x*mesh.box[1]/4))) for x in nth[1:])
+                        g = np.full(len(COS), -1.0); wd = [""]*len(COS)
+                        for (v, i), (n, ent, pos) in A.items():
+                            x = sm.growth(mesh, n, ent, nt) - 1
+                            if x > g[i]: g[i] = x; wd[i] = "(%s)" % " ".join(f"{y:g}" for y in v)
+                        fh.write(f"{name},{sch},{'x'.join(map(str, nt))}," + ",".join(f"{x:.6e}" for x in g) + "," + ",".join(wd) + "\n"); fh.flush()
+                        print(f"{name:12s} {sch:10s} {'x'.join(map(str, nt)):9s} " + " / ".join(f"{x:.3e}" for x in g) + "   " + " ".join(wd), flush=True)
 
 PSCH = ("C-Cp/L2+g", "C-Cp/I+g")
 def powers(meshes, N=2000):
@@ -247,13 +263,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--gates", action="store_true"); ap.add_argument("--gates-hex21patch", action="store_true")
     ap.add_argument("--run", action="store_true"); ap.add_argument("--verdict", action="store_true")
-    ap.add_argument("--waves", action="store_true"); ap.add_argument("--powers", action="store_true")
+    ap.add_argument("--waves", action="store_true"); ap.add_argument("--powers", action="store_true"); ap.add_argument("--wide", action="store_true")
     ap.add_argument("--dim", type=int, nargs="+", default=[2, 3]); ap.add_argument("--jobs", type=int, default=1)
     a = ap.parse_args()
     if a.gates or a.gates_hex21patch:
         if not gates(a.gates_hex21patch): return 1
     if a.run: run(a.dim, a.jobs)
-    if a.waves: waves(a.dim)
+    if a.waves or a.wide: waves(a.dim, a.wide)
     pm = [m for m in ["quad21", "hex21"] + [f"{PREFIX[d]}3lev_b{k}" for d in (2, 3) for k in (1, 2, 3)]
           if (3 if m.startswith("hex") else 2) in a.dim and os.path.exists(table(m))]
     if a.powers: powers(pm)
