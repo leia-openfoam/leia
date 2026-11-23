@@ -28,6 +28,7 @@ normalProjectedScheme.C
 slAdvection.C
 source/slSource.C
 source/slGradientControlSource.C
+source/slRescalingSource.C
 
 leiaStamp_leiaSemiLagrangian.C
 
