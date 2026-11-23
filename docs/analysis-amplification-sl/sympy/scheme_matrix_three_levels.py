@@ -91,6 +91,17 @@ PRE-REGISTERED (2026-11-23, before any run on a mesh with three cell sizes).
   with 4 times the waves per direction and reports the difference. A difference above 5 %
   of growth - 1 means that the table values are a lower bound, and the report says so.
 
+RESULT (2026-11-23, laptop; `--verdict` prints it; knowledge-base note
+concepts/sl-amplification-symbol, log entry of this date).
+  Gates G8 to G11 pass. The wave check: the table sampling misses the worst wave in places
+  (up to 33 % in 2D; 0 against 2.4e-3 in 3D at Co 1.0, k = 2), so the verdict uses the
+  finest sampling. P5a HOLDS (k = 2: at most 1.7e-3 in 2D, 2.4e-3 in 3D). P5b HOLDS.
+  P5c FALSIFIED (k = 1 is smaller than k = 2 in 2D at every Co, and in 3D at Co 0.5).
+  P5d MISSED (k = 3 is 1.3 to 2.2 times k = 2; 3D k = 3 is 5.2e-3 at Co 1.0, not decided).
+  P6a HOLDS in 2D (at most 9.2) and is MISSED in 3D (at most 18.5); the nine cases that the
+  5 % rule flags are constant from N = 8000 on (`--powers-long`), so no algebraic growth.
+  `--scan` (NOT pre-registered): the growth factor depends on the strip widths of the block.
+
 Usage: scheme_matrix_three_levels.py --gates | --run [--dim 2 3] [--jobs N] | --powers [--dim 2 3] | --verdict | --waves [--dim 2 3] [--mesh NAME ...] | --wide | --scan
 """
 import argparse, csv, os, sys
