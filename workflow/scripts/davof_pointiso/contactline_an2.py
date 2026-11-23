@@ -117,7 +117,7 @@ for (arm, row, N, co), r in D.items():
         for k, _ in cols:
             chg.append((abs(r["big_" + k]/r["std_" + k] - 1) if r["std_" + k] > 0 else 0.0, arm, row, N, co, k))
 chg.sort(reverse=True)
-L.append("- Rows (1) and (2): relative change of the 96 values (3 cases x 2 Co x 4 N x 4 columns, 2 rows = 192 values counted: %d); largest %.2f %% (%s); values above 5 %%: %d." % (len(chg), 100*chg[0][0], "%s %s N %d Co %s %s" % chg[0][1:], sum(1 for c in chg if c[0] > 0.05)))
+L.append("- Rows (1) and (2): relative change of the values (3 cases x 2 Co x 4 N x 4 columns x 2 rows, counted: %d); largest %.2f %% (%s); values above 5 %%: %d." % (len(chg), 100*chg[0][0], "%s %s N %d Co %s %s" % chg[0][1:], sum(1 for c in chg if c[0] > 0.05)))
 for c in chg[:5]:
     L.append("  - %.2f %%: %s %s N %d Co %s %s" % ((100*c[0],) + c[1:]))
 npos = ntot = 0; neg = []
