@@ -18,6 +18,8 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include "Pstream.H"
 #include "globalIndex.H"
+#include "ListOps.H"
+#include <fstream>
 #include <cmath>
 
 namespace Foam
@@ -60,7 +62,10 @@ Foam::functionObjects::contactLineError::contactLineError
     fieldName_(),
     wallPatch_(),
     alpha0_(),
-    haveAlpha0_(false)
+    haveAlpha0_(false),
+    dump_(false),
+    alphaPrev_(),
+    afPrevWall_()
 {
     nMissing_[0] = 0;
     nMissing_[1] = 0;
@@ -74,6 +79,7 @@ bool Foam::functionObjects::contactLineError::read(const dictionary& dict)
     writeFile::read(dict);
     fieldName_ = dict.get<word>("field");
     wallPatch_ = dict.get<word>("wallPatch");
+    dump_ = dict.getOrDefault<bool>("dumpCandidates", false);
     return true;
 }
 
@@ -82,10 +88,24 @@ bool Foam::functionObjects::contactLineError::execute()
     const volScalarField& alpha = lookupObject<volScalarField>(fieldName_);
     const scalarField& a = alpha.primitiveField();
 
+    const label wallId = mesh_.boundaryMesh().findPatchID(wallPatch_);
+    const surfaceScalarField* afp =
+        mesh_.findObject<surfaceScalarField>
+        (
+            IOobject::groupName("alphaf", alpha.group())
+        );
+    scalarField afNow(wallId >= 0 ? mesh_.boundaryMesh()[wallId].size() : 0, -1.0);
+    if (afp && wallId >= 0)
+    {
+        afNow = afp->boundaryField()[wallId];
+    }
+
     if (!haveAlpha0_)
     {
         // The first call is at the start time, before the first step
         alpha0_ = a;
+        alphaPrev_ = a;
+        afPrevWall_ = afNow;
         haveAlpha0_ = true;
         return true;
     }
@@ -121,6 +141,18 @@ bool Foam::functionObjects::contactLineError::execute()
     scalar cells[2] = {-1, -1};
 
     const labelUList& own = mesh_.faceOwner();
+    const globalIndex giDump(mesh_.nCells());
+    DynamicList<scalar> recs;
+    DynamicList<scalar> walls;
+    if (dump_)
+    {
+        forAll(wall, pfi)
+        {
+            walls.append(mesh_.faceCentres()[wall.start() + pfi].x());
+            walls.append(alphaPrev_[own[wall.start() + pfi]]);
+            walls.append(afPrevWall_[pfi]);
+        }
+    }
     forAll(wall, pfi)
     {
         const label facei = wall.start() + pfi;
@@ -152,6 +184,22 @@ bool Foam::functionObjects::contactLineError::execute()
         const scalar theta =
             std::acos(min(1.0, max(-1.0, nOut.z())));
         const label side = (nOut.x() < 0) ? 0 : 1;
+
+        if (dump_)
+        {
+            recs.append(scalar(side));
+            recs.append(x);
+            recs.append(theta);
+            recs.append(scalar(giDump.toGlobal(celli)));
+            recs.append(alphaPrev_[celli]);
+            recs.append(magn/std::pow(mesh_.V()[celli], 2.0/3.0));
+            recs.append(n[celli].x()/magn);
+            recs.append(n[celli].y()/magn);
+            recs.append(n[celli].z()/magn);
+            recs.append(afPrevWall_[pfi]);
+            recs.append(xf.x());
+            recs.append(magn);
+        }
 
         const bool better =
             (cand[side] == 0)
@@ -211,6 +259,68 @@ bool Foam::functionObjects::contactLineError::execute()
         }
         if (!have) ++nMissing_[s];
     }
+
+    if (dump_)
+    {
+        List<List<scalar>> allRec(Pstream::nProcs());
+        List<List<scalar>> allWall(Pstream::nProcs());
+        allRec[Pstream::myProcNo()] = List<scalar>(recs);
+        allWall[Pstream::myProcNo()] = List<scalar>(walls);
+        Pstream::gatherList(allRec);
+        Pstream::gatherList(allWall);
+        if (Pstream::master())
+        {
+            const scalar tRec = time_.value() - time_.deltaTValue();
+            const fileName dir(time_.globalPath()/"postProcessing"/name()/"dump");
+            mkDir(dir);
+            std::ofstream os((dir/"candidates.dat").c_str(), std::ios::app);
+            os.precision(17);
+            // the candidates: C tRec side chosen cell alpha_n |m|/V^(2/3) nx ny nz x theta alphaf_wall |m|
+            DynamicList<scalar> wx, wa, wf;
+            for (const List<scalar>& w : allWall)
+            {
+                for (label i = 0; i + 2 < w.size(); i += 3)
+                {
+                    wx.append(w[i]); wa.append(w[i + 1]); wf.append(w[i + 2]);
+                }
+            }
+            labelList order(sortedOrder(wx));
+            for (const List<scalar>& r : allRec)
+            {
+                for (label i = 0; i + 11 < r.size(); i += 12)
+                {
+                    const label side = label(r[i]);
+                    const bool chosen = (r[i + 3] == gcell[side]);
+                    os << "C " << tRec << ' ' << side << ' ' << int(chosen) << ' '
+                       << r[i + 3] << ' ' << r[i + 4] << ' ' << r[i + 5] << ' '
+                       << r[i + 6] << ' ' << r[i + 7] << ' ' << r[i + 8] << ' '
+                       << r[i + 1] << ' ' << r[i + 2] << ' ' << r[i + 9] << ' '
+                       << r[i + 11] << '\n';
+                    if (chosen)
+                    {
+                        // the wall cells around the chosen one (5 to each side)
+                        label k = 0;
+                        scalar best = GREAT;
+                        forAll(order, j)
+                        {
+                            const scalar dd = mag(wx[order[j]] - r[i + 10]);
+                            if (dd < best) { best = dd; k = j; }
+                        }
+                        os << "W " << tRec << ' ' << side;
+                        for (label j = k - 5; j < k + 5; ++j)
+                        {
+                            if (j < 0 || j >= order.size()) continue;
+                            const label q = order[j];
+                            os << ' ' << wx[q] << ' ' << wa[q] << ' ' << wf[q];
+                        }
+                        os << '\n';
+                    }
+                }
+            }
+        }
+    }
+    alphaPrev_ = a;
+    afPrevWall_ = afNow;
 
     // The liquid volume, the L1 distance from the initial alpha, extremes
     const scalarField& V = mesh_.V();

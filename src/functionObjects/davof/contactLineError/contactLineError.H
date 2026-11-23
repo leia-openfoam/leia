@@ -75,6 +75,19 @@ class contactLineError
         //- Steps without a detected contact cell (left, right)
         label nMissing_[2];
 
+        //- Print-only key dumpCandidates: every candidate contact cell of
+        //  every step, the chosen one marked, with alpha of the step's
+        //  reconstruction, |m|/V^(2/3), the plane, the wall face fraction
+        //  alphaf (-1 where the field does not exist) and the wall cells
+        //  around the chosen one
+        bool dump_;
+
+        //- alpha^n (the field the step's reconstruction used)
+        scalarField alphaPrev_;
+
+        //- alphaf of the wall faces before the step (-1: no such field)
+        scalarField afPrevWall_;
+
     virtual void writeFileHeader(Ostream& os) const;
 
     //- No copy construct

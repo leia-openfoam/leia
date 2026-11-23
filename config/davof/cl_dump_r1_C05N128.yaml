@@ -1,0 +1,28 @@
+# M. Fricke, T. Maric, D. Bothe, Contact line advection using the geometrical Volume-of-Fluid method,
+# J. Comput. Phys. 407 (2020) 109221, doi:10.1016/j.jcp.2019.109221, arXiv:1907.01785.
+# print-only candidate dump of the contact line study (row (1) as control, row (3)): plicRDF clC Co 0.5 N 128
+# sbatch -J cl_dump_r1_C05N128 --export=ALL,STUDY=davof/cl_dump_r1_C05N128 run-studies.sbatch
+study_name: cl_dump_r1_C05N128
+studies_dir: studies/davof
+case: davof/contactLine2D
+mesh: hex
+mode: serial
+np: 1
+solver: davofAdvectorFoam
+theme:  davof
+setfields_app: "initDavofFields && davofInitContactLine"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+axes_override:
+  N_CELLS: [128]
+  TPF_ROW: [plicRDF]
+  TPF_ENRIGHT_SETTING: [pointIso]
+  TPF_VELOCITY_ARM: [clC]
+  TARGET_ADVECTIVE_CO: [0.5]
+  TPF_REPETITION: [1]
+  TPF_CL_DUMP: ["true"]
+collapse_other_axes: true
+solve_mem_mb: 4000
+solve_runtime: 60
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

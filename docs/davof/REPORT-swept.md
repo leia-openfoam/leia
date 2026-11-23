@@ -7480,3 +7480,22 @@ Gw3: np 1 = np 8 for pointIso on case B, N 128, alpha to 1e-12.
    only to the order of the isoAdvector flux). Gr2: np 1 against np 8, case B, N 128, Co 0.5, alpha to 1e-12.
 4. Row (3) is added as separate configs contactLineD_N<N> (the CCS keys of its reconstruction differ from those of the rows (1) and (2), whose dictionaries stay unchanged):
    36 further runs.
+
+
+### Locating the row (3) outliers (2026-11-24; print-only follow-up of the main session; Co 0.2 and 0.5 only; no method change)
+
+Row (3) has E_theta of 0.47 to 0.58 rad and E_cl of 4.7e-3 to 1.9e-2 in single (N, Co) cells of cases C and B-left (case C Co 0.2 N 1024: E_theta L 5.10e-1, R 4.71e-1; case C Co 0.5
+N 128, 512, 1024; case B Co 0.2 left N 256 and N 1024 with 241 "multi" steps), while its E_1 equals row (1)'s and its other cells converge. Rows (1) and (2) have none.
+HYPOTHESES (the main session's, recorded before the runs):
+- HO1: the outliers are steps in which a spurious wall cell qualifies as contact cell: a cell with alpha_k below 1e-3 or above 1 - 1e-3 (a wisp left on the wall, or a nearly full cell) that
+  carries a plane under row (3)'s interface rule and is the outermost candidate; the true contact cell at that step has an angle error within 2 times row (1)'s. Falsifier of HO1: the outlier is
+  in a cell with alpha_k in (1e-3, 1 - 1e-3) with a clearly wrong plane; then dump that cell and its ring and stop.
+- HO2: these wisp cells sit where the contact line has RECEDED (case C after t = tau/2 on the advancing-then-receding side; case B left), and their wall face holds a non-zero alpha_f from the
+  default (owner's new alpha) or from an earlier sweep.
+- HO3: if the contact cell were chosen as the candidate with the largest interface area |m_k| (instead of the outermost), row (3)'s E_theta and E_cl in these cells fall to within 2 times row (1)'s.
+DO: rerun case C Co 0.2 N 1024, case C Co 0.5 N 128 and case B Co 0.2 N 256 for row (3) and, as control, row (1), with the print-only key dumpCandidates of contactLineError: per step every candidate
+cell per side (step, t, cell, alpha_k of the reconstruction's step, |m_k|/V^(2/3) with m_k the reconstruction's normal, plane normal, x_num, theta_num, the wall-face alphaf before the step, the chosen one
+marked) and the 10 wall cells around the chosen one (alpha_k and alphaf). Reported: (a) the 5 worst steps per case and side with all candidates; (b) the number of steps in which the chosen cell has alpha_k
+outside (1e-3, 1 - 1e-3); (c) E_theta^inf and E_cl^inf re-evaluated with the largest-|m_k| choice (HO3) for row (3) and, as control, row (1) (it must not change row (1) by more than a few per cent);
+(d) for the single worst step of case C N 1024 the wall-face alphaf and alpha_k of the 10 wall cells around the true contact point (row (1): alpha_k only). The alternative choice is an analysis variant only,
+reported next to the standing measure.

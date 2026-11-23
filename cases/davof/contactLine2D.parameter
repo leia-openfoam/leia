@@ -9,6 +9,7 @@ values at t = T are errors of the transport; the fork's
 // (expected_results.csv, maxAlphaCo 0.5, thickness 1), the check of the template.
 values
 {
+    TPF_CL_DUMP ( false );
     TPF_CL_V0 ( -0.2 );
     TPF_CL_C1 ( 0.1 );
     TPF_CL_C2 ( -2 );

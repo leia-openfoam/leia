@@ -64,6 +64,7 @@ functions
         libs            (@!DAVOF_FO_LIBS!@);
         field           alpha.water;
         wallPatch       wall;
+        dumpCandidates  @!TPF_CL_DUMP!@;
         executeControl  timeStep;
         executeInterval 1;
         writePrecision  17;
