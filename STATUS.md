@@ -8404,7 +8404,7 @@ written into `config/integration/ghostDecompLocateN64.yaml` and
 
 ### 11.41 Patch faces of another rank in the stencil, and the cell-size metric (2026-11-18, Lichtenberg, special00005)
 
-Branch `fix/sl-remote-patch-faces` (NOT in `development`), code commits 1b2108a4 and
+Branch `fix/sl-remote-patch-faces` (merged into `development` on 2026-11-23, supervisor), code commits 1b2108a4 and
 ead89f97. Clone `/work/scratch/tm83tomy/leia-integration`, OpenFOAM-v2606. The read-out
 P1 to P4 is in `config/integration/remotePatchFaceLocateN64.yaml`, written before the runs.
 This closes item 7 of 11.38 as a measurement; the merge waits for the supervisor.
@@ -8465,7 +8465,7 @@ This closes item 7 of 11.38 as a measurement; the merge waits for the supervisor
    (`leia-integration/archives_20261118/`, member counts verified before removal).
 ### 11.42 The first 3D baseline of the method gate: stationary, translating and oscillating droplet (2026-11-18, Lichtenberg, special00005)
 
-Branch `work/droplets3D` (NOT in `development`). Supervisor, 2026-11-18: "work until we can
+Branch `work/droplets3D` (merged into `development` on 2026-11-23, supervisor). Supervisor, 2026-11-18: "work until we can
 simulate the 3D stationary, translating and oscillating droplet accurately". The 2D gate has
 no pass; this run is the supervisor's decision to measure 3D now. Clone
 `/work/scratch/tm83tomy/leia-drop3d`, binaries c2301068, OpenFOAM-v2606, hexahedral
@@ -8601,7 +8601,7 @@ corrected (item 4).
      candidate, the Eulerian line, a polyhedral mesh, a horizon longer than 0.025 s.
 ### 11.43 Scratch data: the clean-up and the lean field output (2026-11-18, Lichtenberg, special00005)
 
-Branch `feature/lean-output` (NOT in `development`; commits 3e6a1f48, bcc8b05a). The numbers
+Branch `feature/lean-output` (merged into `development` on 2026-11-23, supervisor; commits 3e6a1f48, bcc8b05a). The numbers
 11.41 and 11.42 are used on the branches `fix/sl-remote-patch-faces` and `work/droplets3D`.
 The plan with the open decisions D1 to D7 is `docs/plan-3d-droplets-next-steps.md` on
 `work/droplets3D`.
