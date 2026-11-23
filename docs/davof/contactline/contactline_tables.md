@@ -367,3 +367,222 @@ Orders over dx/R0 (least squares over the completed rungs):
   - clD N 512 Co 0.5: 0.80 (4 s / 5 s)
   - clD N 1024 Co 0.2: 0.83 (10 s / 12 s)
   - clD N 1024 Co 0.5: 1.17 (7 s / 6 s)
+
+## row (3) outliers (print-only dump of every candidate contact cell; Co 0.2 and 0.5; facts only)
+
+
+### C02N1024, clC, Co 0.2, N 1024
+
+(c) E_theta^inf (rad) and E_cl^inf, standing choice (outermost) and the analysis variant (largest |m_k|):
+
+| row | side | E_theta outermost (dump run) | E_theta standing study | E_theta largest |m| | E_cl outermost (dump run) | E_cl standing study | E_cl largest |m| |
+|---|---|---|---|---|---|---|---|
+| (1) plicRDF | L | 1.313e-02 | 1.313e-02 | 1.313e-02 | 3.361e-05 | 3.361e-05 | 3.361e-05 |
+| (1) plicRDF | R | 1.218e-02 | 1.218e-02 | 1.218e-02 | 3.938e-05 | 3.938e-05 | 3.938e-05 |
+| (3) pointIso-davof | L | 5.097e-01 | 5.097e-01 | 3.311e-02 | 4.694e-03 | 4.694e-03 | 1.018e-04 |
+| (3) pointIso-davof | R | 4.712e-01 | 4.712e-01 | 2.202e-02 | 4.722e-03 | 4.722e-03 | 2.283e-05 |
+
+(3) pointIso-davof, side L: steps with a candidate 1482; steps in which the chosen cell has alpha_k outside (1e-3, 1 - 1e-3): 80; steps with more than one candidate: 36
+
+(a) the 5 worst steps by |theta_num - theta_ref| of the chosen cell (all candidates of the step; * = chosen):
+
+| step | t | cell | alpha_k | |m|/V^(2/3) | x_num | theta_num (rad) | theta_ref | alphaf wall (before the step) | |dtheta| | row (1) |dtheta| at that step |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1469 | 0.39601 | 163800* | 1.902e-14 | 0.000 | 0.226562 | 1.55129 | 1.04159 | 1.902e-14 | 5.097e-01 | 6.650e-03 |
+| 1469 | 0.39601 | 163801 | 1.288e-03 | 0.077 | 0.227502 | 1.05197 | 1.04159 | 1.288e-03 | 1.038e-02 | 6.650e-03 |
+| 1470 | 0.39628 | 163800* | 1.915e-14 | 0.000 | 0.226562 | 0.80005 | 1.04196 | 4.883e-02 | 2.419e-01 | 6.490e-03 |
+| 1470 | 0.39628 | 163801 | 6.070e-03 | 0.165 | 0.227454 | 1.01707 | 1.04196 | 8.716e-02 | 2.489e-02 | 6.490e-03 |
+| 1471 | 0.39655 | 163800* | 1.928e-14 | 0.000 | 0.226562 | 0.90809 | 1.04234 | 4.885e-02 | 1.343e-01 | 6.545e-03 |
+| 1471 | 0.39655 | 163801 | 1.563e-02 | 0.265 | 0.227403 | 1.01824 | 1.04234 | 1.355e-01 | 2.410e-02 | 6.545e-03 |
+| 1472 | 0.39682 | 163800* | 1.940e-14 | 0.000 | 0.226562 | 0.93269 | 1.04272 | 4.886e-02 | 1.100e-01 | 6.485e-03 |
+| 1472 | 0.39682 | 163801 | 2.925e-02 | 0.362 | 0.227353 | 1.01706 | 1.04272 | 1.877e-01 | 2.566e-02 | 6.485e-03 |
+| 1473 | 0.39709 | 163800* | 1.952e-14 | 0.000 | 0.226562 | 0.95082 | 1.04310 | 4.887e-02 | 9.228e-02 | 6.539e-03 |
+| 1473 | 0.39709 | 163801 | 4.703e-02 | 0.459 | 0.227304 | 1.01790 | 1.04310 | 2.390e-01 | 2.520e-02 | 6.539e-03 |
+
+(3) pointIso-davof, side R: steps with a candidate 1482; steps in which the chosen cell has alpha_k outside (1e-3, 1 - 1e-3): 53; steps with more than one candidate: 1
+
+(a) the 5 worst steps by |theta_num - theta_ref| of the chosen cell (all candidates of the step; * = chosen):
+
+| step | t | cell | alpha_k | |m|/V^(2/3) | x_num | theta_num (rad) | theta_ref | alphaf wall (before the step) | |dtheta| | row (1) |dtheta| at that step |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 821 | 0.22144 | 98064 | 1.243e-03 | 0.078 | 0.576207 | 1.08788 | 1.08115 | 1.243e-03 | 6.728e-03 | 7.163e-03 |
+| 821 | 0.22144 | 98065* | 9.561e-27 | 0.000 | 0.577148 | 1.55237 | 1.08115 | 9.561e-27 | 4.712e-01 | 7.163e-03 |
+| 822 | 0.22171 | 98064* | 4.511e-03 | 0.145 | 0.576241 | 1.05955 | 1.08157 | 7.315e-02 | 2.202e-02 | 7.061e-03 |
+| 1049 | 0.28287 | 98069* | 6.756e-01 | 1.100 | 0.581938 | 1.14107 | 1.14934 | 9.047e-01 | 8.268e-03 | 7.984e-03 |
+| 986 | 0.26589 | 98068* | 7.060e-01 | 1.106 | 0.580998 | 1.12962 | 1.13786 | 9.420e-01 | 8.248e-03 | 7.922e-03 |
+| 1048 | 0.28260 | 98069* | 6.651e-01 | 1.100 | 0.581928 | 1.14100 | 1.14922 | 8.942e-01 | 8.221e-03 | 7.939e-03 |
+
+(1) plicRDF, side L: steps with a candidate 1480; steps in which the chosen cell has alpha_k outside (1e-3, 1 - 1e-3): 42; steps with more than one candidate: 0
+
+(a) the 5 worst steps by |theta_num - theta_ref| of the chosen cell (all candidates of the step; * = chosen):
+
+| step | t | cell | alpha_k | |m|/V^(2/3) | x_num | theta_num (rad) | theta_ref | alphaf wall (before the step) | |dtheta| | row (1) |dtheta| at that step |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 254 | 0.06870 | 163791* | 7.438e-01 | 1.112 | 0.216809 | 1.11749 | 1.13062 | -1.000e+00 | 1.313e-02 | 1.313e-02 |
+| 255 | 0.06897 | 163790* | 1.167e-04 | 0.024 | 0.216787 | 1.12062 | 1.13082 | -1.000e+00 | 1.020e-02 | 1.020e-02 |
+| 50 | 0.01374 | 163798* | 5.337e-02 | 0.499 | 0.224370 | 1.05662 | 1.06671 | -1.000e+00 | 1.009e-02 | 1.009e-02 |
+| 188 | 0.05092 | 163792* | 6.036e-03 | 0.173 | 0.218674 | 1.10482 | 1.11445 | -1.000e+00 | 9.628e-03 | 9.628e-03 |
+| 307 | 0.08297 | 163790* | 7.131e-01 | 1.106 | 0.215870 | 1.12934 | 1.13889 | -1.000e+00 | 9.549e-03 | 9.549e-03 |
+
+(1) plicRDF, side R: steps with a candidate 1482; steps in which the chosen cell has alpha_k outside (1e-3, 1 - 1e-3): 50; steps with more than one candidate: 0
+
+(a) the 5 worst steps by |theta_num - theta_ref| of the chosen cell (all candidates of the step; * = chosen):
+
+| step | t | cell | alpha_k | |m|/V^(2/3) | x_num | theta_num (rad) | theta_ref | alphaf wall (before the step) | |dtheta| | row (1) |dtheta| at that step |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 987 | 0.26616 | 98068* | 7.260e-01 | 1.108 | 0.581020 | 1.12592 | 1.13810 | -1.000e+00 | 1.218e-02 | 1.218e-02 |
+| 946 | 0.25512 | 98068* | 1.393e-03 | 0.084 | 0.580114 | 1.11656 | 1.12712 | -1.000e+00 | 1.056e-02 | 1.056e-02 |
+| 944 | 0.25458 | 98067* | 7.386e-01 | 1.113 | 0.580061 | 1.11621 | 1.12652 | -1.000e+00 | 1.032e-02 | 1.032e-02 |
+| 911 | 0.24569 | 98067* | 5.333e-03 | 0.163 | 0.579173 | 1.10579 | 1.11587 | -1.000e+00 | 1.008e-02 | 1.008e-02 |
+| 1051 | 0.28341 | 98069* | 6.963e-01 | 1.101 | 0.581959 | 1.13956 | 1.14959 | -1.000e+00 | 1.003e-02 | 1.003e-02 |
+
+(d) case C N 1024, row (3), side L, the worst step t = 0.39601: the 10 wall cells around the chosen cell (x, alpha_k before the step, alphaf of the wall face before the step), then row (1) at the same t:
+
+- row (3): (0.22119, 2.907e-14, 2.907e-14); (0.22217, 3.351e-14, 3.351e-14); (0.22314, 3.574e-14, 3.574e-14); (0.22412, 3.449e-14, 3.449e-14); (0.22510, 2.884e-14, 2.884e-14); (0.22607, 1.902e-14, 1.902e-14); (0.22705, 1.288e-03, 1.288e-03); (0.22803, 7.437e-01, 1.000e+00); (0.22900, 1.000e+00, 1.000e+00); (0.22998, 1.000e+00, 1.000e+00)
+- row (1): (0.22217, 4.181e-14, -1.000e+00); (0.22314, 4.526e-14, -1.000e+00); (0.22412, 4.444e-14, -1.000e+00); (0.22510, 3.802e-14, -1.000e+00); (0.22607, 2.576e-14, -1.000e+00); (0.22705, 1.520e-03, -1.000e+00); (0.22803, 7.435e-01, -1.000e+00); (0.22900, 1.000e+00, -1.000e+00); (0.22998, 1.000e+00, -1.000e+00); (0.23096, 1.000e+00, -1.000e+00)
+
+(d) case C N 1024, row (3), side R, the worst step t = 0.22144: the 10 wall cells around the chosen cell (x, alpha_k before the step, alphaf of the wall face before the step), then row (1) at the same t:
+
+- row (3): (0.57275, 1.000e+00, 1.000e+00); (0.57373, 1.000e+00, 1.000e+00); (0.57471, 1.000e+00, 1.000e+00); (0.57568, 7.640e-01, 1.000e+00); (0.57666, 1.243e-03, 1.243e-03); (0.57764, 9.561e-27, 9.561e-27); (0.57861, 1.468e-26, 1.468e-26); (0.57959, 1.766e-26, 1.766e-26); (0.58057, 1.833e-26, 1.833e-26); (0.58154, 1.711e-26, 1.711e-26)
+- row (1): (0.57178, 1.000e+00, -1.000e+00); (0.57275, 1.000e+00, -1.000e+00); (0.57373, 1.000e+00, -1.000e+00); (0.57471, 1.000e+00, -1.000e+00); (0.57568, 7.640e-01, -1.000e+00); (0.57666, 1.253e-03, -1.000e+00); (0.57764, 1.195e-24, -1.000e+00); (0.57861, 1.855e-24, -1.000e+00); (0.57959, 2.266e-24, -1.000e+00); (0.58057, 2.395e-24, -1.000e+00)
+
+### C05N128, clC, Co 0.5, N 128
+
+(c) E_theta^inf (rad) and E_cl^inf, standing choice (outermost) and the analysis variant (largest |m_k|):
+
+| row | side | E_theta outermost (dump run) | E_theta standing study | E_theta largest |m| | E_cl outermost (dump run) | E_cl standing study | E_cl largest |m| |
+|---|---|---|---|---|---|---|---|
+| (1) plicRDF | L | 7.843e-02 | 7.843e-02 | 7.843e-02 | 1.699e-03 | 1.699e-03 | 1.699e-03 |
+| (1) plicRDF | R | 6.834e-02 | 6.834e-02 | 6.834e-02 | 1.561e-03 | 1.561e-03 | 1.561e-03 |
+| (3) pointIso-davof | L | 5.430e-01 | 5.430e-01 | 1.068e-01 | 3.734e-02 | 3.734e-02 | 2.632e-03 |
+| (3) pointIso-davof | R | 6.465e-02 | 6.465e-02 | 6.465e-02 | 1.420e-03 | 1.420e-03 | 1.420e-03 |
+
+(3) pointIso-davof, side L: steps with a candidate 70; steps in which the chosen cell has alpha_k outside (1e-3, 1 - 1e-3): 8; steps with more than one candidate: 8
+
+(a) the 5 worst steps by |theta_num - theta_ref| of the chosen cell (all candidates of the step; * = chosen):
+
+| step | t | cell | alpha_k | |m|/V^(2/3) | x_num | theta_num (rad) | theta_ref | alphaf wall (before the step) | |dtheta| | row (1) |dtheta| at that step |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 65 | 0.35560 | 28* | 4.596e-12 | 0.000 | 0.226562 | 1.53460 | 0.99156 | 4.596e-12 | 5.430e-01 | 4.832e-02 |
+| 65 | 0.35560 | 29 | 3.468e-03 | 0.122 | 0.233840 | 0.97613 | 0.99156 | 3.468e-03 | 1.543e-02 | 4.832e-02 |
+| 66 | 0.36099 | 28* | 5.478e-12 | 0.000 | 0.226562 | 0.69097 | 0.99717 | 9.699e-02 | 3.062e-01 | 4.842e-02 |
+| 66 | 0.36099 | 29 | 1.814e-02 | 0.274 | 0.233064 | 0.91072 | 0.99717 | 1.651e-01 | 8.645e-02 | 4.842e-02 |
+| 67 | 0.36638 | 28* | 6.414e-12 | 0.000 | 0.226562 | 0.79519 | 1.00318 | 1.029e-01 | 2.080e-01 | 5.016e-02 |
+| 67 | 0.36638 | 29 | 5.096e-02 | 0.459 | 0.232184 | 0.91334 | 1.00318 | 2.704e-01 | 8.984e-02 | 5.016e-02 |
+| 68 | 0.37177 | 28* | 7.398e-12 | 0.000 | 0.226562 | 0.82552 | 1.00955 | 1.082e-01 | 1.840e-01 | 5.285e-02 |
+| 68 | 0.37177 | 29 | 1.025e-01 | 0.651 | 0.231269 | 0.91392 | 1.00955 | 3.883e-01 | 9.563e-02 | 5.285e-02 |
+| 69 | 0.37716 | 28* | 8.422e-12 | 0.000 | 0.226562 | 0.84757 | 1.01624 | 1.126e-01 | 1.687e-01 | 5.917e-02 |
+| 69 | 0.37716 | 29 | 1.752e-01 | 0.855 | 0.230382 | 0.93007 | 1.01624 | 5.099e-01 | 8.618e-02 | 5.917e-02 |
+
+(3) pointIso-davof, side R: steps with a candidate 72; steps in which the chosen cell has alpha_k outside (1e-3, 1 - 1e-3): 1; steps with more than one candidate: 0
+
+(a) the 5 worst steps by |theta_num - theta_ref| of the chosen cell (all candidates of the step; * = chosen):
+
+| step | t | cell | alpha_k | |m|/V^(2/3) | x_num | theta_num (rad) | theta_ref | alphaf wall (before the step) | |dtheta| | row (1) |dtheta| at that step |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 44 | 0.24246 | 74* | 1.181e-02 | 0.234 | 0.579037 | 1.04701 | 1.11166 | 1.188e-01 | 6.465e-02 | 5.772e-02 |
+| 50 | 0.27478 | 74* | 2.087e-01 | 1.003 | 0.581809 | 1.08136 | 1.14476 | 4.724e-01 | 6.341e-02 | 6.102e-02 |
+| 49 | 0.26940 | 74* | 1.726e-01 | 0.910 | 0.581491 | 1.07750 | 1.14081 | 4.314e-01 | 6.331e-02 | 6.240e-02 |
+| 51 | 0.28017 | 74* | 2.408e-01 | 1.080 | 0.582066 | 1.08476 | 1.14800 | 5.054e-01 | 6.324e-02 | 6.606e-02 |
+| 52 | 0.28556 | 74* | 2.670e-01 | 1.129 | 0.582261 | 1.08748 | 1.15049 | 5.304e-01 | 6.302e-02 | 6.628e-02 |
+
+(1) plicRDF, side L: steps with a candidate 70; steps in which the chosen cell has alpha_k outside (1e-3, 1 - 1e-3): 1; steps with more than one candidate: 1
+
+(a) the 5 worst steps by |theta_num - theta_ref| of the chosen cell (all candidates of the step; * = chosen):
+
+| step | t | cell | alpha_k | |m|/V^(2/3) | x_num | theta_num (rad) | theta_ref | alphaf wall (before the step) | |dtheta| | row (1) |dtheta| at that step |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 4 | 0.02694 | 28* | 2.920e-01 | 1.137 | 0.221813 | 1.00661 | 1.08504 | -1.000e+00 | 7.843e-02 | 7.843e-02 |
+| 3 | 0.02155 | 28* | 1.901e-01 | 0.918 | 0.222739 | 1.00866 | 1.07766 | -1.000e+00 | 6.900e-02 | 6.900e-02 |
+| 71 | 0.38793 | 29* | 3.883e-01 | 1.219 | 0.228620 | 0.96234 | 1.03043 | -1.000e+00 | 6.809e-02 | 6.809e-02 |
+| 7 | 0.04310 | 28* | 6.164e-01 | 1.161 | 0.219444 | 1.03804 | 1.10564 | -1.000e+00 | 6.760e-02 | 6.760e-02 |
+| 13 | 0.07543 | 27* | 1.121e-01 | 0.729 | 0.216005 | 1.06764 | 1.13509 | -1.000e+00 | 6.745e-02 | 6.745e-02 |
+
+(1) plicRDF, side R: steps with a candidate 72; steps in which the chosen cell has alpha_k outside (1e-3, 1 - 1e-3): 1; steps with more than one candidate: 0
+
+(a) the 5 worst steps by |theta_num - theta_ref| of the chosen cell (all candidates of the step; * = chosen):
+
+| step | t | cell | alpha_k | |m|/V^(2/3) | x_num | theta_num (rad) | theta_ref | alphaf wall (before the step) | |dtheta| | row (1) |dtheta| at that step |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 38 | 0.21013 | 73* | 2.715e-01 | 1.090 | 0.574951 | 0.99499 | 1.06333 | -1.000e+00 | 6.834e-02 | 6.834e-02 |
+| 37 | 0.20474 | 73* | 1.870e-01 | 0.902 | 0.574193 | 0.98774 | 1.05474 | -1.000e+00 | 6.700e-02 | 6.700e-02 |
+| 52 | 0.28556 | 74* | 2.672e-01 | 1.131 | 0.582279 | 1.08422 | 1.15049 | -1.000e+00 | 6.628e-02 | 6.628e-02 |
+| 51 | 0.28017 | 74* | 2.415e-01 | 1.079 | 0.582085 | 1.08194 | 1.14800 | -1.000e+00 | 6.606e-02 | 6.606e-02 |
+| 47 | 0.25862 | 74* | 9.966e-02 | 0.686 | 0.580720 | 1.06537 | 1.13088 | -1.000e+00 | 6.551e-02 | 6.551e-02 |
+
+### B02N256, clB, Co 0.2, N 256
+
+(c) E_theta^inf (rad) and E_cl^inf, standing choice (outermost) and the analysis variant (largest |m_k|):
+
+| row | side | E_theta outermost (dump run) | E_theta standing study | E_theta largest |m| | E_cl outermost (dump run) | E_cl standing study | E_cl largest |m| |
+|---|---|---|---|---|---|---|---|
+| (1) plicRDF | L | 7.428e-02 | 7.428e-02 | 7.428e-02 | 6.707e-04 | 6.707e-04 | 6.707e-04 |
+| (1) plicRDF | R | 2.534e-02 | 2.534e-02 | 2.534e-02 | 5.185e-04 | 5.185e-04 | 5.185e-04 |
+| (3) pointIso-davof | L | 1.310e-01 | 1.310e-01 | 5.987e-02 | 1.895e-02 | 1.895e-02 | 4.863e-04 |
+| (3) pointIso-davof | R | 2.816e-02 | 2.816e-02 | 2.816e-02 | 3.448e-04 | 3.448e-04 | 3.448e-04 |
+
+(3) pointIso-davof, side L: steps with a candidate 367; steps in which the chosen cell has alpha_k outside (1e-3, 1 - 1e-3): 7; steps with more than one candidate: 1
+
+(a) the 5 worst steps by |theta_num - theta_ref| of the chosen cell (all candidates of the step; * = chosen):
+
+| step | t | cell | alpha_k | |m|/V^(2/3) | x_num | theta_num (rad) | theta_ref | alphaf wall (before the step) | |dtheta| | row (1) |dtheta| at that step |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 203 | 0.21983 | 46* | 1.613e-97 | 0.000 | 0.183594 | 1.54915 | 1.41816 | 1.613e-97 | 1.310e-01 | 3.578e-02 |
+| 203 | 0.21983 | 47 | 4.853e-03 | 0.241 | 0.187340 | 1.39989 | 1.41816 | 4.853e-03 | 1.827e-02 | 3.578e-02 |
+| 204 | 0.22091 | 47* | 2.191e-02 | 0.463 | 0.187122 | 1.36036 | 1.42023 | 9.093e-02 | 5.987e-02 | 3.584e-02 |
+| 247 | 0.26724 | 45* | 2.000e-01 | 1.007 | 0.178671 | 1.45105 | 1.51084 | 2.499e-01 | 5.979e-02 | 4.360e-02 |
+| 210 | 0.22737 | 47* | 3.053e-01 | 1.019 | 0.185926 | 1.37798 | 1.43271 | 3.940e-01 | 5.472e-02 | 4.341e-02 |
+| 265 | 0.28664 | 44* | 1.245e-01 | 1.003 | 0.175149 | 1.49621 | 1.54941 | 1.548e-01 | 5.320e-02 | 3.209e-02 |
+
+(3) pointIso-davof, side R: steps with a candidate 362; steps in which the chosen cell has alpha_k outside (1e-3, 1 - 1e-3): 15; steps with more than one candidate: 0
+
+(a) the 5 worst steps by |theta_num - theta_ref| of the chosen cell (all candidates of the step; * = chosen):
+
+| step | t | cell | alpha_k | |m|/V^(2/3) | x_num | theta_num (rad) | theta_ref | alphaf wall (before the step) | |dtheta| | row (1) |dtheta| at that step |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 10 | 0.01185 | 146* | 7.935e-02 | 0.591 | 0.571559 | 1.00041 | 1.02857 | 3.195e-01 | 2.816e-02 | 1.850e-02 |
+| 33 | 0.03664 | 145* | 1.227e-01 | 0.723 | 0.568020 | 0.96268 | 0.99082 | 4.135e-01 | 2.813e-02 | 1.857e-02 |
+| 9 | 0.01078 | 146* | 1.008e-01 | 0.667 | 0.571714 | 1.00235 | 1.03025 | 3.593e-01 | 2.790e-02 | 1.928e-02 |
+| 56 | 0.06142 | 144* | 1.698e-01 | 0.841 | 0.564472 | 0.92680 | 0.95466 | 5.050e-01 | 2.786e-02 | 2.112e-02 |
+| 32 | 0.03556 | 145* | 1.480e-01 | 0.795 | 0.568176 | 0.96462 | 0.99242 | 4.532e-01 | 2.781e-02 | 1.926e-02 |
+
+(1) plicRDF, side L: steps with a candidate 366; steps in which the chosen cell has alpha_k outside (1e-3, 1 - 1e-3): 5; steps with more than one candidate: 1
+
+(a) the 5 worst steps by |theta_num - theta_ref| of the chosen cell (all candidates of the step; * = chosen):
+
+| step | t | cell | alpha_k | |m|/V^(2/3) | x_num | theta_num (rad) | theta_ref | alphaf wall (before the step) | |dtheta| | row (1) |dtheta| at that step |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 267 | 0.28879 | 44* | 2.272e-01 | 1.004 | 0.174715 | 1.47943 | 1.55371 | -1.000e+00 | 7.428e-02 | 7.428e-02 |
+| 193 | 0.20905 | 48* | 4.373e-01 | 1.030 | 0.189213 | 1.32735 | 1.39752 | -1.000e+00 | 7.017e-02 | 7.017e-02 |
+| 119 | 0.12931 | 52* | 6.781e-01 | 1.081 | 0.203583 | 1.18205 | 1.25161 | -1.000e+00 | 6.956e-02 | 6.956e-02 |
+| 230 | 0.24892 | 46* | 3.284e-01 | 1.014 | 0.181985 | 1.40534 | 1.47472 | -1.000e+00 | 6.938e-02 | 6.938e-02 |
+| 156 | 0.16918 | 50* | 5.539e-01 | 1.052 | 0.196414 | 1.25378 | 1.32293 | -1.000e+00 | 6.915e-02 | 6.915e-02 |
+
+(1) plicRDF, side R: steps with a candidate 365; steps in which the chosen cell has alpha_k outside (1e-3, 1 - 1e-3): 16; steps with more than one candidate: 0
+
+(a) the 5 worst steps by |theta_num - theta_ref| of the chosen cell (all candidates of the step; * = chosen):
+
+| step | t | cell | alpha_k | |m|/V^(2/3) | x_num | theta_num (rad) | theta_ref | alphaf wall (before the step) | |dtheta| | row (1) |dtheta| at that step |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2 | 0.00323 | 146* | 3.252e-01 | 1.176 | 0.572791 | 1.01674 | 1.04208 | -1.000e+00 | 2.534e-02 | 2.534e-02 |
+| 26 | 0.02909 | 145* | 3.516e-01 | 1.206 | 0.569097 | 0.97737 | 1.00214 | -1.000e+00 | 2.477e-02 | 2.477e-02 |
+| 1 | 0.00216 | 146* | 3.658e-01 | 1.174 | 0.572942 | 1.01950 | 1.04378 | -1.000e+00 | 2.428e-02 | 2.428e-02 |
+| 25 | 0.02802 | 145* | 3.922e-01 | 1.204 | 0.569250 | 0.97952 | 1.00377 | -1.000e+00 | 2.424e-02 | 2.424e-02 |
+| 3 | 0.00431 | 146* | 2.852e-01 | 1.129 | 0.572635 | 1.01619 | 1.04038 | -1.000e+00 | 2.419e-02 | 2.419e-02 |
+
+### chosen cells with no interface (counts from the dump, per case, row and side)
+
+```
+C02N1024 r1 side L: steps 1480; chosen with |m|/V^(2/3) < 1e-3: 0 (exactly 0: 0); chosen with alpha_k < 1e-3 and wall alphaf > 1e-3: 0
+C02N1024 r1 side R: steps 1482; chosen with |m|/V^(2/3) < 1e-3: 0 (exactly 0: 0); chosen with alpha_k < 1e-3 and wall alphaf > 1e-3: 0
+C02N1024 r3 side L: steps 1482; chosen with |m|/V^(2/3) < 1e-3: 36 (exactly 0: 0); chosen with alpha_k < 1e-3 and wall alphaf > 1e-3: 58
+C02N1024 r3 side R: steps 1482; chosen with |m|/V^(2/3) < 1e-3: 1 (exactly 0: 0); chosen with alpha_k < 1e-3 and wall alphaf > 1e-3: 34
+C05N128 r1 side L: steps 70; chosen with |m|/V^(2/3) < 1e-3: 0 (exactly 0: 0); chosen with alpha_k < 1e-3 and wall alphaf > 1e-3: 0
+C05N128 r1 side R: steps 72; chosen with |m|/V^(2/3) < 1e-3: 0 (exactly 0: 0); chosen with alpha_k < 1e-3 and wall alphaf > 1e-3: 0
+C05N128 r3 side L: steps 70; chosen with |m|/V^(2/3) < 1e-3: 8 (exactly 0: 0); chosen with alpha_k < 1e-3 and wall alphaf > 1e-3: 7
+C05N128 r3 side R: steps 72; chosen with |m|/V^(2/3) < 1e-3: 0 (exactly 0: 0); chosen with alpha_k < 1e-3 and wall alphaf > 1e-3: 0
+B02N256 r1 side L: steps 366; chosen with |m|/V^(2/3) < 1e-3: 0 (exactly 0: 0); chosen with alpha_k < 1e-3 and wall alphaf > 1e-3: 0
+B02N256 r1 side R: steps 365; chosen with |m|/V^(2/3) < 1e-3: 0 (exactly 0: 0); chosen with alpha_k < 1e-3 and wall alphaf > 1e-3: 0
+B02N256 r3 side L: steps 367; chosen with |m|/V^(2/3) < 1e-3: 1 (exactly 0: 0); chosen with alpha_k < 1e-3 and wall alphaf > 1e-3: 0
+B02N256 r3 side R: steps 362; chosen with |m|/V^(2/3) < 1e-3: 0 (exactly 0: 0); chosen with alpha_k < 1e-3 and wall alphaf > 1e-3: 15
+```
