@@ -1,0 +1,92 @@
+# ============================================================================
+# AMR LINE, ADVECTION LADDER A1: 3D TRANSLATION, ONE WAY (2026-11-23, STATUS 11.44,
+# docs/plan-sl-amr-preprint.md, study A1). Two studies, one variable: the mesh.
+#   advTranslationUniform3D  uniform cubes, N = 64, 128, 256 (the control)
+#   advTranslationAmr3D      base N = 16, 32, 64 with two refinement levels (blastAMR,
+#                            band of 6 finest cells, buffer 2), finest h = 1/64, 1/128, 1/256
+# Matched: case, T = 1, CFL 0.5 (time-step law dt = CFL h_fine/|u|), reconstruction
+# cubicLatticeQuadraticWeightedLeastSquares, phase indicator, no source, no bound, no
+# limiter. The rescaling is OFF in both (its arm is a separate study after its gate).
+# The uniform study has SL_MESH_TRANSFER none (no mesh change occurs).
+#
+# PRE-REGISTERED READ-OUT (before any run). Metrics at t = T: E_GEOM_ALPHA_REL (shape,
+# L1), |E_VOL_ALPHA_REL| (volume), E_NARROW_L1_GRAD_PSI and E_NARROW_L2_GRAD_PSI (band
+# gradient). Orders over each rung pair. No L_inf value is judged.
+#   PREDICTION (HYPOTHESIS; the only measurement is the smoke at T = 0.1):
+#   P1  every case completes.
+#   P2  uniform: the order of the shape error is at least 1.8 over both rung pairs.
+#   P3  AMR: the shape error is at most 1.5 times the uniform one at equal finest h, at
+#       every rung, and its order is within 0.3 of the uniform order.
+#   P4  AMR: |volume error| is at most 2 times the uniform one at every rung.
+#   P5  AMR: the band gradient errors (L1, L2) are at most 1.5 times the uniform ones.
+#   P6  AMR: the cell count at t = T is below 15 % of the uniform count at the finest
+#       rung. The wall clock and the rank count are reported, not judged.
+#   FALSIFIED (the AMR line does not keep the accuracy of the uniform mesh) if the AMR
+#   shape error exceeds 1.5 times the uniform one at the finest rung, or if its order
+#   over the last rung pair is below 1.5.
+#   If P2 fails, the control is at fault and no AMR verdict is drawn.
+# ============================================================================
+study_name: advTranslationUniform3D
+case: 3Dtranslation
+mesh: hex
+mode: parallel
+np: 48
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  N_CELLS:
+  - '64'
+  - '128'
+  - '256'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '1.0'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - translate
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - signedDistance
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - cubicLatticeQuadraticWeightedLeastSquares
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - staticMesh
+  SL_MESH_TRANSFER:
+  - none
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: last
+studies_dir: studies/slAmr
