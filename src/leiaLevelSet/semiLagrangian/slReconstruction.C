@@ -261,6 +261,10 @@ void Foam::slReconstruction::buildKeep()
     // fills exactly these with the face centres); OpenFOAM never puts coupled or
     // empty patch faces into a stencil (cellToCellStencil::validBoundaryFaces),
     // so every referenced slot in that range is a physical patch face.
+    // A physical patch face of ANOTHER rank is also a stencil entry of a cell
+    // near a processor boundary. It has a compact index in the halo range, so
+    // the drop decision of the rank that owns the face is distributed over the
+    // stencil map (dropFlat below) and read by compact index.
     const labelListList& st = stencil_.stencil();
     const label bStart = nLocal_;
     const label nBFaces = mesh_.nBoundaryFaces();
@@ -301,6 +305,16 @@ void Foam::slReconstruction::buildKeep()
         }
     }
 
+    // The decision per compact index: 0 for a cell, 0 or 1 for a patch face.
+    // Each rank fills the slots of its own patch faces; the distribution brings
+    // the decision of the owner to every rank that reads the face.
+    labelList dropFlat(stencil_.map().constructSize(), Zero);
+    forAll(drop, i)
+    {
+        dropFlat[bStart + i] = drop[i] ? 1 : 0;
+    }
+    stencil_.map().distribute(dropFlat);
+
     keep_.setSize(st.size());
     label nDropped = 0, nCellsTouched = 0;
     forAll(st, celli)
@@ -311,8 +325,7 @@ void Foam::slReconstruction::buildKeep()
         label n = 0;
         forAll(s, i)
         {
-            const label g = s[i] - bStart;
-            if (i == 0 || g < 0 || g >= nBFaces || !drop[g])
+            if (i == 0 || !dropFlat[s[i]])
             {
                 k[n++] = i;
             }
@@ -366,6 +379,21 @@ void Foam::slReconstruction::buildCentreTail()
     forAll(centreTail_, i)
     {
         centreTail_[i] = flat[nLocal_ + i];
+    }
+
+    // The same layout for the flag "physical patch face". The slots of the
+    // coupled and empty patches of the own rank also get 1, but no stencil
+    // refers to them.
+    labelList isFace(map.constructSize(), Zero);
+    for (label i = 0; i < mesh_.nBoundaryFaces(); ++i)
+    {
+        isFace[nLocal_ + i] = 1;
+    }
+    map.distribute(isFace);
+    faceTail_.setSize(isFace.size() - nLocal_);
+    forAll(faceTail_, i)
+    {
+        faceTail_[i] = (isFace[nLocal_ + i] != 0);
     }
 }
 

@@ -8239,6 +8239,7 @@ written into `config/integration/ghostDecompLocateN64.yaml` and
    (`slReconstruction.C`, not the default) uses the same index test. In parallel it misses the
    patch faces of another rank. The fix belongs in the base class and needs its own
    bit-identity gate. The `MEAN_DELTA_X` defect of 11.36 item 6 is also open.
+   MEASURED 2026-11-18 on the branch `fix/sl-remote-patch-faces`: section 11.41.
 
 ### 11.39 PDE level set: step A round 2 -- the model's own extension u(Y), per layer (2026-11-18, Lichtenberg, special00005)
 
@@ -8400,3 +8401,66 @@ written into `config/integration/ghostDecompLocateN64.yaml` and
     candidate is an edge that the extension characteristics leave (an outflow boundary, as the source
     term with feedback makes it, plan section 6); (c) step D (the source) waits; the 3D step-A studies
     wait for space on /work/scratch.
+
+### 11.41 Patch faces of another rank in the stencil, and the cell-size metric (2026-11-18, Lichtenberg, special00005)
+
+Branch `fix/sl-remote-patch-faces` (NOT in `development`), code commits 1b2108a4 and
+ead89f97. Clone `/work/scratch/tm83tomy/leia-integration`, OpenFOAM-v2606. The read-out
+P1 to P4 is in `config/integration/remotePatchFaceLocateN64.yaml`, written before the runs.
+This closes item 7 of 11.38 as a measurement; the merge waits for the supervisor.
+
+1. **The defect.** `slReconstruction::stencilIsBoundaryFace()` and `buildKeep()` tested the
+   compact stencil index against the boundary faces of the own rank. A physical patch face of
+   another rank has an index in the halo range and was treated as a cell. Three code paths
+   read the test on more than one rank: `stencilBoundaryFaces exclude`, `stencilBoundaryFaces
+   inflowOnly`, and `valueBound lipschitzCone` with `coneBoundaryFaces false` (its default).
+   The default settings (`include`, no bound) do not read it.
+2. **The fix.** A flag "physical patch face" and the drop decision of the owning rank are
+   distributed over the stencil map (`faceTail_`, `dropFlat`). One rank: unchanged.
+3. **Serial against 4 ranks, psi cell by cell, N = 64 refined box, ghost class (MEASURED).**
+   The first run of the AFTER jobs and of the identity set failed on the scratch file quota
+   (item 7) and was repeated; the numbers below are from the repeat (jobs 56597212 to
+   56597226).
+
+   | arm | BEFORE: cells that differ after step 1 | AFTER: after step 1 | AFTER: mean abs. difference at t = 1 |
+   |---|---|---|---|
+   | exclude | 848 (dropped entries 130040 serial, 128090 on 4 ranks) | 0 (130040 in both) | 1.1e-7 |
+   | inflowOnly | 0 (8836 dropped in both) | 0 | 1.1e-16 |
+   | lipschitzCone | 0 | 0 | 1.1e-16 |
+
+   - **P1 holds for exclude.** inflowOnly is a null arm as predicted. The lipschitzCone arm
+     shows no difference before the fix, so it is not a discriminator on this case.
+   - **P2 FAILS as written for exclude.** No cell differs at the threshold at any written
+     step, and the difference is at round-off size until step 60 (4e-15). It then grows by a
+     constant factor of 1.25 per step (largest difference 4e-15, 2e-11, 2e-9, 1.6e-7, 1.2e-4
+     at steps 60, 100, 120, 140, 170). The mean at t = 1 is 1.1e-7, above the limit 1e-12.
+     HYPOTHESIS: the option `exclude` amplifies round-off at the walls (one-sided fits), and
+     the decomposition only seeds the round-off. Not tested: the same growth between two
+     serial runs with a perturbed initial field. Before the fix the mean at t = 1 was 1.4e-4.
+4. **P3 identity against the tree of `development` (c2301068), HOLDS** (all nine polyhedral
+   arms completed). advConv2Dtranslation 36 of 36, advConv3DshearHex 27 of 27, s0Translation2D
+   48 of 48, a0Identity2Dvortex 6 of 6 CSV pairs identical at tolerance 0. Polyhedral arms on
+   48 ranks: the arms `none` and `stencilBounds` differ only in `MEAN_DELTA_X`; the three
+   `lipschitzCone` arms change, as pre-registered: relative volume error by 1.6 to 1.9 %,
+   shape error by 0.4 to 1.9 %. Every earlier multi-rank `lipschitzCone` result carries the
+   defect at this size.
+5. **P4, the metric `MEAN_DELTA_X`.** The function object `gradPsiErrorCSV` averaged the
+   cell-to-cell distance over the internal faces of each rank only. It now counts each
+   processor face with the weight 1/2 on both ranks. Serial against 4 ranks at N = 64:
+   4.7e-12 relative after the fix (before: 2.8e-4); the serial value is identical to the one
+   before the fix. **P4 FAILS as written** (limit 1e-12): the remaining difference is the
+   summation order over about 1e6 faces. The limit was too strict for a sum of this size.
+   `MAX_DELTA_X` did not differ before or after. On the polyhedral meshes at 48 ranks the
+   old value was wrong by 0.14 to 1.2 %.
+6. **Assessment.** The defect of item 1 is removed where it was measurable (exclude, step 1;
+   the dropped-entry counts agree). Two read-outs fail as written, both at a size that the
+   fix does not explain: an amplified round-off in a non-default option, and a summation
+   order. The supervisor decides the merge.
+7. **Incident: the scratch file quota.** On 2026-11-18 at about 01:55 the scratch area of
+   the account reached its hard limit of 25,000,000 files (soft limit 20,000,000, grace
+   period until about 2026-11-18 18:00). OpenFOAM failed with "Couldn't create directory" in
+   every job of this session that started a new case, and `foam_log_state.sh` reports such a
+   run as DIVERGED. All outputs of that window are void and were repeated. An archive job
+   packed finished check directories of this session into tar files
+   (`leia-integration/archives_20261118/`, member counts verified before removal).
+

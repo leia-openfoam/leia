@@ -202,6 +202,12 @@ protected:
     List<vector> centreTail_;
     bool haveCentres_;
 
+    //- Per tail entry (same index as centreTail_): true when the entry is a
+    //  PHYSICAL patch face, of this rank or of another rank. Built with the
+    //  centre tail by distributing a flag over the stencil map, because the
+    //  compact index alone identifies only the patch faces of the own rank.
+    boolList faceTail_;
+
     //- Per-cell interpolation radius (max stencil-centre distance), cached on the
     //  first collectStencil() via the stencilC() accessor.
     scalarField radius_;
@@ -246,16 +252,17 @@ protected:
     }
 
     //- True when stencil entry i of cell c is a PHYSICAL boundary FACE rather
-    //  than a cell centre. Compact indices [nLocal_, nLocal_ + nBoundaryFaces)
-    //  are the boundary-face slots of collectData's layout (see buildKeep), and
-    //  OpenFOAM never puts coupled or empty patch faces into a cell-to-cell
-    //  stencil, so every slot in that range is a physical patch face. Entries at
-    //  or beyond that range are remote cell centres.
+    //  than a cell centre. The face may belong to another rank: the patch faces
+    //  of the own rank have the compact indices [nLocal_, nLocal_ +
+    //  nBoundaryFaces), and a patch face of another rank arrives in the halo
+    //  range like a remote cell. faceTail_ carries the flag for both (see
+    //  buildCentreTail). OpenFOAM never puts coupled or empty patch faces into
+    //  a cell-to-cell stencil.
     inline bool stencilIsBoundaryFace(const label c, const label i) const
     {
         const label g =
             stencil_.stencil()[c][excludeBoundaryFaces_ ? keep_[c][i] : i];
-        return (g >= nLocal_) && (g < nLocal_ + mesh_.nBoundaryFaces());
+        return (g >= nLocal_) && faceTail_[g - nLocal_];
     }
 
     //- No-op retained for API compatibility: the per-cell stencil centres are no

@@ -1,0 +1,81 @@
+# ============================================================================
+# REMOTE PATCH FACES IN THE STENCIL: serial against 4 ranks, before and after the fix
+# (2026-11-18, branch fix/sl-remote-patch-faces, commits 1b2108a4 and ead89f97)
+#
+# slReconstruction::stencilIsBoundaryFace() and buildKeep() knew only the patch faces of the
+# own rank (STATUS 11.38 item 7). The fix distributes a flag and the drop decision over the
+# stencil map. Three code paths use them on more than one rank: stencilBoundaryFaces exclude,
+# stencilBoundaryFaces inflowOnly, and valueBound lipschitzCone with coneBoundaryFaces false.
+# This study prepares one case per path (the N = 64 refined box of the ghost-cell gate, ghost
+# class). workflow/scripts/integration/ghost_locate.sbatch then solves each case in serial
+# and on 4 ranks and compares psi cell by cell, once with the binaries of development
+# (c2301068, BEFORE) and once with the binaries of the branch (AFTER).
+#
+# PRE-REGISTERED READ-OUT (written before the runs).
+#   P1 BEFORE: psi differs between serial and 4 ranks in at least one cell at a written
+#      step, in the arms exclude and lipschitzCone. An arm without a difference is not a
+#      discriminator for its path; it is reported as such and P2 says nothing for it.
+#      inflowOnly: the walls of this case have zero flux, so no face is dropped and no
+#      difference is expected before or after (a null arm).
+#   P2 AFTER: no cell differs at the threshold of the comparator at any written step, and
+#      the mean absolute difference of psi over all cells at t = 1 is at most 1e-12, in
+#      every arm. FALSIFIED by one arm that fails.
+#   P3 IDENTITY: the standard set of workflow/scripts/integration/README.md, built from the
+#      branch, against the studies of the development tree in the same clone. Every metric
+#      CSV pair is identical at tolerance 0, with two exceptions that the fix makes by
+#      design: the columns MEAN_DELTA_X and MAX_DELTA_X of gradPsiError.csv in cases on
+#      more than one rank, and the three lipschitzCone polyhedral arms (48 ranks). Any
+#      other difference FALSIFIES "the fix is inert for the default settings".
+#   P4 METRIC: MEAN_DELTA_X and MAX_DELTA_X of ghostDecompN64serial and ghostDecompN64np4
+#      differ by at most 1e-12 relative after the fix (before: 2.8e-4), and the serial
+#      values are identical to those before the fix.
+#   RESULT 2026-11-18 (STATUS 11.41). P1 holds for exclude (848 cells differ after step 1
+#   before the fix, 0 after); inflowOnly and lipschitzCone show no difference before or
+#   after. P2 FAILS as written for exclude: round-off size until step 60, then a growth of
+#   1.25 per step, mean 1.1e-7 at t = 1. P3 holds. P4 FAILS as written: 4.7e-12 against the
+#   limit 1e-12 (before: 2.8e-4); the serial value is identical.
+# ============================================================================
+study_name: remotePatchFaceLocateN64
+case: 3Dtranslation
+mesh: hexRefined
+mode: serial
+np: 1
+solver: leiaSemiLagrangeLevelSetFoam
+theme: semi-lagrangian-level-set
+solve_runtime: 7200
+setfields_args: "-alphaName alpha"
+axes_override:
+  # The domain is [0,2] x [0,1] x [0,1]; the sphere starts at (0.5 0.5 0.5) with radius 0.15
+  # and travels to x = 1.5 at U = 1, T = 1. The box spans x in [0.8, 1.2] and the full cross
+  # section, so the sphere meets a coarse -> fine transition at x = 0.8 and a fine -> coarse
+  # one at x = 1.2, and starts and ends well clear of both.
+  REFINE_SOURCE: ["box"]
+  REFINE_LEVELS: ['1']
+  REFINE_BOX_MIN: ["(0.8 -0.1 -0.1)"]
+  REFINE_BOX_MAX: ["(1.2 1.1 1.1)"]
+  N_CELLS: ['64']
+  CFL: ['0.5']
+  END_TIME: ['1.0']
+  OSCILLATION: ['off']
+  END_REFERENCE: ['translate']
+  ADVECTION: [semiLagrangian]
+  PHASE_INDICATOR: [detrixheAslam]
+  PROFILE: [signedDistance]
+  # The one variable: the reconstruction. Everything else is the production transport.
+  SL_SCHEME: [pointValue]
+  SL_RECONSTRUCTION: [ghostCellQuadraticWeightedLeastSquares]
+  SL_LIMITER: ["none"]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_STENCIL: ["point"]
+  SL_CLIP: ["false"]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_SOURCE: [none]
+  FLUX_PROJECTION: ["none"]
+  SDPLS_SOURCE: [noSource]
+  SOURCE_SCHEME: [explicit]
+  # Two cases. cases/3Dtranslation does not render stencilBoundaryFaces, so the arms exclude
+  # and inflowOnly are made from the case with valueBound none by the SLSET option of
+  # ghost_locate.sbatch (one foamDictionary entry in the copies of the case).
+  SL_VALUE_BOUND: ["none", "lipschitzCone"]
+collapse_other_axes: true
+export_slides: false
