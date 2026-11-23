@@ -1,0 +1,83 @@
+# ============================================================================
+# AMR LINE, ONE TRANSLATING SPHERE AT ONE RESOLUTION (2026-11-23, STATUS 11.44).
+# Supervisor: a sphere must translate (and rotate) correctly with blastAMR before any
+# ladder runs. Two studies, one variable (the mesh), same commit and binaries:
+#   sphereTranslationUniform3D  uniform cubes, h = 1/128
+#   sphereTranslationAmr3D      base h = 1/32, two levels, finest h = 1/128
+# T = 1, CFL 0.5, rescaling off, reconstruction cubicLatticeQuadraticWeightedLeastSquares
+# WITH the fix of the incomplete parent (commit 7798e1b0). The runs of 2026-11-23 before
+# that commit are void (studies renamed _VOID_incompleteParent_20261123).
+#
+# PRE-REGISTERED READ-OUT (before the run), at t = T, L1 and L2 norms only:
+#   S1  both cases complete.
+#   S2  the AMR band-gradient error (L1) is at most 1.5 times the uniform one (the void
+#       run had 7.6 times).
+#   S3  the AMR shape error is at most 1.5 times the uniform one.
+#   S4  the smallest |grad psi| in the band stays above 0.9 in the AMR run.
+#   FALSIFIED (the incomplete parent was not the only cause) if S2 fails by more than a
+#   factor 2 (ratio above 3). The map of |psi - distance| by layer and side then decides
+#   between the leading-edge drift and another defect.
+#   The AMR volume error is not judged (reference volume of the unrefined mesh).
+# ============================================================================
+study_name: sphereTranslationUniform3D
+case: 3Dtranslation
+mesh: hex
+mode: parallel
+np: 48
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  N_CELLS:
+  - '128'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '1.0'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - translate
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - signedDistance
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - cubicLatticeQuadraticWeightedLeastSquares
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - staticMesh
+  SL_MESH_TRANSFER:
+  - none
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: last
+studies_dir: studies/slAmr
