@@ -164,14 +164,23 @@ def run(dims, jobs):
             name = f"{PREFIX[d]}3lev_b{k}"; print(f"==== {name}", flush=True)
             sm.run(name, variant="ghost", jobs=jobs, csv_path=table(name))
 
-def verdict():
+def finest(d, name, scheme="C-Cp/L2+g"):
+    """The row of the finest wave sampling of `--waves`, in the form of worst()."""
+    R = [r for r in csv.reader(open(os.path.join(TABLES, f"scheme_matrix_three_levels_waves_{d}d.csv"))) if r[:2] == [name, scheme]]
+    r = max(R, key=lambda r: np.prod([int(x) for x in r[2].split("x")]))
+    return np.array([float(x) for x in r[3:8]]), r[8:13]
+
+def verdict(fine=False):
     falsified = False
     for d in (2, 3):
         if not all(os.path.exists(table(f"{PREFIX[d]}3lev_b{k}")) for k in (1, 2, 3)):
             print(f"{d}D: the tables have not landed"); continue
-        one = worst(read(table(ONE[d])), "C-Cp/L2+g")[0]
-        g = {k: worst(read(table(f"{PREFIX[d]}3lev_b{k}")), "C-Cp/L2+g") for k in (1, 2, 3)}
-        print(f"{d}D, C-Cp/L2+g, growth - 1, the largest of the flow directions, Co " + " / ".join(map(str, COS)))
+        if fine:
+            one = finest(d, ONE[d])[0]; g = {k: finest(d, f"{PREFIX[d]}3lev_b{k}") for k in (1, 2, 3)}
+        else:
+            one = worst(read(table(ONE[d])), "C-Cp/L2+g")[0]
+            g = {k: worst(read(table(f"{PREFIX[d]}3lev_b{k}")), "C-Cp/L2+g") for k in (1, 2, 3)}
+        print(f"{d}D, C-Cp/L2+g, growth - 1, the largest of the flow directions, {'the finest wave sampling' if fine else 'the sampling of the tables'}, Co " + " / ".join(map(str, COS)))
         print(f"  one transition : " + " / ".join(f"{x:.3e}" for x in one))
         for k in (1, 2, 3):
             crit = "PASS" if g[k][0].max() <= PASS else ("FAIL" if g[k][0][:4].max() >= FAIL else "NOT DECIDED")
@@ -320,7 +329,7 @@ def main():
           if (3 if m.startswith("hex") else 2) in a.dim and os.path.exists(table(m))]
     if a.powers: powers([m for m in pm if not a.mesh or m in a.mesh])
     if a.powers_long: powers_long([m for m in pm if not a.mesh or m in a.mesh])
-    if a.verdict: verdict(); powers_verdict(pm)
+    if a.verdict: verdict(); verdict(True); powers_verdict(pm)
     return 0
 
 if __name__ == "__main__":
