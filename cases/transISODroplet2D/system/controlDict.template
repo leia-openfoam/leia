@@ -32,7 +32,7 @@ deltaT          @!MAX_DELTA_T!@;
 writeControl    runTime;
 writeInterval   0.02;
 
-purgeWrite      0;
+purgeWrite      @!PURGE_WRITE!@;
 
 writeFormat     ascii;
 writePrecision  8;

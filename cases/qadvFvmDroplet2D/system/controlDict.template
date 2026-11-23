@@ -28,7 +28,7 @@ deltaT          1e-5;
 writeControl    adjustableRunTime;
 writeInterval   0.02;
 
-purgeWrite      0;
+purgeWrite      @!PURGE_WRITE!@;
 
 writeFormat     ascii;
 writePrecision  8;

@@ -59,6 +59,30 @@ POST_SOLVE  = config.get("post_solve", "")
 # committed script without hardcoding how deep the study directory happens to be.
 if POST_SOLVE:
     POST_SOLVE = POST_SOLVE.replace("{REPO}", REPO)
+# Which field output a finished PARALLEL case keeps (2026-11-18, the file-count limit on
+# scratch). `all` (default): every written time, reconstructed, and the processor
+# directories -- what every study did before. `last`: time 0 and the last written time are
+# reconstructed, then the processor directories are removed, except the one file that the
+# `decompose` rule declares as its output (processor0/constant/polyMesh/owner), so that a
+# later snakemake start does not see a missing output. A case whose solver failed
+# (.leia_solver_failed) is NOT reconstructed and keeps its processor directories: with
+# PURGE_WRITE 2 they hold the last two written times before the failure.
+# -withZero is on both calls: a short run whose only written time is 0 has "latest" = 0,
+# and reconstructPar -latestTime without -withZero then selects no time and fails
+# (MEASURED 2026-11-18, the smoke of the 3D gate).
+KEEP_FIELDS = str(config.get("keep_fields", "all"))
+if KEEP_FIELDS not in ("all", "last"):
+    raise ValueError(f"keep_fields must be all or last, not {KEEP_FIELDS!r}")
+_RECONSTRUCT = (
+    ["reconstructPar -withZero"] if KEEP_FIELDS == "all" else
+    ["if [ -f .leia_solver_failed ]; then "
+     "echo '[leia] failed case: not reconstructed, processor directories kept'; "
+     "else reconstructPar -time 0 -withZero && reconstructPar -latestTime -withZero "
+     "&& find . -maxdepth 1 -type d -name 'processor[1-9]*' -exec rm -rf '{{}}' + "
+     "&& find processor0 -mindepth 1 -not -path 'processor0/constant' "
+     "-not -path 'processor0/constant/polyMesh' "
+     "-not -path 'processor0/constant/polyMesh/owner' -delete; fi"]
+)
 # Which research line this study belongs to -> where its results are agglomerated.
 # Explicit `theme:` in the config wins; otherwise inferred from the solver.
 THEME       = paths.theme_of(SOLVER, config.get("theme"))
@@ -495,7 +519,7 @@ if PARALLEL:
         group:
             "case_post"
         shell:
-            sh("cd {params.d}", "reconstructPar -withZero")
+            sh("cd {params.d}", *_RECONSTRUCT)
 
 
 # ParaView case marker, named after the CASE FOLDER so tabs are identifiable

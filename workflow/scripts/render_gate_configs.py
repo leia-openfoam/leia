@@ -191,6 +191,12 @@ def render_arm(gate, arm_name, arm, cand, tokens, rates, smoke, np_override=None
     }
     if arm.get("setfields_args"):
         cfg["setfields_args"] = arm["setfields_args"]
+    # Field output of the gate (2026-11-18): the gate file may set `keep_fields` (the
+    # workflow key) and `purge_write` (the token PURGE_WRITE) for all of its arms.
+    if gate.get("keep_fields"):
+        cfg["keep_fields"] = str(gate["keep_fields"])
+    if gate.get("purge_write") is not None:
+        cfg["axes_override"]["PURGE_WRITE"] = [str(gate["purge_write"])]
     return cfg
 
 

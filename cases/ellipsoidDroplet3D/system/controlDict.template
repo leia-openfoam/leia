@@ -38,7 +38,7 @@ writeControl    adjustableRunTime;
 // adjustableRunTime nudges deltaT to land exactly on the write times.
 writeInterval   @!HALF_END_TIME!@;
 
-purgeWrite      0;
+purgeWrite      @!PURGE_WRITE!@;
 
 writeFormat     ascii;
 

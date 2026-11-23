@@ -57,7 +57,7 @@ maxCapillaryNum 1;
 
 writeControl    runTime;
 writeInterval   @!WRITE_INTERVAL!@;
-purgeWrite      0;
+purgeWrite      @!PURGE_WRITE!@;
 writeFormat     ascii;
 writePrecision  12;
 writeCompression off;

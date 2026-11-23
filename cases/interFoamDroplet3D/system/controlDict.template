@@ -45,7 +45,7 @@ maxDeltaT       @!MAX_DELTA_T!@;
 
 writeControl    runTime;
 writeInterval   @!WRITE_INTERVAL!@;
-purgeWrite      0;
+purgeWrite      @!PURGE_WRITE!@;
 writeFormat     ascii;
 writePrecision  12;
 writeCompression off;

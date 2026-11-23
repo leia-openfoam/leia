@@ -42,7 +42,7 @@ deltaT          @!MAX_DELTA_T!@;
 writeControl    timeStep;
 writeInterval   @!TPF_WRITE_STEPS!@;
 
-purgeWrite      0;
+purgeWrite      @!PURGE_WRITE!@;
 
 writeFormat     ascii;
 writePrecision  16;

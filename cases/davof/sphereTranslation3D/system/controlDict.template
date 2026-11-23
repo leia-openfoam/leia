@@ -42,7 +42,7 @@ deltaT          @!MAX_DELTA_T!@;
 writeControl    adjustableRunTime;
 writeInterval   @!TPF_WRITE_INTERVAL!@;
 
-purgeWrite      0;
+purgeWrite      @!PURGE_WRITE!@;
 
 writeFormat     ascii;
 writePrecision  12;
