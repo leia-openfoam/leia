@@ -82,12 +82,16 @@ class cubicLatticeQuadraticWeightedLeastSquaresReconstruction
     volScalarField levelFld_;
     volVectorField parentCentreFld_;
     volScalarField parentMeanFld_;
+    //- Second moment of the centres of the present children of the parent about
+    //  the position of the restricted datum: M = mean (x_k - xbar)(x_k - xbar).
+    volTensorField parentMomentFld_;
     volTensorField coeffFld_;
 
     //- The same quantities per stencil entry (raw stencil positions).
     List<List<scalar>> stLevel_;
     List<List<vector>> stParentC_;
     List<List<scalar>> stParentMean_;
+    List<List<tensor>> stParentM_;
     List<List<tensor>> stCoeff_;
 
     bool built_;

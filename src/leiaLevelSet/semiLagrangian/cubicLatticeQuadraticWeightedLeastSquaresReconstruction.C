@@ -433,20 +433,35 @@ void Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::build()
     // parent, on a blastAMR mesh with three levels.
     label nIncomplete = 0;
     {
+        // Sums relative to the parent centre point: the coordinates of a point
+        // are equal on every rank, and the moment is free of cancellation.
         const scalar full = scalar(label(1) << activeDirs_.size());
-        vectorField sumC(mesh_.nPoints(), Zero);
-        forAll(parentPoint_, c)
-        {
-            if (parentPoint_[c] >= 0) { sumC[parentPoint_[c]] += mesh_.C()[c]; }
-        }
-        syncTools::syncPointList(mesh_, sumC, plusEqOp<vector>(), vector::zero);
+        vectorField sumD(mesh_.nPoints(), Zero);
+        tensorField sumDD(mesh_.nPoints(), Zero);
         forAll(parentPoint_, c)
         {
             const label pp = parentPoint_[c];
-            if (pp >= 0 && parentCount_[pp] < full - 0.5)
+            if (pp >= 0)
             {
-                parentCentreFld_.primitiveFieldRef()[c] =
-                    sumC[pp]/max(parentCount_[pp], scalar(1));
+                const vector dk(mesh_.C()[c] - pts[pp]);
+                sumD[pp] += dk;
+                sumDD[pp] += dk*dk;
+            }
+        }
+        syncTools::syncPointList(mesh_, sumD, plusEqOp<vector>(), vector::zero);
+        syncTools::syncPointList(mesh_, sumDD, plusEqOp<tensor>(), tensor::zero);
+        tensorField& Mf = parentMomentFld_.primitiveFieldRef();
+        Mf = tensor::zero;
+        forAll(parentPoint_, c)
+        {
+            const label pp = parentPoint_[c];
+            if (pp < 0) { continue; }
+            const scalar nk = max(parentCount_[pp], scalar(1));
+            const vector dbar(sumD[pp]/nk);
+            Mf[c] = sumDD[pp]/nk - dbar*dbar;
+            if (parentCount_[pp] < full - 0.5)
+            {
+                parentCentreFld_.primitiveFieldRef()[c] = pts[pp] + dbar;
                 ++nIncomplete;
             }
         }
@@ -470,6 +485,8 @@ void Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::build()
     parentCentreFld_.correctBoundaryConditions();
     stencil_.collectData(levelFld_, stLevel_);
     stencil_.collectData(parentCentreFld_, stParentC_);
+    parentMomentFld_.correctBoundaryConditions();
+    stencil_.collectData(parentMomentFld_, stParentM_);
 
     // -- which cells are cubes, and the lattice positions of the stencil of a
     //    cell that has exactly the 26 cells of its own level around it
@@ -573,6 +590,9 @@ void Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::fitCell
     DynamicList<scalar> V(2*n);
     DynamicList<label> coarse(n);
     DynamicList<vector> same(n);
+    // restricted data: position in X and the second moment of the children
+    DynamicList<label> restrIdx(n);
+    DynamicList<tensor> restrM(n);
 
     // -- data at the own level, and one datum per refined parent
     for (label i = 1; i < n; ++i)
@@ -600,6 +620,7 @@ void Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::fitCell
             if (!have)
             {
                 X.append(xp); V.append(stParentMean_[c][r]); ++nRestricted_;
+                restrIdx.append(X.size() - 1); restrM.append(stParentM_[c][r]);
             }
         }
         else
@@ -680,7 +701,8 @@ void Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::fitCell
 
     // -- a cube whose 26 lattice positions hold one datum each: the unit operator
     const label m = X.size();
-    if (haveP_ && cube_[c] && m == 26)
+    // (not with restricted data: their rows carry the second moment, see below)
+    if (haveP_ && cube_[c] && m == 26 && restrIdx.empty())
     {
         const tensor invLat = inv(lattice_[c]);
         scalar rl[26];
@@ -713,9 +735,30 @@ void Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::fitCell
         w2[i] = 1.0/max(magSqr(d), VSMALL);
         rhs[i] = V[i] - psiC;
     }
+    const label nd = activeDirs_.size();
+    // A restricted datum is the MEAN of the children: its row is the mean of the
+    // basis over the child centres, basis(centroid) plus the second moment M in
+    // the quadratic entries (0.5 M_aa and M_ab). The fit of a quadratic field is
+    // exact with it (supervisor, 2026-11-23; leiaTestMeshTransfer).
+    forAll(restrIdx, j)
+    {
+        scalar* row = B.begin() + restrIdx[j]*ncoeff_;
+        const tensor& M = restrM[j];
+        label k = nd;
+        for (label a = 0; a < nd; ++a)
+        {
+            row[k++] += 0.5*M(activeDirs_[a], activeDirs_[a]);
+        }
+        for (label a = 0; a < nd; ++a)
+        {
+            for (label e = a + 1; e < nd; ++e)
+            {
+                row[k++] += M(activeDirs_[a], activeDirs_[e]);
+            }
+        }
+    }
     scalar x[9];
     tensor t(Zero);
-    const label nd = activeDirs_.size();
     if (solveFit(B.begin(), w2.begin(), rhs.begin(), m, ncoeff_, ncoeff_, x))
     {
         for (label k = 0; k < ncoeff_; ++k) { t[k] = x[k]; }
@@ -796,6 +839,21 @@ cubicLatticeQuadraticWeightedLeastSquaresReconstruction
         mesh,
         dimensionedScalar(dimless, Zero),
         zeroGradientFvPatchScalarField::typeName
+    ),
+    parentMomentFld_
+    (
+        IOobject
+        (
+            "slCubicParentMoment",
+            mesh.time().timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false
+        ),
+        mesh,
+        dimensionedTensor(dimArea, Zero),
+        zeroGradientFvPatchTensorField::typeName
     ),
     coeffFld_
     (

@@ -30,7 +30,10 @@ Description
       sphere     the signed distance of the sphere (not a polynomial: the error
                  is the third-order remainder).
 
-    The application exits with 1 if the error of `linear` or `harmonic` near
+    Since the second-moment rows of the restricted data (2026-11-23) the fit of
+    every quadratic field is exact, so `quadratic` has the same criterion.
+
+    The application exits with 1 if the error of a polynomial field near
     the sphere is above 1e-10 in any pass, or if no cell changed its level.
 
 \*---------------------------------------------------------------------------*/
@@ -203,7 +206,7 @@ int main(int argc, char *argv[])
         << ": changed cells " << nChanged
         << ", worst error near the sphere " << worstNear << endl;
 
-    const bool exactField = (fieldType == "linear" || fieldType == "harmonic");
+    const bool exactField = (fieldType != "sphere");
     if (nChanged == 0 || (exactField && worstNear > 1e-10))
     {
         Info<< "FAIL" << nl << endl;
