@@ -1,0 +1,82 @@
+# ============================================================================
+# AMR LINE, ONE ROTATING SPHERE AT ONE RESOLUTION (2026-11-23, STATUS 11.44).
+# Supervisor: a sphere must translate and rotate correctly with blastAMR before any
+# ladder runs. Case 3DsphereRotation: unit cube, rigid rotation about the x axis through
+# the cube centre, sphere at (0.5 0.5 0.75), radius 0.15, one full turn (T = 2 pi), so
+# the reference at T is the initial state. Two studies, one variable (the mesh):
+#   sphereRotationUniform3D  uniform cubes, h = 1/128
+#   sphereRotationAmr3D      base h = 1/32, two levels, finest h = 1/128
+# CFL 0.5, rescaling off, reconstruction cubicLatticeQuadraticWeightedLeastSquares with
+# the centroid datum and the second-moment rows (commit 9ebdfd9b).
+#
+# PRE-REGISTERED READ-OUT (before the run), at t = T, L1 and L2 norms only:
+#   S1  both cases complete.
+#   S2  the AMR band-gradient error (L1) is at most 1.5 times the uniform one.
+#   S3  the AMR shape error is at most 1.5 times the uniform one.
+#   S4  the smallest |grad psi| in the band stays above 0.9 in the AMR run.
+#   FALSIFIED (the AMR line does not rotate a sphere correctly) if the ratio of S2 or of
+#   S3 is above 3.
+#   The AMR volume error is not judged (reference volume of the unrefined mesh).
+# ============================================================================
+study_name: sphereRotationAmr3D
+case: 3DsphereRotation
+mesh: hex
+mode: parallel
+np: 16
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  N_CELLS:
+  - '32'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '6.283185307179586'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - none
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - signedDistance
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - cubicLatticeQuadraticWeightedLeastSquares
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - blastAMR
+  SL_MESH_TRANSFER:
+  - quadraticFit
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: processors
+studies_dir: studies/slAmr

@@ -1,0 +1,63 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     leiaLevelSetFoam;
+
+startFrom       startTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         @!END_TIME!@;
+
+maxCo             @!CFL!@;
+
+deltaT          1e-6;
+
+adjustTimeStep  yes;
+
+writeControl    runTime;
+
+writeInterval   0.1;
+
+purgeWrite      @!PURGE_WRITE!@;
+
+writeFormat     ascii;
+
+writePrecision  12;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable true;
+
+libs ("libleiafiniteVolume.so");
+
+#include "fobjects";
+// Defect-correction passes for the DEFERRED second-order linearUpwind
+// div(phi,psi): its (linearUpwind - upwind) correction is an explicit RHS
+// source, so one pass is first-order in practice. The same loop also
+// Picard-iterates the SDPLS source, which is re-linearized every pass
+// (fvmsdplsSource -> R(psi,U) on the current iterate) -- so >= 3.
+// Read by eulerianAdvection.C (leiaLevelSetFoam).
+nDefCorr        @!N_DEF_CORR!@;
+
+// ************************************************************************* //

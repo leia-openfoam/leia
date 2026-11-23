@@ -1,0 +1,74 @@
+values
+{
+    PHASE_INDICATOR ( geometric detrixheAslam );
+    solver (leiaLevelSetFoam);
+
+    END_TIME (6.283185307179586);
+
+    CFL 
+    ( 0.3 );
+
+    N_CELLS
+    (
+        32 64 128
+    );
+        
+    SOURCE_SCHEME
+    (
+        explicit 
+        simpleLinearImplicit 
+        strictNegativeSpLinearImplicit
+    );
+
+    SDPLS_SOURCE
+    (
+        noSource
+        R
+        beta
+    );
+    
+    NEIGHBOURS
+    (
+        5
+        10
+    );
+
+    NARROWBAND
+    (
+        signChange
+        neighbours
+        distance
+    );
+    
+    BC
+    (
+        zeroGradient
+    );
+    
+    DIV
+    (
+        linear
+        $LinearUpwind
+        vanLeer
+        $Gamma1
+        MUSCL 
+        Minmod
+        OSPRE 
+        SFCD
+        SuperBee
+        UMIST
+        vanAlbada 
+        upwind
+    );
+    
+    TANH_LIMIT
+    (
+        0.1
+    );
+
+    PROFILE
+    (
+        signedDistance 
+        tanh
+    );
+}
