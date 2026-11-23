@@ -40,6 +40,7 @@ Description
 \*---------------------------------------------------------------------------*/
 
 #include "fvCFD.H"
+#include "dynamicFvMesh.H"
 #include "advectionErrors.H"
 #include "phaseIndicator.H"
 #include "narrowBand.H"
@@ -91,7 +92,11 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     Foam::leia::reportVersions(Info);   // which leia libraries, from which commit
     Foam::leia::writeVersions(runTime); // the same lines in <case>/leia.version
-    #include "createMesh.H"
+    // The mesh is a dynamicFvMesh (composition root of the mesh-motion family, added
+    // 2026-11-23 for the AMR line). Without constant/dynamicMeshDict, or with
+    // `dynamicFvMesh staticFvMesh`, the mesh is static and mesh.update() does nothing:
+    // every existing study is unchanged (gated by a bit-identity run, STATUS 11.44).
+    #include "createDynamicFvMesh.H"
 
     #include "createFields.H"
 
@@ -132,6 +137,10 @@ int main(int argc, char *argv[])
         ++runTime;
         Info<< "Time = " << runTime.timeName() << endl;
         Info<< "deltaT = " << runTime.deltaT().value() << nl << endl;
+
+        // Mesh adaptation, before anything of this step reads the mesh. psi holds
+        // psi^n here. A static mesh returns false.
+        mesh.update();
 
         // u^{n+1}: rescale U (and phi) by cos(pi t^{n+1}/tau) for the reversed
         // (oscillating) test; identity for the steady case.
