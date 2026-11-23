@@ -30,6 +30,7 @@ License
 
 #include "pointIsoAdvection.H"
 #include "davof.H"
+#include "coupledFvPatchField.H"
 #include "volFields.H"
 #include "interpolationCellPoint.H"
 #include "volPointInterpolation.H"
@@ -311,6 +312,13 @@ void Foam::pointIsoAdvection::defaultFaceFractions()
         }
     }
 
+    // A processor face is an internal face of the mesh: its upwind cell is the
+    // local one for phi >= 0 (local side), else the remote one, whose new alpha
+    // is the patch neighbour field of alpha (the coupled-patch exchange of
+    // correctBoundaryConditions). Only the faces of non-coupled patches take
+    // the owner's alpha.
+    alpha1_.correctBoundaryConditions();
+
     const polyBoundaryMesh& pbm = mesh_.boundaryMesh();
     surfaceScalarField::Boundary& afb = wetFraction_.boundaryFieldRef();
     DynamicLabelList wet;
@@ -323,12 +331,20 @@ void Foam::pointIsoAdvection::defaultFaceFractions()
         fvsPatchScalarField& pf = afb[patchi];
         if (pf.size() == 0) continue;
         const label start = pbm[patchi].start();
+        const fvPatchScalarField& ap = alpha1_.boundaryField()[patchi];
+        const bool coupled = ap.coupled();
+        tmp<scalarField> tnbr;
+        if (coupled)
+        {
+            tnbr = refCast<const coupledFvPatchScalarField>(ap).patchNeighbourField();
+        }
+        const scalarField& phib = phi_.boundaryField()[patchi];
         forAll(pf, i)
         {
             const label facei = start + i;
             if (!afSet_.test(facei))
             {
-                pf[i] = a[own[facei]];
+                pf[i] = (coupled && phib[i] < 0) ? tnbr()[i] : a[own[facei]];
             }
             if (pf[i] != 0) wet.append(facei);
         }

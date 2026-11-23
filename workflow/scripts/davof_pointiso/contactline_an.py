@@ -92,6 +92,7 @@ def load():
             r["dx"] = 1.0/N
             for side in (0, 1):
                 errs_th, errs_x, miss, errs_th1 = [], [], 0, []
+                tmax, imax, emax = None, None, -1.0
                 for row in rows:
                     t = row[0]
                     n_c, x, th = row[1 + 4*side], row[2 + 4*side], row[3 + 4*side]
@@ -100,9 +101,12 @@ def load():
                         continue
                     xr, thr = ref(r["arm"], t, side)
                     errs_th.append(abs(th - thr)); errs_x.append(abs(x - xr)/R0)
+                    if abs(th - thr) > emax:
+                        emax = abs(th - thr); tmax = t; imax = rows.index(row)
                     if n_c == 1:
                         errs_th1.append(abs(th - thr))
                 r["Eth%d" % side] = max(errs_th) if errs_th else None
+                r["tEth%d" % side] = tmax; r["iEth%d" % side] = imax
                 r["Eth1c%d" % side] = max(errs_th1) if errs_th1 else None
                 r["Ecl%d" % side] = max(errs_x) if errs_x else None
                 r["miss%d" % side] = miss
@@ -154,6 +158,16 @@ def main():
                 rs = [by[(arm, row, N, co)] for N in NS if (arm, row, N, co) in by and by[(arm, row, N, co)]["status2"] == "completed"]
                 o = lambda k: order([(r["dx"]/R0, r[k]) for r in rs])
                 L.append("| %s | %s | %s | %s | %s | %s | %s | %s |" % (row, *["-" if o(k) is None else "%.2f" % o(k) for k in ("Eth0", "Eth1", "Eth1c0", "Eth1c1", "Ecl0", "Ecl1")], "-" if (arm != "clC" or o("E1") is None) else "%.2f" % o("E1")))
+    # the time of occurrence of the maximum angle error, case D
+    L.append("\n### Case D: step and time of the maximum of |theta_num - theta_ref| (E_theta^inf), left / right, Co 0.2\n")
+    L.append("| row | N | step (L / R) | t (L / R) | E_theta L / R (rad) | candidates of that step (L / R) |")
+    L.append("|---|---|---|---|---|---|")
+    for row in ROWS:
+        for N in NS:
+            r = by.get(("clD", row, N, 0.2))
+            if r and r.get("Eth0") is not None:
+                cl = [r["dat"][r["iEth%d" % s_]][1 + 4*s_] if r.get("iEth%d" % s_) is not None else None for s_ in (0, 1)]
+                L.append("| %s | %d | %s / %s | %s / %s | %s / %s | %s / %s |" % (row, N, r["iEth0"], r["iEth1"], "%.5f" % r["tEth0"], "%.5f" % r["tEth1"], f(r["Eth0"]), f(r["Eth1"]), cl[0], cl[1]))
     # Gw1: step 0
     L.append("\n### Gw1: the initial reconstruction (step 0), N 128, Co 0.5\n")
     L.append("| case | row | side | x_num | x_ref | theta_num (deg) | theta_ref (deg) | candidates |")
