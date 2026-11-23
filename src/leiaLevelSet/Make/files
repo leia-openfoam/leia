@@ -23,6 +23,7 @@ narrowBand/distanceNarrowBand.C
 
 profile/profile.C
 profile/signedDistance.C
+profile/quadraticSphere.C
 profile/tanh.C
 
 velocityModel/velocityModel.C

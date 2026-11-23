@@ -1,0 +1,85 @@
+# ============================================================================
+# AMR LINE, EXACT-SOLUTION GATE OF THE TRANSPORT: THE QUADRATIC SPHERE (2026-11-23,
+# STATUS 11.44; supervisor). The twin of sphereTranslationAmr3D: one variable, PROFILE signedDistance ->
+# quadraticSphere, psi = (|x - c|^2 - R^2)/(2 R). This psi is a polynomial of degree 2
+# at every time of a rigid motion, so the quadratic fit, the ghost values, the restricted
+# data (with the second-moment rows) and the mesh transfer reproduce it exactly.
+#
+# PRE-REGISTERED READ-OUT (before the run). E_PSI = max |psi - psi_exact| over the cells
+# (column L_INF_E_PSI; a round-off test of an exact solution, not a convergence verdict).
+#   Q1  every case completes.
+#   Q2  translation (the departure point of a uniform velocity is exact): E_PSI at t = T
+#       is at most 1e-9 on the uniform mesh AND on the AMR mesh.
+#   Q3  rotation (the departure point has the error of the trajectory integration):
+#       E_PSI on the AMR mesh is within 10 % of E_PSI on the uniform mesh at equal
+#       finest h, at t = T.
+#   Q4  the shape error at t = T equals the shape error of the uniform mesh within 5 %.
+#   FALSIFIED (a defect remains in the reconstruction, the ghost values, the restriction
+#   or the transfer on the dynamic mesh) if Q2 fails on the AMR mesh while it holds on
+#   the uniform mesh. If Q2 fails on the uniform mesh, the premise is wrong (boundary
+#   cells: the patch values of a zeroGradient psi are not exact data), and the error is
+#   then read in the band of the interface only.
+#   The band-gradient metrics are NOT judged: |grad psi| = r/R for this profile.
+# ============================================================================
+study_name: quadSphereTranslationAmr3D
+case: 3Dtranslation
+mesh: hex
+mode: parallel
+np: 16
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  N_CELLS:
+  - '32'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '1.0'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - translate
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - quadraticSphere
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - cubicLatticeQuadraticWeightedLeastSquares
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - blastAMR
+  SL_MESH_TRANSFER:
+  - quadraticFit
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: processors
+studies_dir: studies/slAmr
