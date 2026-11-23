@@ -25,6 +25,9 @@
 #   shape error exceeds 1.5 times the uniform one at the finest rung, or if its order
 #   over the last rung pair is below 1.5.
 #   If P2 fails, the control is at fault and no AMR verdict is drawn.
+# RANKS. The domain is [0,2] x [0,1] x [0,1], so N = 256 has 33.5e6 cells. This file runs
+# N = 64 and 128 on 48 ranks; advTranslationUniformN256_3D runs N = 256 on 96 ranks
+# (memory: 10.2e6 cells did not fit on 8 ranks with 4 GB each on 2026-11-13).
 # ============================================================================
 study_name: advTranslationUniform3D
 case: 3Dtranslation
@@ -39,7 +42,6 @@ axes_override:
   N_CELLS:
   - '64'
   - '128'
-  - '256'
   CFL:
   - '0.5'
   END_TIME:
