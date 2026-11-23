@@ -1,0 +1,58 @@
+# ============================================================================
+# AMR LINE, UNIT-CUBE OPERATOR AGAINST THE GHOST-CELL CLASS (2026-11-23, STATUS 11.44,
+# docs/plan-sl-amr-preprint.md, gate U2 (b)). The N = 64 rung of the refined-box gate
+# (static hexRef8 box, one level, sphere crosses two 2:1 transitions, T = 1, 8 ranks).
+# One variable: SL_RECONSTRUCTION, the reference class against the class with the
+# unit-cube operator. The two classes solve the same least-squares problem.
+#
+# PRE-REGISTERED READ-OUT (before the run).
+#   PASS if both arms complete with equal step counts and the solver CSV and
+#   gradPsiError.csv agree within 1e-10 relative in every column that is not a wall-clock
+#   column; the volume-error difference is divided by the reference volume
+#   (leiaSetFields.csv), because the volume error crosses zero (STATUS 11.44 item 3).
+#   L_INF_E_PSI is reported, not judged. The wall clock per step of both arms is reported.
+#   FALSIFIED (the unit-cube operator is not the same fit) by a difference above 1e-10.
+# ============================================================================
+study_name: cubicRefinedBoxN64
+case: 3Dtranslation
+mesh: hexRefined
+mode: parallel
+np: 8
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 120
+setfields_args: "-alphaName alpha"
+axes_override:
+  # The domain is [0,2] x [0,1] x [0,1]; the sphere starts at (0.5 0.5 0.5) with radius 0.15
+  # and travels to x = 1.5 at U = 1, T = 1. The box spans x in [0.8, 1.2] and the full cross
+  # section, so the sphere meets a coarse -> fine transition at x = 0.8 and a fine -> coarse
+  # one at x = 1.2, and starts and ends well clear of both.
+  REFINE_SOURCE: ["box"]
+  REFINE_LEVELS: ['1']
+  REFINE_BOX_MIN: ["(0.8 -0.1 -0.1)"]
+  REFINE_BOX_MAX: ["(1.2 1.1 1.1)"]
+  N_CELLS: ['64']
+  CFL: ['0.5']
+  END_TIME: ['1.0']
+  OSCILLATION: ['off']
+  END_REFERENCE: ['translate']
+  ADVECTION: [semiLagrangian]
+  PHASE_INDICATOR: [detrixheAslam]
+  PROFILE: [signedDistance]
+  # The one variable: the reconstruction. Everything else is the production transport.
+  SL_SCHEME: [pointValue]
+  SL_RECONSTRUCTION: [ghostCellQuadraticWeightedLeastSquares, cubicLatticeQuadraticWeightedLeastSquares]
+  SL_VALUE_BOUND: ["none"]
+  SL_LIMITER: ["none"]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_STENCIL: ["point"]
+  SL_CLIP: ["false"]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_SOURCE: [none]
+  FLUX_PROJECTION: ["none"]
+  SDPLS_SOURCE: [noSource]
+  SOURCE_SCHEME: [explicit]
+collapse_other_axes: true
+export_slides: false
+keep_fields: last
+studies_dir: studies/slAmr
