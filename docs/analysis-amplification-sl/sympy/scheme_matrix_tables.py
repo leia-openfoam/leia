@@ -48,7 +48,7 @@ def load(tables):
         for r in rows: by[(r[0], r[3])].append(r)
         for (mesh, scheme), R in by.items():
             g = np.array([[float(r[i]) for i in gi] for r in R])
-            d = 3 if mesh in ("cube", "hexPert", "hex21", "hex21patch") else 2
+            d = 3 if mesh.startswith(("cube", "hex")) else 2
             rank = min(int(r[9]) for r in R); full = {2: 6, 3: 10}[d]
             out[mesh][scheme] = dict(g=(np.max(g, axis=0) - 1) if not np.isnan(g).all() else np.full(len(gi), np.nan),
                                      rank=rank, full=full, deg=max(int(r[10]) for r in R),
