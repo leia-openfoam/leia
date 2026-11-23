@@ -1,0 +1,51 @@
+# ============================================================================
+# STATIC CURVATURE OF THE QUADRATIC SPHERE (2026-11-23, STATUS 11.44; supervisor: "as soon
+# as we have a closed-form quadratic approximation, the curvature correction we have
+# should be possible"). The uniform curvature gate of the sphere, two arms: PROFILE
+# signedDistance (the control) and quadraticSphere, psi = (|x - c|^2 - R^2)/(2 R).
+#
+# DERIVED. The fit of the quadratic psi is exact, so its gradient g and Hessian H are
+# exact in every cell. The curvature of the level set through the cell centre,
+# (|g|^2 tr H - g.H.g)/|g|^3, and the distance of the centre to the zero set of the
+# cell's own quadratic (the foot point) do not use the distance property of psi. The
+# parallel-surface inverse with that distance then gives 2/R at the interface.
+#
+# PRE-REGISTERED READ-OUT (before the run), norms L1 and L2 of the test application:
+#   K1  both arms complete at both resolutions.
+#   K2  quadraticSphere: the relative curvature error (L1 and L2) is at most 1e-8 at both
+#       resolutions.
+#   FALSIFIED (a part of the curvature path assumes a signed distance) if the error of
+#   the quadraticSphere arm is above 1e-4; the size and its change with N then show
+#   which part.
+# ============================================================================
+study_name: curvatureQuadSphere3D
+case: 3Ddeformation
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestMeanCurvature
+theme:  sl-amr
+keep_fields: last
+
+# The 3D cases initialise the field named "alpha" (not alpha.water).
+setfields_args: "-alphaName alpha"
+
+axes_override:
+  N_CELLS: [32, 52]
+  # LOAD-BEARING pins, as in config/faceCurvatureSphere3D.yaml:
+  #   the uncached quadratic reconstruction is the only one with footPointDistance and
+  #   fitDerivatives; the point stencil gives enough neighbours for the quadratic fit on
+  #   hexahedra; the signed-distance profile is the premise of the parallel-surface inverse.
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_STENCIL: [point]
+  PROFILE: [signedDistance, quadraticSphere]
+  DIV: [linear]
+  PHASE_INDICATOR: [detrixheAslam]
+  PURGE_WRITE: ['2']
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+studies_dir: studies/slAmr
