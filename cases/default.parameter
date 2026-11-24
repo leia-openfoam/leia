@@ -1256,3 +1256,13 @@ DAVOF_CURV_MODEL_2    none;               // | hermite (quadricFit, positionWeig
 // number of ALL cells and so gives different steps on an adapted and a uniform mesh.
 DELTA_T               1e-6;
 ADJUST_TIME_STEP      yes;
+// `reconstruction layerBlended` (2026-11-24, research candidate, no result yet): read
+// only when SL_RECONSTRUCTION is layerBlended, so the values are inert for every other
+// study. Cell counts, the same for every case. The band count 4 is a HYPOTHESIS until
+// the gate config/slAmr/hBandQuadSphere*3D.yaml has run: the face curvature reads the
+// fits of the layers <= 1, those read the layers <= 2, plus one layer of travel per step
+// at CFL <= 1, plus one layer of margin.
+SL_BLEND_INNER        cubicLatticeQuadraticWeightedLeastSquares;
+SL_BLEND_OUTER        linearWeightedLeastSquares;
+SL_BLEND_BAND_LAYERS  4;
+SL_BLEND_RIM_LAYERS   2;

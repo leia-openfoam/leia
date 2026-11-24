@@ -163,6 +163,17 @@ levelSet
         // A zeroGradient patch value is not exact data; see default.parameter.
         stencilBoundaryFaces @!SL_STENCIL_BOUNDARY_FACES!@;
 
+        // Read by `reconstruction layerBlended` only: the inner fit in the H-band
+        // (cell layers <= bandLayers around the sign change), the outer fit in the
+        // far field, a linear weight over rimLayers between them.
+        layerBlended
+        {
+            inner       @!SL_BLEND_INNER!@;
+            outer       @!SL_BLEND_OUTER!@;
+            bandLayers  @!SL_BLEND_BAND_LAYERS!@;
+            rimLayers   @!SL_BLEND_RIM_LAYERS!@;
+        }
+
         // Transfer of psi to a refined, unrefined or redistributed mesh (RTS
         // slMeshTransfer): none | quadraticFit. Read on a dynamic mesh only.
         meshTransfer        @!SL_MESH_TRANSFER!@;

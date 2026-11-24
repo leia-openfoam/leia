@@ -15,6 +15,7 @@ cubicLatticeQuadraticWeightedLeastSquaresReconstruction.C
 signedDistanceQuadraticWeightedLeastSquaresReconstruction.C
 bandQuadraticWeightedLeastSquaresReconstruction.C
 defectCorrectedIDWReconstruction.C
+layerBlendedReconstruction.C
 slValueBound.C
 noValueBound.C
 stencilBoundsValueBound.C

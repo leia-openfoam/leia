@@ -1,0 +1,105 @@
+# ============================================================================
+# H-BAND GATE (2026-11-24, STATUS 11.44; supervisor: the quadratic fit in the band of
+# cells that the curvature needs, another scheme outside, a blend at the rim).
+# Rotation, one revolution, fixed time step 2 pi/1600. Uniform mesh N = 128, exact patch data, inflow faces only.
+# Reconstruction `layerBlended`: inner cubicLatticeQuadraticWeightedLeastSquares for the
+# cell layers <= bandLayers around the sign change of psi, outer
+# linearWeightedLeastSquares in the far field, a linear weight over 2 rim layers.
+# No limiter (SL_LIMITER none): the gate isolates the leakage through the rim.
+#
+# WHY THIS CASE. The quadratic fit is exact for the quadratic sphere and the linear fit
+# is not. An error of psi in the H-band is then the far-field error that came through
+# the rim, and nothing else. The control is the run quadSphereRotationUniformExact3D (the quadratic fit in
+# every cell, same commit).
+#
+# DERIVED. The profile moves rigidly with the interface, so the far-field error stays at
+# its distance to the interface along the characteristics; only the fit stencil couples
+# neighbouring layers (one layer per step at most, with a small weight).
+# HYPOTHESIS: the coupling through the stencil does not bring the far-field error to the
+# interface cells within the run.
+#
+# PRE-REGISTERED READ-OUT (before the run). E = L1 error of psi in the interface cells
+# at T, divided by h = 1/128. E_c is E of the control.
+#   H1  every arm completes (no divergence; the outer linear fit has no limiter).
+#   H2  bandLayers 6: E <= max(10 E_c, 1e-6).
+#   H3  E does not rise from bandLayers 2 to 4 to 6.
+#   FALSIFIED (the rim leaks to the interface in a rigid motion) if E at bandLayers 6
+#   is above 1e-3. The route then needs a far field without memory, or a wider band
+#   than a stencil count gives.
+# NOT TESTED HERE: a flow with normal compression (3D shear ladder, next gate), the
+# adapted mesh, a limiter on the outer fit, the curvature in the H-band.
+# ============================================================================
+study_name: hBandQuadSphereRotation3D
+case: 3DsphereRotation
+mesh: hex
+mode: parallel
+np: 48
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  BC:
+  - rigidMotionProfile
+  SL_STENCIL_BOUNDARY_FACES:
+  - inflowOnly
+  ADJUST_TIME_STEP:
+  - 'no'
+  DELTA_T:
+  - '0.003926990816987241'
+  N_CELLS:
+  - '128'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '6.283185307179586'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - none
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - quadraticSphere
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - layerBlended
+  SL_BLEND_BAND_LAYERS:
+  - '2'
+  - '4'
+  - '6'
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - staticMesh
+  SL_MESH_TRANSFER:
+  - none
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: last
+studies_dir: studies/slAmr
