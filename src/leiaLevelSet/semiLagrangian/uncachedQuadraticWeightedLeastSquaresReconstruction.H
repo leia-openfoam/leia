@@ -336,6 +336,8 @@ public:
     //- Fitted gradient and Hessian at the cell centre, read from the fit
     //  coefficients. Returns the fit order available: 2 (full quadratic),
     //  1 (linear fallback, H = 0), 0 (constant fallback, g = H = 0).
+    virtual bool providesFitDerivatives() const override { return true; }
+
     virtual label fitDerivatives
     (
         const label c,

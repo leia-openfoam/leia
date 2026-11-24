@@ -107,11 +107,10 @@ inline capillaryDriverSplitNorms computeFacePairVariation
     const coupledFaceNeighbours coupledNei(mesh, psi);
     scalar sAcross = 0, sAlong = 0;
 
-    // fitDerivatives is implemented by the uncached quadratic reconstruction
-    // only (the base class aborts); other reconstructions fall back to the
-    // plane normal for every cell, which is then reported as a fallback count.
-    const bool fitNormals =
-        (recon.type() == "uncachedQuadraticWeightedLeastSquares");
+    // A reconstruction without fitDerivatives falls back to the plane normal
+    // for every cell, which is then reported as a fallback count. The
+    // reconstruction answers the question itself (no test of a type name).
+    const bool fitNormals = recon.providesFitDerivatives();
     scalar angleSum = 0;
     label nAngle = 0;
 

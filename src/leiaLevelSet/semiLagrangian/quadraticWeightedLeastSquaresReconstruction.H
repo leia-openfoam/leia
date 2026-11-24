@@ -131,6 +131,12 @@ public:
     //  coefficients of the last update() (see slReconstruction). The basis is
     //  d_a, then d_a^2/2, then d_a d_b (a < b): the coefficients are the
     //  gradient, the diagonal and the off-diagonal of the Hessian.
+    //  (providesFitDerivatives: this class gives fitDerivatives.)
+    //  (providesFitDerivatives: this class gives fitDerivatives.)
+    virtual bool providesFitDerivatives() const override { return true; }
+
+
+
     virtual label fitDerivatives
     (
         const label c,

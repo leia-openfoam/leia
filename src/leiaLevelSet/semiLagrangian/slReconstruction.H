@@ -434,6 +434,14 @@ public:
             NotImplemented;
         }
 
+        //- True if this reconstruction gives fitDerivatives. A solver or a
+        //  test asks this, and never tests the type name of the class, so every
+        //  reconstruction with a fit is selectable in the same code path.
+        virtual bool providesFitDerivatives() const
+        {
+            return false;
+        }
+
         //- Fitted gradient and Hessian of the local polynomial AT THE CELL
         //  CENTRE, read from the fit coefficients (no FVM re-differentiation).
         //  Returns the fit order actually available in this cell:

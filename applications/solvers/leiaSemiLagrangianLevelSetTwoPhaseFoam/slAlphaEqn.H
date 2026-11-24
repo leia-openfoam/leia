@@ -288,7 +288,7 @@
             const volScalarField& siBand =
                 mesh.lookupObject<volScalarField>("NarrowBand");
             nHatFit == dimensionedVector("nHatFit", dimless, vector::zero);
-            if (siRecon.type() == "uncachedQuadraticWeightedLeastSquares")
+            if (siRecon.providesFitDerivatives())
             {
                 vectorField& nRef = nHatFit.primitiveFieldRef();
                 vector g(Zero);

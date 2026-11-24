@@ -239,6 +239,8 @@ public:
     virtual scalar evaluateRaw(const label c, const point& x) const;
 
     //- Gradient and Hessian of the fit at the cell centre; returns the order.
+    virtual bool providesFitDerivatives() const override { return true; }
+
     virtual label fitDerivatives(const label c, vector& g, symmTensor& H) const;
 
     //- The curvature functions of slReconstruction, from the coefficients of
