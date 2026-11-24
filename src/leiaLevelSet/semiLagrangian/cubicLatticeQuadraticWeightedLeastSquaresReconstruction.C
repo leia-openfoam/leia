@@ -883,8 +883,44 @@ cubicLatticeQuadraticWeightedLeastSquaresReconstruction
     nRestricted_(0),
     nLinear_(0),
     nConstant_(0),
-    reported_(false)
+    reported_(false),
+    curvatureNewtonIters_(slDict_.getOrDefault<label>("curvatureNewtonIters", 3)),
+    closestPointIters_(slDict_.getOrDefault<label>("closestPointNewtonIters", 10)),
+    offsetCorrection_(slDict_.getOrDefault<word>("offsetCorrection", "none")),
+    fpTolRel_(slDict_.getOrDefault<scalar>("footPointTolRel", 1e-6)),
+    fpAlphaMax_(slDict_.getOrDefault<scalar>("footPointAlphaMax", 20)),
+    fpCycles_(slDict_.getOrDefault<label>("footPointCycles", 10)),
+    fpSurfIters_(slDict_.getOrDefault<label>("footPointSurfIters", 20)),
+    offsetBeta_(slDict_.getOrDefault<scalar>("offsetBeta", 0.25))
 {
+    if
+    (
+        fpTolRel_ <= 0 || fpAlphaMax_ <= 0 || fpCycles_ < 1 || fpSurfIters_ < 1
+    )
+    {
+        FatalIOErrorInFunction(slDict_)
+            << "footPoint controls must be positive" << exit(FatalIOError);
+    }
+    if
+    (
+        offsetCorrection_ != "none"
+     && offsetCorrection_ != "psi"
+     && offsetCorrection_ != "psiOverGradPsi"
+     && offsetCorrection_ != "quadraticRoot"
+    )
+    {
+        FatalIOErrorInFunction(slDict_)
+            << "offsetCorrection must be none, psi, psiOverGradPsi or "
+            << "quadraticRoot, got '" << offsetCorrection_ << "'"
+            << exit(FatalIOError);
+    }
+    if (offsetBeta_ <= 0 || offsetBeta_ >= 1)
+    {
+        FatalIOErrorInFunction(slDict_)
+            << "offsetBeta must lie in (0,1), got " << offsetBeta_
+            << exit(FatalIOError);
+    }
+
     const Vector<label> gd = mesh_.geometricD();
     DynamicList<label> dirs(3);
     for (direction k = 0; k < 3; ++k)
@@ -1016,6 +1052,431 @@ Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::fitDerivatives
         }
     }
     return 2;
+}
+
+// * * * * * * * * * * * * * * Curvature functions * * * * * * * * * * * * * //
+//
+// Every function reads the polynomial of ONE cell:
+//     P(d) = psi_c + g.d + 0.5 d.H.d,    grad P(d) = g + H.d,
+// with g and H from fitDerivatives. A linear fit has H = 0.
+
+Foam::scalar
+Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::curvatureOffset
+(
+    const scalar psiC,
+    const vector& g,
+    const scalar gm,
+    const symmTensor& H
+) const
+{
+    if (offsetCorrection_ == "psi")
+    {
+        return psiC;
+    }
+    else if (offsetCorrection_ == "psiOverGradPsi")
+    {
+        return psiC/gm;
+    }
+    else if (offsetCorrection_ == "quadraticRoot")
+    {
+        const vector n = g/gm;
+        bool fb = false;
+        return offsetDistance(psiC, gm, n & (H & n), fb);
+    }
+    return 0;
+}
+
+
+bool Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::footPoint
+(
+    const label c,
+    const vector& dp,
+    const scalar level,
+    vector& dFoot,
+    vector& gFoot,
+    symmTensor& H
+) const
+{
+    vector g(Zero);
+    if (fitDerivatives(c, g, H) == 0) { return false; }
+
+    const scalar psiC = stencilPsi_[c][0];
+    const scalar radius = stencilRadius(c);
+    if (radius < SMALL) { return false; }
+    const scalar eps = fpTolRel_*radius;
+
+    auto G = [&](const vector& d) -> scalar
+    {
+        return psiC - level + (g & d) + 0.5*(d & (H & d));
+    };
+    auto gradG = [&](const vector& d) -> vector
+    {
+        return g + (H & d);
+    };
+
+    // Newton along the local gradient onto {G = 0}.
+    auto surfacepoint = [&](vector& d) -> bool
+    {
+        for (label k = 0; k < fpSurfIters_; ++k)
+        {
+            const vector gr(gradG(d));
+            const scalar g2 = gr & gr;
+            if (g2 < SMALL) { return false; }
+            const vector step = -(G(d)/g2)*gr;
+            d += step;
+            if (Foam::mag(step) < eps) { return true; }
+        }
+        return false;
+    };
+
+    vector dpi = dp;
+    if (!surfacepoint(dpi)) { return false; }
+
+    bool converged = false;
+    for (label cycle = 0; cycle < fpCycles_ && !converged; ++cycle)
+    {
+        // (1) foot point of the query on the tangent plane at dpi
+        const vector gi(gradG(dpi));
+        const scalar gi2 = gi & gi;
+        if (gi2 < SMALL) { return false; }
+        const scalar lam = ((dp - dpi) & gi)/gi2;
+        vector dqi = dp - lam*gi;
+
+        // (2) back to the surface
+        vector dpn = dqi;
+        if (!surfacepoint(dpn)) { return false; }
+
+        // (3) parabola correction from the two step vectors
+        const vector f1 = dqi - dpi;
+        const vector f2 = dpn - dqi;
+        if (Foam::mag(f1) > eps)
+        {
+            const vector rel = dp - dpi;
+            const scalar a0 = rel & f1;
+            const scalar a1 = 2.0*(f2 & rel) - magSqr(f1);
+            const scalar a2 = -3.0*(f1 & f2);
+            const scalar a3 = -2.0*magSqr(f2);
+            const scalar den = a1 + 2.0*a2 + 3.0*a3;
+            if (Foam::mag(den) > SMALL)
+            {
+                const scalar alpha = 1.0 - (a0 + a1 + a2 + a3)/den;
+                if (alpha > 0 && alpha < fpAlphaMax_)
+                {
+                    dqi = dpi + alpha*f1 + sqr(alpha)*f2;
+                    dpn = dqi;
+                    if (!surfacepoint(dpn)) { return false; }
+                }
+            }
+        }
+
+        converged = (Foam::mag(dpn - dpi) < eps);
+        dpi = dpn;
+    }
+
+    // Trust region: the fit holds only where the stencil has data.
+    if (!converged || Foam::mag(dpi) > radius) { return false; }
+
+    gFoot = gradG(dpi);
+    if (Foam::mag(gFoot) < SMALL) { return false; }
+    dFoot = dpi;
+    return true;
+}
+
+
+void Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::meanCurvature
+(
+    volScalarField& kappa
+) const
+{
+    scalarField& k = kappa.primitiveFieldRef();
+    k = 0;
+
+    forAll(k, c)
+    {
+        vector g(Zero);
+        symmTensor H(Zero);
+        if (fitDerivatives(c, g, H) < 2) { continue; }
+
+        const scalar psiC = stencilPsi_[c][0];
+        // Band gate with the first-order distance |psi|/|grad psi|.
+        if (Foam::mag(psiC)/max(Foam::mag(g), SMALL) > 3.0*stencilRadius(c))
+        {
+            continue;
+        }
+
+        // Newton along the gradient from the cell centre to the zero set.
+        vector delta(Zero);
+        for (label it = 0; it < curvatureNewtonIters_; ++it)
+        {
+            const scalar p = psiC + (g & delta) + 0.5*(delta & (H & delta));
+            const vector gr(g + (H & delta));
+            const scalar g2 = gr & gr;
+            if (g2 < SMALL) { break; }
+            delta -= (p/g2)*gr;
+        }
+
+        const vector gf(g + (H & delta));
+        const scalar gm = Foam::mag(gf);
+        if (gm < SMALL) { continue; }
+
+        const scalar kd = kappaOf(gf, H);
+        k[c] =
+            (offsetCorrection_ == "none")
+          ? kd
+          : offsetCorrected(kd, curvatureOffset(psiC, gf, gm, H));
+    }
+
+    kappa.correctBoundaryConditions();
+}
+
+
+void
+Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::
+meanCurvatureLaplacian
+(
+    volScalarField& kappa
+) const
+{
+    scalarField& k = kappa.primitiveFieldRef();
+    k = 0;
+
+    forAll(k, c)
+    {
+        vector g(Zero);
+        symmTensor H(Zero);
+        if (fitDerivatives(c, g, H) < 2) { continue; }
+
+        const scalar psiC = stencilPsi_[c][0];
+        const scalar gm = max(Foam::mag(g), SMALL);
+        if (Foam::mag(psiC)/gm > 3.0*stencilRadius(c)) { continue; }
+
+        k[c] =
+            (offsetCorrection_ == "none")
+          ? tr(H)
+          : offsetCorrected(tr(H), curvatureOffset(psiC, g, gm, H));
+    }
+
+    kappa.correctBoundaryConditions();
+}
+
+
+void
+Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::
+meanCurvatureNoExtension
+(
+    volScalarField& kappa
+) const
+{
+    scalarField& k = kappa.primitiveFieldRef();
+    k = 0;
+
+    forAll(k, c)
+    {
+        vector g(Zero);
+        symmTensor H(Zero);
+        if (fitDerivatives(c, g, H) < 2) { continue; }
+
+        const scalar psiC = stencilPsi_[c][0];
+        const scalar gm = Foam::mag(g);
+        if (gm < SMALL) { continue; }
+        if (Foam::mag(psiC)/gm > 3.0*stencilRadius(c)) { continue; }
+
+        const scalar kd = kappaOf(g, H);
+        k[c] =
+            (offsetCorrection_ == "none")
+          ? kd
+          : offsetCorrected(kd, curvatureOffset(psiC, g, gm, H));
+    }
+
+    kappa.correctBoundaryConditions();
+}
+
+
+void
+Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::
+meanCurvatureClosestPoint
+(
+    volScalarField& kappa
+) const
+{
+    // The foot is the closest point: min |delta|^2 with P(delta) = 0. Newton
+    // on delta = lambda grad P(delta), P(delta) = 0, with the Jacobian
+    //     [ I - lambda H   -grad P ]
+    //     [ grad P^T          0    ]
+    // Every guard failure keeps the cell-centre value.
+    scalarField& k = kappa.primitiveFieldRef();
+    k = 0;
+
+    forAll(k, c)
+    {
+        vector g0(Zero);
+        symmTensor H(Zero);
+        if (fitDerivatives(c, g0, H) < 2) { continue; }
+        const tensor Ht(H);
+
+        const scalar psiC = stencilPsi_[c][0];
+        const scalar gm0 = Foam::mag(g0);
+        if (gm0 < SMALL) { continue; }
+        if (Foam::mag(psiC)/gm0 > 3.0*stencilRadius(c)) { continue; }
+
+        k[c] = kappaOf(g0, H);
+
+        const scalar rTrust = stencilRadius(c);
+        const scalar tolP = 1e-8*rTrust;
+
+        scalar lambda = -psiC/(gm0*gm0);
+        vector delta = lambda*g0;
+
+        bool ok = false;
+        bool failed = false;
+        for (label it = 0; it < closestPointIters_; ++it)
+        {
+            const scalar p = psiC + (g0 & delta) + 0.5*(delta & (H & delta));
+            const vector gr(g0 + (H & delta));
+            if (magSqr(gr) < SMALL) { failed = true; break; }
+
+            const vector rV = delta - lambda*gr;
+            if (Foam::mag(p) < tolP && Foam::mag(rV) < 1e-8*rTrust)
+            {
+                ok = true;
+                break;
+            }
+
+            scalar A[4][5];
+            for (label i = 0; i < 3; ++i)
+            {
+                for (label j = 0; j < 3; ++j)
+                {
+                    A[i][j] = (i == j ? 1.0 : 0.0) - lambda*Ht(i, j);
+                }
+                A[i][3] = -gr[i];
+                A[i][4] = -rV[i];
+                A[3][i] = gr[i];
+            }
+            A[3][3] = 0;
+            A[3][4] = -p;
+
+            for (label col = 0; col < 4 && !failed; ++col)
+            {
+                label piv = col;
+                for (label r = col + 1; r < 4; ++r)
+                {
+                    if (Foam::mag(A[r][col]) > Foam::mag(A[piv][col]))
+                    {
+                        piv = r;
+                    }
+                }
+                if (Foam::mag(A[piv][col]) < VSMALL) { failed = true; break; }
+                if (piv != col)
+                {
+                    for (label j = col; j < 5; ++j)
+                    {
+                        const scalar t = A[col][j];
+                        A[col][j] = A[piv][j];
+                        A[piv][j] = t;
+                    }
+                }
+                for (label r = col + 1; r < 4; ++r)
+                {
+                    const scalar f = A[r][col]/A[col][col];
+                    for (label j = col; j < 5; ++j) { A[r][j] -= f*A[col][j]; }
+                }
+            }
+            if (failed) { break; }
+
+            scalar sol[4];
+            for (label i = 3; i >= 0; --i)
+            {
+                scalar s = A[i][4];
+                for (label j = i + 1; j < 4; ++j) { s -= A[i][j]*sol[j]; }
+                sol[i] = s/A[i][i];
+            }
+            if
+            (
+                !std::isfinite(sol[0]) || !std::isfinite(sol[1])
+             || !std::isfinite(sol[2]) || !std::isfinite(sol[3])
+            )
+            {
+                failed = true;
+                break;
+            }
+
+            delta += vector(sol[0], sol[1], sol[2]);
+            lambda += sol[3];
+            if (Foam::mag(delta) > rTrust) { failed = true; break; }
+        }
+
+        if (failed || !ok) { continue; }
+
+        const vector gf(g0 + (H & delta));
+        if (Foam::mag(gf) < SMALL) { continue; }
+        const scalar kFoot = kappaOf(gf, H);
+        if (std::isfinite(kFoot)) { k[c] = kFoot; }
+    }
+
+    kappa.correctBoundaryConditions();
+}
+
+
+Foam::scalar
+Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::signedOffset
+(
+    const label c,
+    bool& fallback
+) const
+{
+    vector g(Zero);
+    symmTensor H(Zero);
+    const label order = fitDerivatives(c, g, H);
+    const scalar gm = Foam::mag(g);
+
+    if (order == 0 || gm < SMALL)
+    {
+        fallback = true;
+        return 0;
+    }
+
+    const vector n = g/gm;
+    return offsetDistance(stencilPsi_[c][0], gm, n & (H & n), fallback);
+}
+
+
+Foam::scalar
+Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::footPointDistance
+(
+    const label c,
+    const point& p,
+    const scalar level,
+    bool& ok
+) const
+{
+    const vector dp(p - mesh_.C()[c]);
+    vector dFoot(Zero), gFoot(Zero);
+    symmTensor H(Zero);
+    ok = footPoint(c, dp, level, dFoot, gFoot, H);
+    if (!ok) { return 0; }
+
+    // Signed distance; positive on the side of larger psi.
+    return ((dp - dFoot) & gFoot)/Foam::mag(gFoot);
+}
+
+
+Foam::scalar
+Foam::cubicLatticeQuadraticWeightedLeastSquaresReconstruction::
+curvatureAtFootPoint
+(
+    const label c,
+    const point& p,
+    bool& ok
+) const
+{
+    const vector dp(p - mesh_.C()[c]);
+    vector dFoot(Zero), gFoot(Zero);
+    symmTensor H(Zero);
+    ok = footPoint(c, dp, 0.0, dFoot, gFoot, H);
+    if (!ok) { return 0; }
+
+    return kappaOf(gFoot, H);
 }
 
 

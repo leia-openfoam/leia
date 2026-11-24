@@ -147,6 +147,76 @@ class cubicLatticeQuadraticWeightedLeastSquaresReconstruction
     //  the displacement d from its centre.
     scalar poly(const tensor& t, const scalar psiC, const vector& d) const;
 
+    //- Controls of the curvature functions. The keys and the defaults are
+    //  those of uncachedQuadraticWeightedLeastSquares.
+    label curvatureNewtonIters_;
+    label closestPointIters_;
+    const word offsetCorrection_;
+    scalar fpTolRel_;
+    scalar fpAlphaMax_;
+    label fpCycles_;
+    label fpSurfIters_;
+    scalar offsetBeta_;
+
+    //- Signed offset from the cell centre to the zero set of the fit along
+    //  the normal ray: the stable root d = 2 psi/(|g| + sqrt(D)),
+    //  D = |g|^2 - 2 psi h_nn, while D >= offsetBeta |g|^2; psi/|g| otherwise.
+    inline scalar offsetDistance
+    (
+        const scalar psiC,
+        const scalar gm,
+        const scalar hnn,
+        bool& fallback
+    ) const
+    {
+        const scalar D = gm*gm - 2.0*psiC*hnn;
+        if (D >= offsetBeta_*gm*gm)
+        {
+            fallback = false;
+            return 2.0*psiC/(gm + Foam::sqrt(D));
+        }
+        fallback = true;
+        return psiC/gm;
+    }
+
+    //- Parallel-curve inverse kappa = kd/(1 - d kd), skipped if |1 - d kd|
+    //  is not above 1/2.
+    inline scalar offsetCorrected(const scalar kd, const scalar d) const
+    {
+        const scalar denom = 1 - d*kd;
+        return (Foam::mag(denom) > 0.5) ? kd/denom : kd;
+    }
+
+    //- Offset of the mode offsetCorrection.
+    scalar curvatureOffset
+    (
+        const scalar psiC,
+        const vector& g,
+        const scalar gm,
+        const symmTensor& H
+    ) const;
+
+    //- kappa = (tr(H)|g|^2 - g.H.g)/|g|^3.
+    static inline scalar kappaOf(const vector& g, const symmTensor& H)
+    {
+        const scalar gm = Foam::mag(g);
+        return (tr(H)*gm*gm - (g & (H & g)))/(gm*gm*gm);
+    }
+
+    //- Closest point of the displacement dp on the set {fit = level} of cell
+    //  c, by the stabilized foot-point algorithm. On success dFoot is the
+    //  displacement of the foot from the cell centre and gFoot is the gradient
+    //  of the fit there.
+    bool footPoint
+    (
+        const label c,
+        const vector& dp,
+        const scalar level,
+        vector& dFoot,
+        vector& gFoot,
+        symmTensor& H
+    ) const;
+
     //- Levels, parents and lattices. Called once.
     void build();
 
@@ -170,6 +240,29 @@ public:
 
     //- Gradient and Hessian of the fit at the cell centre; returns the order.
     virtual label fitDerivatives(const label c, vector& g, symmTensor& H) const;
+
+    //- The curvature functions of slReconstruction, from the coefficients of
+    //  this fit. The algorithms are those of
+    //  uncachedQuadraticWeightedLeastSquares. Each function reads only the
+    //  polynomial of one cell, so it holds on every refinement level.
+    virtual void meanCurvature(volScalarField& kappa) const override;
+    virtual void meanCurvatureLaplacian(volScalarField& kappa) const override;
+    virtual void meanCurvatureNoExtension(volScalarField& kappa) const override;
+    virtual void meanCurvatureClosestPoint(volScalarField& kappa) const override;
+    virtual scalar signedOffset(const label c, bool& fallback) const override;
+    virtual scalar footPointDistance
+    (
+        const label c,
+        const point& p,
+        const scalar level,
+        bool& ok
+    ) const override;
+    virtual scalar curvatureAtFootPoint
+    (
+        const label c,
+        const point& p,
+        bool& ok
+    ) const override;
 };
 
 } // End namespace Foam

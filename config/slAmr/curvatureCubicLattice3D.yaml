@@ -1,0 +1,56 @@
+# ============================================================================
+# CURVATURE FUNCTIONS OF THE UNIT-CUBE RECONSTRUCTION (2026-11-24, STATUS 11.44; supervisor:
+# "add the curvature functions into the new unit-cube class"). The class
+# cubicLatticeQuadraticWeightedLeastSquares now gives signedOffset, footPointDistance,
+# curvatureAtFootPoint and the four meanCurvature functions, from its own coefficients,
+# with the algorithms of uncachedQuadraticWeightedLeastSquares. This gate runs the static
+# sphere on uniform meshes with both classes and both profiles (signedDistance and
+# quadraticSphere, psi = (|x - c|^2 - R^2)/(2 R)).
+#
+# DERIVED. On a uniform mesh of cubes every band cell has the 26 cells of its own level
+# as data, and the weights are 1/|d|^2 in both classes. The two fits are then the same
+# least-squares problem (MEASURED on the static refined box: gradients equal to 1.3e-12).
+# The curvature functions read only g and H of one cell, so the two classes must give
+# the same curvature.
+#
+# PRE-REGISTERED READ-OUT (before the run), L1 and L2 norms of leiaTestFaceCurvature.csv
+# and leiaTestMeanCurvature.csv:
+#   G1  all eight cases complete.
+#   G2  quadraticSphere, unit-cube class: the relative error of the rows
+#       solverCellCentreInverse, stableFootPoint and cutCellInverse is at most 1e-8 at
+#       both resolutions.
+#   G3  signedDistance and quadraticSphere: every row of the unit-cube class equals the
+#       row of the uncached class within 1e-6 relative to the exact curvature 2/R.
+#   FALSIFIED if a row differs by more than 1e-4: the functions are then not the same
+#   algorithm, or the two fits differ in band cells.
+# NOT TESTED HERE: meshes with refinement levels. That is the next gate (banded mesh).
+# ============================================================================
+study_name: curvatureCubicLattice3D
+case: 3Ddeformation
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestMeanCurvature
+theme:  sl-amr
+keep_fields: last
+
+# The 3D cases initialise the field named "alpha" (not alpha.water).
+setfields_args: "-alphaName alpha"
+
+axes_override:
+  N_CELLS: [32, 52]
+  # The one variable: the reconstruction class. The uncached class is the control on the
+  # same commit and binaries. The point stencil is the stencil of the unit-cube class.
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares, cubicLatticeQuadraticWeightedLeastSquares]
+  SL_STENCIL: [point]
+  PROFILE: [signedDistance, quadraticSphere]
+  DIV: [linear]
+  PHASE_INDICATOR: [detrixheAslam]
+  PURGE_WRITE: ['2']
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+studies_dir: studies/slAmr
