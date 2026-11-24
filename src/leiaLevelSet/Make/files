@@ -25,6 +25,7 @@ profile/profile.C
 profile/signedDistance.C
 profile/quadraticSphere.C
 profile/tanh.C
+profile/rigidMotionProfileFvPatchScalarField.C
 
 velocityModel/velocityModel.C
 velocityModel/prescribedVelocityModels.C

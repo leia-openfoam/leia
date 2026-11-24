@@ -1,0 +1,101 @@
+# ============================================================================
+# QUADRATIC SPHERE WITH EXACT INFLOW DATA (2026-11-24, STATUS 11.44; the job of the
+# supervisor: dynamic AMR translation and rotation of the quadratic level set).
+# Rotation, one revolution, uniform mesh N = 128 (the control).
+#
+# CHANGES against the runs of 2026-11-23 (quadSphereRotationUniform3D):
+#   1. psi on every patch is `rigidMotionProfile`: the exact level set of the rigidly
+#      moved sphere at the face centre. MEASURED 2026-11-23: zeroGradient gives the
+#      fit a wrong datum (error g h/2) on a patch with a normal gradient of psi; the
+#      error enters from the inflow and the outflow patch and reaches the fine band
+#      through the coarse cells.
+#   2. stencilBoundaryFaces inflowOnly: outflow faces give no datum (a fixed value on
+#      an outflow patch is unstable, MEASURED 2026-09-29).
+#   3. The solver adapts the mesh at the end of the step (psi and the time at the same
+#      level); the sequence of advection and adaptation is unchanged.
+#   4. Fixed time step 2 pi/1600 on both meshes (Courant number at most 0.5 in the
+#      fine cells of the uniform mesh). On 2026-11-23 the CFL law gave 1636 steps on
+#      the adapted mesh and about 1100 on the uniform mesh: not a matched pair.
+#
+# PRE-REGISTERED READ-OUT (before the run). E = L1 error of psi in the interface cells
+# at T against the exact profile, divided by the fine cell size h = 1/128.
+#   DERIVED: the foot point of the second-order Taylor trace has an error of about
+#   (omega dt)^3 r/6 = 2.5e-9 per step, 4e-6 over 1600 steps, that is 5e-4 h. The fit,
+#   the transfer and the patch data are exact. The error is then the trace error on
+#   both meshes.
+#   R1  E <= 5e-3 on both meshes (ten times the estimate).
+#   R2  E of the adapted mesh is at most 1.5 times E of the uniform mesh.
+#   FALSIFIED if E of the adapted mesh is above 10 times E of the uniform mesh.
+# NOT a one-variable comparison with 2026-11-23: three things changed. The AMR and the
+# uniform run of TODAY are the pair.
+# ============================================================================
+study_name: quadSphereRotationUniformExact3D
+case: 3DsphereRotation
+mesh: hex
+mode: parallel
+np: 48
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  BC:
+  - rigidMotionProfile
+  SL_STENCIL_BOUNDARY_FACES:
+  - inflowOnly
+  ADJUST_TIME_STEP:
+  - 'no'
+  DELTA_T:
+  - '0.003926990816987241'
+  N_CELLS:
+  - '128'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '6.283185307179586'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - none
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - quadraticSphere
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - cubicLatticeQuadraticWeightedLeastSquares
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - staticMesh
+  SL_MESH_TRANSFER:
+  - none
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: last
+studies_dir: studies/slAmr

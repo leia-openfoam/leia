@@ -1,0 +1,92 @@
+# ============================================================================
+# QUADRATIC SPHERE WITH EXACT INFLOW DATA (2026-11-24, STATUS 11.44; the job of the
+# supervisor: dynamic AMR translation and rotation of the quadratic level set).
+# Translation, one way, T = 1, adapted mesh (base 32, two levels).
+#
+# CHANGES against the runs of 2026-11-23 (quadSphereTranslationAmrInflowOnly3D):
+#   1. psi on every patch is `rigidMotionProfile`: the exact level set of the rigidly
+#      moved sphere at the face centre. MEASURED 2026-11-23: zeroGradient gives the
+#      fit a wrong datum (error g h/2) on a patch with a normal gradient of psi; the
+#      error enters from the inflow and the outflow patch and reaches the fine band
+#      through the coarse cells.
+#   2. stencilBoundaryFaces inflowOnly: outflow faces give no datum (a fixed value on
+#      an outflow patch is unstable, MEASURED 2026-09-29).
+#   3. The solver adapts the mesh at the end of the step (psi and the time at the same
+#      level); the sequence of advection and adaptation is unchanged.
+#
+# PRE-REGISTERED READ-OUT (before the run). E = L1 error of psi in the interface cells
+# at T against the exact profile, divided by the fine cell size h = 1/128.
+#   DERIVED: the velocity is constant, so the foot point is exact; the fit, the mesh
+#   transfer and the patch data are exact for a quadratic field.
+#   T1  E <= 1e-8 on the uniform and on the adapted mesh.
+#   FALSIFIED if E > 1e-6 on the adapted mesh: a source of error other than the patch
+#   data remains (the outflow cells with one-sided stencils are the first suspect).
+# NOT a one-variable comparison with 2026-11-23: three things changed. The AMR and the
+# uniform run of TODAY are the pair.
+# ============================================================================
+study_name: quadSphereTranslationAmrExact3D
+case: 3Dtranslation
+mesh: hex
+mode: parallel
+np: 16
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  BC:
+  - rigidMotionProfile
+  N_CELLS:
+  - '32'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '1.0'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - translate
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - quadraticSphere
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - cubicLatticeQuadraticWeightedLeastSquares
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_STENCIL_BOUNDARY_FACES:
+  - inflowOnly
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - blastAMR
+  SL_MESH_TRANSFER:
+  - quadraticFit
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: processors
+studies_dir: studies/slAmr

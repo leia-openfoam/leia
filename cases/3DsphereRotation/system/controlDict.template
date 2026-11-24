@@ -27,9 +27,9 @@ endTime         @!END_TIME!@;
 
 maxCo             @!CFL!@;
 
-deltaT          1e-6;
+deltaT          @!DELTA_T!@;
 
-adjustTimeStep  yes;
+adjustTimeStep  @!ADJUST_TIME_STEP!@;
 
 writeControl    runTime;
 

@@ -1250,3 +1250,9 @@ DAVOF_ELLIPSOID_B     8e-4;
 DAVOF_ELLIPSOID_C     6e-4;
 DAVOF_CURV_MODEL_1    none;               // | normalsOnly (quadricFit, positionWeight 0: the headline)
 DAVOF_CURV_MODEL_2    none;               // | hermite (quadricFit, positionWeight 1: the naive comparison arm)
+// Time step of cases/3DsphereRotation (2026-11-24). The defaults give the CFL law of
+// maxCo, as before. A matched pair of runs on different meshes sets a fixed step:
+// ADJUST_TIME_STEP no and DELTA_T, because the CFL law takes the largest Courant
+// number of ALL cells and so gives different steps on an adapted and a uniform mesh.
+DELTA_T               1e-6;
+ADJUST_TIME_STEP      yes;

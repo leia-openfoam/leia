@@ -147,20 +147,6 @@ int main(int argc, char *argv[])
         Info<< "Time = " << runTime.timeName() << endl;
         Info<< "deltaT = " << runTime.deltaT().value() << nl << endl;
 
-        // Mesh adaptation, before anything of this step reads the mesh. psi holds
-        // psi^n here. A static mesh returns false, and none of the three blocks
-        // below runs for it.
-        if (dynamicMesh)
-        {
-            refinementBand->calc(psi);     // the indicator that the mesh reads
-            meshTransfer->store(psi);      // what the transfer of psi needs
-        }
-        mesh.update();
-        if (dynamicMesh && mesh.topoChanging())
-        {
-            #include "rebuildAfterMeshChange.H"
-        }
-
         // u^{n+1}: rescale U (and phi) by cos(pi t^{n+1}/tau) for the reversed
         // (oscillating) test; identity for the steady case.
         if (velocityModel->isOscillating())
@@ -244,6 +230,24 @@ int main(int argc, char *argv[])
         else
         {
             slAdv->advect(psi, U, Uold);
+        }
+
+        // Mesh adaptation for psi^{n+1}, at the time t^{n+1}, before anything of
+        // the next step reads the mesh. The time and psi are at the same level
+        // here, so a time-dependent patch value of psi (rigidMotionProfile) is
+        // consistent with the cell values when the transfer evaluates it. Until
+        // 2026-11-24 this block ran at the start of the step, after the time
+        // increment, with psi^n; the sequence of advection and adaptation was
+        // the same. A static mesh returns false, and none of the blocks runs.
+        if (dynamicMesh)
+        {
+            refinementBand->calc(psi);     // the indicator that the mesh reads
+            meshTransfer->store(psi);      // what the transfer of psi needs
+        }
+        mesh.update();
+        if (dynamicMesh && mesh.topoChanging())
+        {
+            #include "rebuildAfterMeshChange.H"
         }
 
         // Narrow band FIRST, in every step, then the phase indicator: the order

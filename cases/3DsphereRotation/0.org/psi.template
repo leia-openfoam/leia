@@ -23,31 +23,43 @@ boundaryField
     left 
     {
         type            @!BC!@;
+        omega           (1 0 0);     // read by rigidMotionProfile only
+        point           (0.5 0.5 0.5);
     }
 
     right 
     {
         type            @!BC!@;
+        omega           (1 0 0);     // read by rigidMotionProfile only
+        point           (0.5 0.5 0.5);
     }
 
     front 
     {
         type            @!BC!@;
+        omega           (1 0 0);     // read by rigidMotionProfile only
+        point           (0.5 0.5 0.5);
     }
 
     back    
     {
         type            @!BC!@;
+        omega           (1 0 0);     // read by rigidMotionProfile only
+        point           (0.5 0.5 0.5);
     }
 
     top 
     {
         type            @!BC!@;
+        omega           (1 0 0);     // read by rigidMotionProfile only
+        point           (0.5 0.5 0.5);
     }
 
     bottom 
     {
         type            @!BC!@;
+        omega           (1 0 0);     // read by rigidMotionProfile only
+        point           (0.5 0.5 0.5);
     }
 }
 

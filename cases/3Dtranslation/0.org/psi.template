@@ -23,31 +23,37 @@ boundaryField
     left 
     {
         type            @!BC!@;
+        velocity        (1 0 0);     // read by rigidMotionProfile only
     }
 
     right 
     {
         type            @!BC!@;
+        velocity        (1 0 0);     // read by rigidMotionProfile only
     }
 
     front 
     {
         type            @!BC!@;
+        velocity        (1 0 0);     // read by rigidMotionProfile only
     }
 
     back    
     {
         type            @!BC!@;
+        velocity        (1 0 0);     // read by rigidMotionProfile only
     }
 
     top 
     {
         type            @!BC!@;
+        velocity        (1 0 0);     // read by rigidMotionProfile only
     }
 
     bottom 
     {
         type            @!BC!@;
+        velocity        (1 0 0);     // read by rigidMotionProfile only
     }
 }
 
