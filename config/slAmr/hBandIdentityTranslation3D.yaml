@@ -1,0 +1,83 @@
+# ============================================================================
+# H-BAND CODE CHECK (2026-11-25). hBandQuadSphereTranslation3D was FALSIFIED (E = 0.17
+# at bandLayers 6, limit 1e-3). Two explanations: a defect of the class layerBlended, or
+# the leakage of the outer linear fit through the fit stencils. This run separates them:
+# the same case with bandLayers 2 and the SAME fit inside and outside
+# (cubicLatticeQuadraticWeightedLeastSquares twice). The blend of two equal exact fits
+# is that exact fit, so the class must reproduce the control.
+#
+# PRE-REGISTERED READ-OUT (before the run). E as in hBandQuadSphereTranslation3D.
+#   I1  E <= 1e-8 (the control quadSphereTranslationUniformExact3D: E = 8.4e-11).
+#   FALSIFIED (a defect of layerBlended) if E > 1e-6.
+# np 16 instead of 48: a free core set; the rank count does not enter E at 1e-6.
+# ============================================================================
+study_name: hBandIdentityTranslation3D
+case: 3Dtranslation
+mesh: hex
+mode: parallel
+np: 16
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  BC:
+  - rigidMotionProfile
+  N_CELLS:
+  - '128'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '1.0'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - translate
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - quadraticSphere
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - layerBlended
+  SL_BLEND_BAND_LAYERS:
+  - '2'
+  SL_BLEND_OUTER:
+  - cubicLatticeQuadraticWeightedLeastSquares
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_STENCIL_BOUNDARY_FACES:
+  - inflowOnly
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - staticMesh
+  SL_MESH_TRANSFER:
+  - none
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: last
+studies_dir: studies/slAmr
