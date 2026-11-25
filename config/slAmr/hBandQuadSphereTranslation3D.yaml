@@ -28,6 +28,16 @@
 #   than a stencil count gives.
 # NOT TESTED HERE: a flow with normal compression (3D shear ladder, next gate), the
 # adapted mesh, a limiter on the outer fit, the curvature in the H-band.
+#
+# RESULT (MEASURED 2026-11-25, FE host, Apptainer image, binaries of b3cdaaca, np 48).
+# E (L1 / L2 of |psi - exact|/h, interface cells |d| < h) at T = 1; control E_c = 8.4e-11:
+#   bandLayers 2: 6.7e-01 / 1.0e+00;  4: 4.0e-01 / 6.6e-01;  6: 1.7e-01 / 2.4e-01.
+#   The error grows with the distance from the interface (bandLayers 6: 0.56 h in the
+#   layers 4 to 8).
+#   H1 PASS (every arm COMPLETED, 296 steps). H2 FAIL. H3 PASS (E falls with the band).
+#   FALSIFIED: E at bandLayers 6 is 170 times the limit 1e-3.
+#   Not yet separated: a defect of layerBlended, or leakage through the fit stencils.
+#   The check is hBandIdentityTranslation3D.
 # ============================================================================
 study_name: hBandQuadSphereTranslation3D
 case: 3Dtranslation
