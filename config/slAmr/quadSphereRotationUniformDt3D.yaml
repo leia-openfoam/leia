@@ -17,6 +17,21 @@
 #   FALSIFIED if either ratio is below 2: then the trace is not the leading error, and
 #   a more accurate foot does not reduce E (the next suspect: the trace velocity
 #   reconstruct(phi), or the patch data at the inflow faces).
+#
+# RESULT (MEASURED 2026-11-25, FE host, Apptainer image, binaries of 49325615, np 48).
+# E (L1 / L2, interface cells |d| < h) at T = 2 pi:
+#   dt = 2 pi/1600: 7.27e-04 / 1.14e-03;  2 pi/3200: 7.90e-04 / 1.34e-03;
+#   2 pi/6400: 2.70e-03 / 3.92e-03.  Ratios 0.92 and 0.29.
+#   F1 FALSIFIED: E does not fall with dt; at dt/4 it rises. The foot truncation is not
+#   the leading error, and a more accurate foot does not reduce E.
+#   The initial field is exact (E = 3.1e-13 at t = 0).
+#   Where the error is (mean |psi - exact|/h over all cells, by the radius rho of the
+#   characteristic circle): rho < 0.05: 7e-05; 0.2-0.3: 6.0e-04; 0.4-0.5: 4.9e-03;
+#   by the distance to the nearest wall: 0-1 h: 9.3e-03; 16-70 h: 1.0e-03 (dt = 2 pi/1600;
+#   the other two runs have the same shape). The error comes from the walls and
+#   spreads inward through the fit stencils; more steps spread it further.
+#   HYPOTHESIS (not tested): the wall cells, where the trace reads grad(U) and the fit
+#   reads the patch data of rigidMotionProfile.
 # ============================================================================
 study_name: quadSphereRotationUniformDt3D
 case: 3DsphereRotation
