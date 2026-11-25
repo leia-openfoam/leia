@@ -46,6 +46,7 @@ SourceFiles
 #define pointValueScheme_H
 
 #include "slScheme.H"
+#include "slFootIntegrator.H"
 
 namespace Foam
 {
@@ -65,19 +66,9 @@ class pointValueScheme
     //  modes. This bypasses a separately constructed Eulerian Uext field.
     word trajectoryUName_;
 
-    //- Foot-point integrator: taylor (default) | rk2.
-    //
-    //  taylor -- the historical arrival-centred Taylor foot, which needs a
-    //            velocity GRADIENT for its dt^2 term.
-    //  rk2    -- classical midpoint, using only velocity SAMPLES:
-    //                x_m = x_c - (dt/2) u_h(x_c),
-    //                x_d = x_c -  dt    u_h(x_m),   u_h = (u_new + u_old)/2.
-    //            Same formal order, and it consumes no grad(U) -- the operator
-    //            that was silently wrong in every processor-adjacent cell for
-    //            the life of the code (see docs/gradU-coupled-patch-contamination.md).
-    //            This is also what Basilisk-style advection does: integrate the
-    //            trajectory with time-centred velocity SAMPLES.
-    word footIntegrator_;
+    //- Foot-point integrator (RTS family slFootIntegrator, foot/):
+    //  levelSet.semiLagrangian.footIntegrator taylor (default) | rk2 | taylor3.
+    autoPtr<slFootIntegrator> footIntegrator_;
 
     //- Smooth normal regularisation and closest-point guards.
     scalar normalEpsilon_;

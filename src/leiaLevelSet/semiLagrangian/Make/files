@@ -24,6 +24,8 @@ slCorrector.C
 directCorrector.C
 deferredCorrector.C
 slScheme.C
+foot/slFootIntegrator.C
+foot/slRk2FootIntegrator.C
 pointValueScheme.C
 fluxFormScheme.C
 normalProjectedScheme.C
