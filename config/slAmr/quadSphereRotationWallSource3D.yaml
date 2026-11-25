@@ -15,6 +15,20 @@
 #       least a factor 3.
 #   If no arm moves E by a factor 3, the trace is not the source, and the next suspect
 #   is the patch data of psi (rigidMotionProfile and its time level).
+#
+# RESULT (MEASURED 2026-11-25, FE host, binaries of 49325615, np 48). E (L1 / L2) and the
+# mean error in the wall cells (distance < h):
+#   taylor, projectedFlux: 7.27e-4 / 1.14e-3, wall 9.3e-3   (W1 PASS: equals the base run)
+#   taylor, cellCentred:   7.16e-4 / 1.12e-3, wall 8.3e-3
+#   rk2,    projectedFlux: 5.49e-4 / 7.76e-4, wall 1.06e-2
+#   rk2,    cellCentred:   7.16e-4 / 1.12e-3, wall 8.3e-3
+#   W2 FAIL: no arm moves E or the wall error by a factor 3. The trace is not the source.
+#   Next suspect, found in the logs (not yet tested by a run): the fit of the wall cells.
+#   inflowOnly drops the outflow faces of 33,280 cells, and 32,256 of them fall back to a
+#   LINEAR fit (one cell layer on the inner side gives no second derivative normal to the
+#   wall). A linear fit is not exact for the quadratic profile. In the translation the
+#   16,384 linear-fit cells sit on the outflow face and their error leaves the domain; in
+#   the rotation the walls are tangential to the flow and the error stays and spreads.
 # ============================================================================
 study_name: quadSphereRotationWallSource3D
 case: 3DsphereRotation

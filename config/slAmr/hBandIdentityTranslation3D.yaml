@@ -10,6 +10,12 @@
 #   I1  E <= 1e-8 (the control quadSphereTranslationUniformExact3D: E = 8.4e-11).
 #   FALSIFIED (a defect of layerBlended) if E > 1e-6.
 # np 16 instead of 48: a free core set; the rank count does not enter E at 1e-6.
+#
+# RESULT (MEASURED 2026-11-25, FE host, binaries of 49325615, np 16).
+#   E = 8.358e-11 / 9.443e-11 (L1 / L2), equal to the control to all four printed digits.
+#   I1 PASS. layerBlended has no defect. The falsification of the H-band gates is a
+#   property of the route: the error of the outer linear fit reaches the interface
+#   through the stencils of the inner fit.
 # ============================================================================
 study_name: hBandIdentityTranslation3D
 case: 3Dtranslation

@@ -13,6 +13,18 @@
 #   FALSIFIED (the change is not inert) if any column differs.
 # Rungs and settings: those of config/advConv3DshearHex.yaml, value bound none only,
 # both integrators.
+#
+# RESULT (MEASURED 2026-11-25, FE host; before = binaries of 49325615, after = c604fa73;
+# np 8 (2D) and 16 (3D); both runs in one Apptainer image).
+#   B1 PASS: every arm of both runs COMPLETED.
+#   B2 NOT DECIDED. The scotch decomposition is NOT reproducible between two runs on this
+#   host (the processor-0 mesh differs in 11 of 14 cases, also between the two integrators
+#   of one rung). Where the decomposition was equal (2D: N = 32 taylor and rk2, N = 64
+#   rk2), both CSVs are bit-identical. Where it differed, the final values agree to 11 or
+#   12 digits; the largest relative differences sit in columns whose value is near zero
+#   (volume error, 3D: 8e-7 relative; |grad psi| columns: 4e-9 relative).
+#   A decisive gate needs one decomposition for both runs (a deterministic method, or the
+#   decomposition of the first run reused).
 # ============================================================================
 study_name: footFamilyIdentity3D
 case: 3Dshear
