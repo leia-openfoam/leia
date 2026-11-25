@@ -85,13 +85,22 @@ rigidMotionProfileFvPatchScalarField
             << "only one of velocity and omega may be non-zero"
             << exit(FatalIOError);
     }
-    // A dictionary with a value (a written field, or a field that a mesh
-    // redistribution sends between ranks) keeps that value: the mesh of a
-    // redistribution step has no fvSolution of the case. A dictionary without a
-    // value (the initial field of a case) gets the exact profile.
-    if (!dict.found("value"))
+    // The exact profile wherever the mesh has the levelSet dictionary of the
+    // case (a written value has only writePrecision digits). The mesh of a
+    // redistribution step (blastAMR balancing) has no such dictionary: there the
+    // field keeps the value that the sending rank wrote into the dictionary.
+    if
+    (
+        patch().boundaryMesh().mesh().solutionDict().isDict("levelSet")
+    )
     {
         fvPatchField<scalar>::operator=(exact());
+    }
+    else if (!dict.found("value"))
+    {
+        FatalIOErrorInFunction(dict)
+            << "no levelSet dictionary in fvSolution and no value entry"
+            << exit(FatalIOError);
     }
 }
 
