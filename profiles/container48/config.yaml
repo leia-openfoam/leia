@@ -1,0 +1,23 @@
+# Container profile, 48 cores: every case runs on ONE machine without a scheduler, inside
+# the image of etc/apptainer/leia-openfoam-v2606.def, MPI with the mpirun of the image.
+# Snakemake itself runs inside the image (etc/apptainer/README.md), so this is the local
+# executor; only the environment and the launcher differ from profiles/local.
+#   snakemake --workflow-profile profiles/container48 --configfile config/<study>.yaml
+#
+# The core set comes from the caller (`taskset -c <cores> apptainer exec ...`), not from
+# this file: the profile holds the COUNT only, and the count must equal the size of that set.
+executor: local
+cores: 48
+jobs: 48
+# The solve rule declares tasks=<np>: at most floor(48/np) solves run at once.
+resources:
+  - tasks=48
+printshellcmds: true
+rerun-incomplete: true
+
+config:
+  # --bind-to none: two mpirun of one machine each bind their ranks from the first core of
+  # the allowed set, so two solves at once would share cores. Without binding, the kernel
+  # places the ranks inside the core set of the caller.
+  - "mpi_launcher=mpirun --bind-to none -np {np}"
+  - "env_preamble=source /usr/lib/openfoam/openfoam2606/etc/bashrc"

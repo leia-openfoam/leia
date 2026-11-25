@@ -1,0 +1,58 @@
+# The run image of leia for a machine without a scheduler and without an OpenFOAM build:
+# Ubuntu 24.04 with the openfoam.com package openfoam2606-dev (OpenFOAM-v2606), Open MPI,
+# and the Python packages of the study workflow (requirements.txt) with Snakemake.
+# The first part repeats .github/docker/openfoam-v2606/Dockerfile (the CI image); keep the
+# two files equal in that part.
+#
+# The image holds NO leia and NO blastAMR binaries. Both are built inside the image from
+# their clones on the host disk, into the clone's own platforms/ folder, as on every other
+# machine. A change of the code needs a rebuild of the code, not of the image.
+#
+# Build (no root rights needed):
+#   apptainer build --fakeroot leia-openfoam-v2606.sif etc/apptainer/leia-openfoam-v2606.def
+# Use: etc/apptainer/README.md.
+Bootstrap: docker
+From: ubuntu:24.04
+
+%labels
+    org.opencontainers.image.source https://github.com/leia-openfoam/leia
+    org.opencontainers.image.description OpenFOAM-v2606 (openfoam.com packages) on Ubuntu 24.04 with Snakemake, for leia studies
+    org.opencontainers.image.licenses GPL-3.0-or-later
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+    # 1. The CI image part: the openfoam.com repository, openfoam2606-dev (binaries, headers,
+    #    wmake, the compiler, flex, the Open MPI development files), mpirun, git, python3.
+    apt-get update
+    apt-get install -y --no-install-recommends ca-certificates curl gnupg
+    curl -fsSL https://dl.openfoam.com/add-debian-repo.sh | bash
+    apt-get update
+    apt-get install -y --no-install-recommends openfoam2606-dev openmpi-bin git python3 bc procps make
+    # 2. The workflow part: a Python environment of its own (the system Python of
+    #    Ubuntu 24.04 refuses pip), rsync and time for the case scripts.
+    apt-get install -y --no-install-recommends python3-venv python3-pip rsync time less
+    rm -rf /var/lib/apt/lists/*
+    python3 -m venv /opt/leia-venv
+    /opt/leia-venv/bin/pip install --no-cache-dir \
+        "snakemake==9.23.1" "foamlib>=0.8" "numpy>=1.24" "matplotlib>=3.6" "sympy>=1.12"
+    # The record of what was installed: printed by `apptainer exec <image> cat /opt/leia-image.txt`.
+    {
+        echo "built $(date -u +%FT%TZ)"
+        dpkg-query -W -f '${Package} ${Version}\n' openfoam2606-dev openfoam2606 openmpi-bin gcc g++ python3 2>/dev/null
+        /opt/leia-venv/bin/pip freeze
+    } > /opt/leia-image.txt
+    # A check at build time: the environment loads and the tools are on PATH.
+    bash -c '. /usr/lib/openfoam/openfoam2606/etc/bashrc && echo "WM_PROJECT_VERSION=$WM_PROJECT_VERSION WM_OPTIONS=$WM_OPTIONS" && command -v wmake && command -v blockMesh && command -v mpirun'
+    /opt/leia-venv/bin/snakemake --version
+
+%environment
+    # The OpenFOAM environment of this image: the profile sources it, then etc/leia-env.sh.
+    export LEIA_FOAM_BASHRC=/usr/lib/openfoam/openfoam2606/etc/bashrc
+    # snakemake and python3 of the workflow first on PATH.
+    export PATH=/opt/leia-venv/bin:$PATH
+    export LC_ALL=C.UTF-8
+    # Open MPI in a container without privileges: no cross-memory attach between the ranks.
+    export OMPI_MCA_btl_vader_single_copy_mechanism=none
+
+%runscript
+    exec "$@"
