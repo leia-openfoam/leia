@@ -43,7 +43,7 @@ SourceFiles
 #define rigidMotionProfileFvPatchScalarField_H
 
 #include "fixedValueFvPatchFields.H"
-#include "implicitSurfaces.H"
+#include "levelSetImplicitSurfaces.H"
 #include "profile.H"
 
 namespace Foam
