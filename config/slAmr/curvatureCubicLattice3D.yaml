@@ -24,6 +24,19 @@
 #   FALSIFIED if a row differs by more than 1e-4: the functions are then not the same
 #   algorithm, or the two fits differ in band cells.
 # NOT TESTED HERE: meshes with refinement levels. That is the next gate (banded mesh).
+#
+# RESULT (MEASURED 2026-11-25, Lichtenberg, job 57152058, binaries of 6b21a63f):
+#   G1  PASS. All eight cases COMPLETED (foam_log_state.sh).
+#   G2  PASS. Relative errors (L1 / L2) of the unit-cube class on the quadratic sphere:
+#       N = 32: solverCellCentreInverse 1.9e-12 / 2.4e-12, stableFootPoint 1.5e-12 /
+#       2.1e-12, cutCellInverse 2.1e-12 / 2.7e-12. N = 52: 2.7e-11 / 3.4e-11 for all
+#       three rows.
+#   G3  PASS. Largest difference of a face-curvature row (L1 or L2, 25 rows) between the
+#       two classes, relative to 2/R: 0 (signed distance, N = 32), 6.8e-17 (quadratic
+#       sphere, N = 32), 3.8e-12 (signed distance, N = 52), 3.0e-11 (quadratic sphere,
+#       N = 52). The mean-curvature table agrees to the same digits.
+#   NOT FALSIFIED. The curvature functions of the unit-cube class are those of the uncached
+#   class on a uniform mesh.
 # ============================================================================
 study_name: curvatureCubicLattice3D
 case: 3Ddeformation
