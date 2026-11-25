@@ -74,7 +74,7 @@ rigidMotionProfileFvPatchScalarField
     const dictionary& dict
 )
 :
-    fixedValueFvPatchScalarField(p, iF, dict, IOobjectOption::NO_READ),
+    fixedValueFvPatchScalarField(p, iF, dict, IOobjectOption::LAZY_READ),
     velocity_(dict.getOrDefault<vector>("velocity", Zero)),
     omega_(dict.getOrDefault<vector>("omega", Zero)),
     point_(dict.getOrDefault<vector>("point", Zero))
@@ -85,7 +85,14 @@ rigidMotionProfileFvPatchScalarField
             << "only one of velocity and omega may be non-zero"
             << exit(FatalIOError);
     }
-    fvPatchField<scalar>::operator=(exact());
+    // A dictionary with a value (a written field, or a field that a mesh
+    // redistribution sends between ranks) keeps that value: the mesh of a
+    // redistribution step has no fvSolution of the case. A dictionary without a
+    // value (the initial field of a case) gets the exact profile.
+    if (!dict.found("value"))
+    {
+        fvPatchField<scalar>::operator=(exact());
+    }
 }
 
 
