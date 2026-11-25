@@ -19,3 +19,23 @@ PCL4 (the floor): row R5 at pass 0 (the fit on the fractions that exact-normal p
 PCL5 (parity): at pass 20 the ratio to plicRDF is above 1.05 at N 128 for both placements, so parity is NOT reached there; at all 6 states the ringLinear fixed point is below the ringArea fixed point. Falsified in its first part if the ratio is at most 1.05 at N 128 for either placement.
 
 Decision rule (the goal is plicRDF's accuracy at lower cost, Tomislav 2026-11-25; the numbers 1.05 and 2 are Claude's): the corrector with the linear fit is a lead if, from start B, after at most 2 passes the ratio to plicRDF is at most 1.05 at N 64 and N 128 for both placements (4 of 4), and the time of those passes is below the time of plicRDF's reconstruction on the same state. Otherwise it is not a lead and no transport run follows. Row R5 then says whether the re-cut rule or the estimator sets the error.
+
+## Pre-registration of the small transport test (isoAdvector, shear3D)
+
+Pre-registered 2026-11-25 (Claude, before any transport run). Case shear3D (leia isoShear3D), hex, N 32 (1 rank) and N 64 (8 ranks), OpenFOAM Co 0.2 and 0.5, advection isoAdvector, the same initial alpha in every row. Rows: PLIC = plicRDF; AREA0 = davof, ringArea, no corrector; LIN0 = davof, ringLinear, no corrector; LIN1 = LIN0 with faceFractionCorrector mean, correctorIterations 1, correctorTolerance 0; LIN2 = the same with correctorIterations 2. Ratios are to PLIC of the same job.
+
+PP (parallel gate, static): on the exact sphere N 64 standard, davofTestCorrector with ringLinear on 8 ranks gives the L1 of |n - n_e| and of 1 - n.n_e at passes 0, 1, 2 equal to the serial values to a relative 1e-10. If not, N 64 runs on 1 rank.
+
+PS1 (the gap exists in leia): E_shape(LIN0)/E_shape(PLIC) > 1.05 at N 64 at both Co.
+
+PS2 (the corrector helps): E_shape(LIN1) < E_shape(LIN0) at N 64 at both Co.
+
+PS3 (parity not reached): E_shape(LIN1)/E_shape(PLIC) > 1.05 at N 64 at both Co. Falsified if it is at most 1.05 at either Co.
+
+PS4 (one pass suffices): E_shape(LIN2) within 2 % of E_shape(LIN1) at N 64 at both Co.
+
+PS5 (cost): wall(LIN0)/wall(PLIC) < 1 and wall(LIN1)/wall(PLIC) > 1 at N 64 at both Co.
+
+Decision rule (goal: plicRDF's accuracy at significantly lower cost, Tomislav 2026-11-25; the numbers 1.05 and 0.8 are Claude's): the corrector is a lead for the isoAdvector track if at N 64 at both Co E_shape(LIN1)/E_shape(PLIC) <= 1.05 and wall(LIN1)/wall(PLIC) <= 0.8. If only the accuracy clause holds, it is an accuracy lead whose cost is the open question. If the accuracy clause fails, the face fractions are not what separates the fit from plicRDF on this flow, and the corrector is closed for this round. N 32 is reported and not part of the rule.
+
+(Run before this text was committed: the parallel gate PP (job 57252508; serial and 8-rank values agree to a relative 1.3e-11 at most, so PP held and N 64 runs on 8 ranks) and one probe run, PLIC at N 64, Co 0.5, 8 ranks (job 57252878, ClockTime 39 s).)
