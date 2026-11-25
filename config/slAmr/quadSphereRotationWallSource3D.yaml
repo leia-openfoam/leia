@@ -1,0 +1,90 @@
+# ============================================================================
+# WALL SOURCE OF THE ROTATION ERROR (2026-11-25). quadSphereRotationUniformDt3D
+# falsified the foot truncation: E does not fall with dt, and the error grows toward the
+# walls (mean 9.3e-3 h in the wall cells, 7e-5 h near the axis). Two wall paths of the
+# trace, one variable each, with the base arm in the same matrix:
+#   footIntegrator taylor | rk2         (rk2 reads no grad(U); taylor reads the Gauss
+#                                        gradient of the trace velocity, whose patch
+#                                        values on a wall are not exact);
+#   traceVelocity projectedFlux | cellCentred (reconstruct(phi) against the prescribed
+#                                        cell velocity of the velocity model).
+# PRE-REGISTERED READ-OUT (before the run). E as in quadSphereRotationUniformDt3D, and
+# the mean error in the wall cells (distance < h), dt = 2 pi/1600.
+#   W1  the base arm (taylor, projectedFlux) reproduces E = 7.27e-4.
+#   W2  an arm that removes the wall source lowers BOTH E and the wall-cell error by at
+#       least a factor 3.
+#   If no arm moves E by a factor 3, the trace is not the source, and the next suspect
+#   is the patch data of psi (rigidMotionProfile and its time level).
+# ============================================================================
+study_name: quadSphereRotationWallSource3D
+case: 3DsphereRotation
+mesh: hex
+mode: parallel
+np: 48
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  BC:
+  - rigidMotionProfile
+  SL_STENCIL_BOUNDARY_FACES:
+  - inflowOnly
+  ADJUST_TIME_STEP:
+  - 'no'
+  DELTA_T:
+  - '0.003926990816987241'
+  N_CELLS:
+  - '128'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '6.283185307179586'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - none
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - quadraticSphere
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - cubicLatticeQuadraticWeightedLeastSquares
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  - rk2
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  - cellCentred
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - staticMesh
+  SL_MESH_TRANSFER:
+  - none
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: last
+studies_dir: studies/slAmr
