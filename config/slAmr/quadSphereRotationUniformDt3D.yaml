@@ -1,0 +1,92 @@
+# ============================================================================
+# FOOT-POINT DISCRIMINATOR ON THE RIGID ROTATION (2026-11-25; question of the supervisor:
+# can the foot point be made more accurate cheaply). The run of
+# quadSphereRotationUniformExact3D with dt = 2 pi/1600, 2 pi/3200 and 2 pi/6400; nothing
+# else changes (uniform N = 128, exact patch data, inflowOnly, taylor foot, no limiter).
+#
+# MECHANISM. The velocity is linear in x and steady, the profile is quadratic, the patch
+# data are exact. So the fit, the patch data and the trace velocity are exact, and the
+# only error left is the truncation of the taylor foot: x_d is exact to O(dt^2), its
+# per-step error is (1/6) dt^3 (u.grad)^2 u, tangential, size omega^3 r dt^3 / 6.
+# DERIVED: after 2 pi the centre (r = 0.25 from the axis) lags by about 4e-6, which is
+# 5e-4 h; the measured E at dt = 2 pi/1600 is 7.3e-4 (2026-11-25, FE host).
+#
+# PRE-REGISTERED READ-OUT (before the run). E = L1 of |psi - exact|/h in the interface
+# cells (|d| < h) at T = 2 pi, h = 1/128.
+#   F1  E falls with the order 2 in dt: E(dt)/E(dt/2) and E(dt/2)/E(dt/4) in [3.4, 4.6].
+#   FALSIFIED if either ratio is below 2: then the trace is not the leading error, and
+#   a more accurate foot does not reduce E (the next suspect: the trace velocity
+#   reconstruct(phi), or the patch data at the inflow faces).
+# ============================================================================
+study_name: quadSphereRotationUniformDt3D
+case: 3DsphereRotation
+mesh: hex
+mode: parallel
+np: 48
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  BC:
+  - rigidMotionProfile
+  SL_STENCIL_BOUNDARY_FACES:
+  - inflowOnly
+  ADJUST_TIME_STEP:
+  - 'no'
+  DELTA_T:
+  - '0.003926990816987241'
+  - '0.001963495408493621'
+  - '0.0009817477042468104'
+  N_CELLS:
+  - '128'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '6.283185307179586'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - none
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - quadraticSphere
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - cubicLatticeQuadraticWeightedLeastSquares
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - staticMesh
+  SL_MESH_TRANSFER:
+  - none
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: last
+studies_dir: studies/slAmr
