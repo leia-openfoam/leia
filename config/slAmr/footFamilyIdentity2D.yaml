@@ -1,0 +1,42 @@
+# ============================================================================
+# BIT-IDENTITY GATE OF THE FOOT-INTEGRATOR FAMILY (2026-11-25, CLAUDE.md "Extension
+# without modification", items 3 and 5). The taylor and rk2 feet moved from an if chain
+# in pointValueScheme into the RTS family slFootIntegrator (foot/). The change claims to
+# be inert.
+# The study runs TWICE on one machine (the FE host, one Apptainer image): in a clone
+# built BEFORE the change and in a clone built AFTER it, same config, same profile.
+# PRE-REGISTERED READ-OUT (before the run):
+#   B1  every arm of both runs completes;
+#   B2  every metric CSV (leiaSemiLagrangeLevelSetFoam.csv, gradPsiError.csv) of the
+#       AFTER run equals the BEFORE run: compare_metrics_csv.py --tol 0
+#       --skip ELAPSED_CPU_TIME,ELAPSED_CLOCK_TIME.
+#   FALSIFIED (the change is not inert) if any column differs.
+# Rungs and settings: those of config/advConv2Dtranslation.yaml, value bound none only,
+# both integrators.
+# ============================================================================
+study_name: footFamilyIdentity2D
+case: 2Dtranslation
+mesh: hex
+mode: parallel
+np: 8
+solver: leiaSemiLagrangeLevelSetFoam
+solve_runtime: 3600
+axes_override:
+  SL_VALUE_BOUND: ["none"]
+  SL_CONE_L_MODE: ["unity"]
+  SL_CONE_INADMISSIBLE: ["cellOnly"]
+  SL_CONE_L: [1]
+  SL_LIMITER: ["none"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor", "rk2"]
+  SL_STENCIL: ["point"]
+  SL_CLIP: ["false"]
+  SL_CLIP_REGION: ["all"]
+  SL_CLIP_KEEP_EXTREMA: ["false"]
+  PHASE_INDICATOR: [detrixheAslam]
+  N_CELLS: [32, 64, 128, 256]
+  CFL: [0.5]
+  END_TIME: [0.5]
+collapse_other_axes: true
+export_slides: false
+studies_dir: studies/slAmr
