@@ -17,6 +17,7 @@ normalModels/exactNormal.C
 normalModels/plicRDFNormal.C
 normalModels/ringAreaNormal.C
 normalModels/ringFitNormal.C
+normalModels/ringLinearNormal.C
 normalModels/youngsNormal.C
 reconstruction/davof.C
 reconstruction/davofCutCellPLIC.C

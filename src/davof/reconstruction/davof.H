@@ -241,6 +241,9 @@ class davof
 :
     public reconstructionSchemes
 {
+    //- The normal model ringLinear positions planes (positionPlane)
+    friend class davofNormalModels::ringLinear;
+
     // Private Data
 
         //- Reference to mesh

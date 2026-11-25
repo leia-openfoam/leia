@@ -120,6 +120,11 @@ namespace reconstruction
     class davof;
 }
 
+namespace davofNormalModels
+{
+    class ringLinear;
+}
+
 /*---------------------------------------------------------------------------*\
                        Class davofNormalModel Declaration
 \*---------------------------------------------------------------------------*/
