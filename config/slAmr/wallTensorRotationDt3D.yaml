@@ -1,0 +1,89 @@
+# ============================================================================
+# WALL TENSOR ON THE ROTATION NEAR THE WALLS (2026-11-26; stage A of the boundary
+# treatment). quadSphereRotationUniformDt3D with SL_RECONSTRUCTION cubicLatticeWallTensor;
+# nothing else changes (uniform N = 128, np 48, exact inflow data, taylor foot,
+# dt = 2 pi/1600, 2 pi/3200, 2 pi/6400).
+# BASELINE (MEASURED 2026-11-25, quadSphereRotationUniformDt3D): E = 7.27e-4 / 7.90e-4 /
+# 2.70e-3 (interface cells, L1, in h), not falling with dt; mean error in the wall cells
+# 9.3e-3 h at dt = 2 pi/1600; the source is the linear fallback fit of 32,256 wall cells.
+# DERIVED: with the wall source removed, the leading error is the truncation of the taylor
+# foot, about 5e-4 h at dt = 2 pi/1600, falling with dt^2.
+# PRE-REGISTERED READ-OUT (before the run).
+#   R1  every case completes; the log reports 0 wall cells with the base fit.
+#   R2  the mean error in the wall cells (distance < h) falls at least 10 times against
+#       the baseline at dt = 2 pi/1600 (to <= 9.3e-4 h).
+#   R3  E falls with dt: E(dt)/E(dt/2) >= 3 and E(dt/2)/E(dt/4) >= 3.
+#   FALSIFIED if the wall-cell error falls less than 3 times, or E does not fall with dt.
+# ============================================================================
+study_name: wallTensorRotationDt3D
+case: 3DsphereRotation
+mesh: hex
+mode: parallel
+np: 48
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  BC:
+  - rigidMotionProfile
+  SL_STENCIL_BOUNDARY_FACES:
+  - inflowOnly
+  ADJUST_TIME_STEP:
+  - 'no'
+  DELTA_T:
+  - '0.003926990816987241'
+  - '0.001963495408493621'
+  - '0.0009817477042468104'
+  N_CELLS:
+  - '128'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '6.283185307179586'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - none
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - quadraticSphere
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - cubicLatticeWallTensor
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - staticMesh
+  SL_MESH_TRANSFER:
+  - none
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: last
+studies_dir: studies/slAmr
