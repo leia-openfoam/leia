@@ -149,10 +149,10 @@ void Foam::cubicLatticeWallTensorReconstruction::buildWall()
     const labelListList& cp = mesh_.cellPoints();
     const pointField& pts = mesh_.points();
     boolList cand(nCells, false);
+    // h of EVERY axis-aligned cube (the owners of the interior tensor points are
+    // not wall cells; their size is compared below)
     forAll(cand, c)
     {
-        if (bad[c]) { continue; }
-        if (side_[c][0] == 0 && side_[c][1] == 0 && side_[c][2] == 0) { continue; }
         if (mesh_.cells()[c].size() != 6 || cp[c].size() != 8) { continue; }
         boundBox bb(pts, cp[c], false);
         const vector sp = bb.span();
@@ -165,6 +165,8 @@ void Foam::cubicLatticeWallTensorReconstruction::buildWall()
             continue;
         }
         h_[c] = sp.x();
+        if (bad[c]) { continue; }
+        if (side_[c][0] == 0 && side_[c][1] == 0 && side_[c][2] == 0) { continue; }
         cand[c] = true;
     }
 
