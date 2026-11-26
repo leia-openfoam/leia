@@ -14,6 +14,21 @@
 #       the baseline at dt = 2 pi/1600 (to <= 9.3e-4 h).
 #   R3  E falls with dt: E(dt)/E(dt/2) >= 3 and E(dt/2)/E(dt/4) >= 3.
 #   FALSIFIED if the wall-cell error falls less than 3 times, or E does not fall with dt.
+#
+# RESULT, FIRST RUN (MEASURED 2026-11-26, FE host, binaries of a146ac82, np 48): every wall
+# cell uses the tensor interpolant. E = 1.72e-3 / 4.11e-3 / 7.99e-3 (L1, h) at dt / dt/2 /
+# dt/4; mean wall-cell error 1.96e-2 / 2.00e-2 / 2.12e-2 h; max 0.21 h at the wall y = 1
+# near z = 0.5, where the wall changes from inflow to outflow. R2 FAIL (the wall error is
+# 2.1 times WORSE than the baseline), R3 FAIL (E rises as dt falls). FALSIFIED.
+# DIAGNOSIS (DERIVED from the code, not yet tested): the velocity of a boundary point is
+# u_c + grad(u)_c . dx with the Gauss gradient of the trace velocity reconstruct(phi), whose
+# patch values are the adjacent cell values (extrapolatedCalculated). That gradient is
+# wrong by O(|grad u|) in every wall cell, so a boundary point moves with an O(h |grad u|)
+# velocity error: an O(h dt) foot error per step, O(h) after a fixed time, for any dt.
+# SECOND RUN, pre-registered before it (2026-11-26): the velocity of a boundary point and
+# its gradient from the cell values of the tensor stencil only (one-sided difference
+# normal to a wall, central difference along it; exact for a linear velocity). The same
+# read-out R1 to R3 applies.
 # ============================================================================
 study_name: wallTensorRotationDt3D
 case: 3DsphereRotation
