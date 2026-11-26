@@ -8759,3 +8759,63 @@ pre-print, version 1, are in `docs/plan-sl-amr-preprint.md`. Clone
     mesh change (the final fields cannot be read back). The parallel post-processing
     `postProcess -func "grad(psi)"` on an AMR case did not end in 20 minutes.
 
+
+### 11.45 Walls, the H-band and the FE host (2026-11-24 to 2026-11-26, FE host and Lichtenberg)
+
+Branch `feature/slls-amr`. Runs on Lichtenberg (special00005) and, since 2026-11-25, on a
+machine without a scheduler through the Apptainer image `etc/apptainer/leia-openfoam-v2606.def`
+and the profiles `profiles/container16` and `profiles/container48` (usage:
+`etc/apptainer/README.md`). The image reproduces Lichtenberg: the curvature gate equal in every
+printed digit, the inflowOnly translation within round-off (largest relative difference
+2.3e-5 in a column of size 1.6e-12).
+
+1. **Curvature of the unit-cube class: pass** (`config/slAmr/curvatureCubicLattice3D.yaml`).
+   Quadratic sphere, rows solverCellCentreInverse, stableFootPoint, cutCellInverse: relative
+   error 2e-12 (N = 32) and 3e-11 (N = 52); every row equals the uncached class within 3e-11
+   relative to 2/R.
+2. **Exact inflow data** (`rigidMotionProfile`, the mesh adaptation at the end of the step).
+   Uniform N = 128: translation E = 8.4e-11 h (exact); rotation E = 7.3e-4 h. AMR translation
+   E = 8.4e-4 h (T1 falsified). AMR rotation fails: a level-0 wall cell next to the level-1
+   buffer grows by 2.4 per step from step 27, false sign changes appear at step 30, the
+   volume error ends at 26 %. The band (6 fine layers and 2 buffer cells) reaches the wall
+   above the sphere. Two fixes of `rigidMotionProfile` were needed (header name; the balance
+   step of blastAMR builds patch fields on meshes without the fvSolution of the case).
+3. **The foot is not the leading error of the rotation** (`quadSphereRotationUniformDt3D`):
+   E = 7.27e-4, 7.90e-4, 2.70e-3 h at dt = 2 pi/1600, /3200, /6400. The error grows toward
+   the walls (9.3e-3 h in the wall cells, 7e-5 h at the axis). Neither rk2 nor the
+   prescribed cell velocity changes it (`quadSphereRotationWallSource3D`). Source: inflowOnly
+   drops the outflow faces of 33,280 wall cells and 32,256 of them fall back to a LINEAR fit
+   (two wall-normal positions only).
+4. **H-band falsified** (`hBandQuadSphere{Translation,Rotation}3D`, class `layerBlended`).
+   E at bandLayers 2 / 4 / 6: translation 0.67 / 0.40 / 0.17 h, rotation 2.05 / 1.58 / 1.10 h
+   (limit 1e-3). The class has no defect: with the quadratic fit on both sides it reproduces
+   the exact control (E = 8.36e-11 h, `hBandIdentityTranslation3D`). The error of the outer
+   linear fit (about 0.0065 h per step on this profile) reaches the interface through the
+   stencils of the inner fit.
+5. **The foot-integrator family** (`slFootIntegrator`: taylor, rk2; later taylorCellGradient)
+   and the hook `slReconstruction::advanceBoundary` are inert: serial runs before and after
+   are bit-identical in 12 arms (`footFamilyIdentitySerial{2D,3D}`). The parallel form of the
+   gate is not decisive on the FE host: the scotch decomposition there is not reproducible
+   between two runs (11 of 14 cases differ), and results then differ at round-off.
+6. **Boundary treatment decided (supervisor, 2026-11-26)**: boundary-face, edge and corner
+   values as advected unknowns, the wall cell on the 27-point tensor interpolant. Symbol
+   analysis (`docs/analysis-amplification-sl/sympy/wall_face_unknowns.py`,
+   `wall_edges_corners.py`): exact for a quadratic (4e-14); no growth at walls, edges and
+   corners for Co >= 0.1; a slab-wide remainder 2.6e-4 at Co 0.0164 that falls with the slab
+   thickness; the production inflowOnly grows by 1.2e-3 to 3.1e-3 at the inflow wall at every
+   thickness. Plan section 6 items 8 and 9; the unstructured form is a roadmap item.
+7. **Class `cubicLatticeWallTensor`** (stage A, static cubic meshes).
+   - Exactness gate (`wallTensorExact3D{serial,np4}`): the quadratic sphere translates out
+     through the outflow wall; max error over all cells 1.6e-9 h (N = 32), 2.4e-9 h (N = 64),
+     serial equal to 4 ranks.
+   - Rotation (`wallTensorRotationDt3D`): first run falsified (the boundary-point velocity came
+     from the Gauss gradient, biased in wall cells and applied transposed); second run E =
+     2.63e-4, 7.66e-5, 4.65e-5 h, wall cells 1.74e-3, 8.45e-4, 4.32e-4 h (first order in dt).
+   - With the foot integrator `taylorCellGradient` (the dt^2 term from a least-squares gradient
+     of the cell values; `wallTensorRotationCellGradDt3D`): E = 2.59e-4, 6.48e-5, 1.62e-5 h,
+     wall cells 2.81e-4, 7.05e-5, 1.77e-5 h; order 2.0 in dt for both. Against the production
+     setting: wall cells 33 times lower, E at dt/4 167 times lower.
+8. **Open.** Stage B (AMR): face values across level transitions along a wall, and the wall
+   rule of the refinement (no level transition in the stencil of a wall cell that the band
+   reaches). A mesh ladder of the rotation (the dt sweeps above are at N = 128 only). The
+   regression set with taylorCellGradient (not a default). The corner power bound (P6d).
