@@ -29,6 +29,23 @@
 # its gradient from the cell values of the tensor stencil only (one-sided difference
 # normal to a wall, central difference along it; exact for a linear velocity). The same
 # read-out R1 to R3 applies.
+#
+# RESULT, SECOND RUN (MEASURED 2026-11-26, FE host, binaries of 4435f37c, np 48). Every wall
+# cell uses the tensor interpolant.
+#   dt          E (L1 / L2, h)        wall cells mean / max   all cells mean
+#   2 pi/1600   2.63e-4 / 3.05e-4     1.74e-3 / 9.96e-3       8.75e-4
+#   2 pi/3200   7.66e-5 / 9.57e-5     8.45e-4 / 5.07e-3       3.30e-4
+#   2 pi/6400   4.65e-5 / 5.95e-5     4.32e-4 / 2.54e-3       1.63e-4
+#   Baseline (quadSphereRotationUniformDt3D): E 7.27e-4 / 7.90e-4 / 2.70e-3, wall 9.3e-3.
+#   R1 PASS. R2 FAIL: the wall-cell error falls 5.3 times, not 10 (not falsified: the
+#   threshold of falsification was 3). R3 FAIL: ratios 3.43 and 1.65. E is 2.8 times lower
+#   than the baseline at dt and 58 times lower at dt/4, and it now falls with dt.
+#   The wall-cell error falls with order 1 in dt (1.74e-3, 8.45e-4, 4.32e-4); the largest
+#   error sits in edge and corner cells.
+#   HYPOTHESIS (not tested): the remaining first-order source is the taylor foot of the
+#   wall CELLS: its dt^2 term reads the Gauss gradient of the trace velocity, which is
+#   biased by O(|grad u|) in wall cells; an O(1) error in a dt^2 term per step is O(dt)
+#   after a fixed time.
 # ============================================================================
 study_name: wallTensorRotationDt3D
 case: 3DsphereRotation
