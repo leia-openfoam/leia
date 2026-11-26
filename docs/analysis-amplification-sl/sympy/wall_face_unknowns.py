@@ -32,6 +32,22 @@ PRE-REGISTERED READ-OUT (written before the first run, 2026-11-26).
   Expected for comparison (not a criterion): inflowOnly falls back to LINEAR in the wall
   cell of an outflow or tangential wall, so it fails P1 there.
 
+RESULT OF THE FIRST RUN (2026-11-26, laptop, K = 6, 12^2 waves; MEASURED): P1 holds
+(exactness error 2e-14). P2 FALSIFIED: the outflow wall amplifies, growth 3.6e-2 at Co 0.1,
+4.0e-2 at Co 0.25, in the mode (ky, kz) = (pi, pi) of the wall cell and its face
+(eigenvector |v| 1.0 in the wall cell, 0.6 to 0.8 in the face, 0.1 one layer in). For
+comparison inflowOnly: 4.8e-3 at Co 0.1, in the second layer of the INFLOW wall.
+
+SECOND CANDIDATE, pre-registered after the first run and before its own run (2026-11-26):
+  faceUnknownsTensorI  the same unknowns; the wall cell and its face are updated by the
+      TRIQUADRATIC INTERPOLANT on the 27-point tensor set x in {wall face, layer 0, layer 1}
+      x {-1, 0, 1}^2 (the 9 face values of the 3x3 columns, the 9 centres of layer 0, the 9
+      centres of layer 1). Every other cell keeps the least-squares quadratic. The
+      departure point of the wall cell and of its face lies inside this set for outflow and
+      tangential flow (Co <= 1/2 normal to the wall).
+  P4  faceUnknownsTensorI: P1, and growth <= 1e-10 for every direction and Co <= 1.
+  FALSIFIED if any direction amplifies by more than 1e-10.
+
 Usage: python3 wall_face_unknowns.py [--layers K] [--waves N] [--powers]
 """
 import argparse, itertools, sys
@@ -83,8 +99,33 @@ def slots_of_cell(i, K, variant, d):
 def face_value_rule(variant, kind):
     if variant == "zeroGradient": return "wallcell"
     if kind == "inflow": return "exact"
-    if variant == "faceUnknowns": return "unknown"
+    if variant.startswith("faceUnknowns"): return "unknown"
     return "none"              # inflowOnly: the face is not data
+
+def lagrange(nodes, x):
+    w = []
+    for j, xj in enumerate(nodes):
+        v = 1.0
+        for m, xm in enumerate(nodes):
+            if m != j: v *= (x - xm)/(xj - xm)
+        w.append(v)
+    return w
+
+def tensor_slots(i, K, x):
+    """Triquadratic interpolation weights for the wall cell of layer i (0 or K-1) at the
+    displacement x from its centre: list of (weight, kind, ref, dy, dz), kind cell/face/centre."""
+    side = -1 if i == 0 else +1
+    xn = (-0.5, 0.0, 1.0) if side == -1 else (0.5, 0.0, -1.0)
+    wx = lagrange(xn, x[0]); wy = lagrange((-1, 0, 1), x[1]); wz = lagrange((-1, 0, 1), x[2])
+    out = []
+    for a, xa in enumerate(xn):
+        for b, yb in enumerate((-1, 0, 1)):
+            for c, zc in enumerate((-1, 0, 1)):
+                w = wx[a]*wy[b]*wz[c]
+                if a == 0: out.append((w, "face", side, yb, zc))
+                elif a == 1: out.append((w, "cell", i, yb, zc))
+                else: out.append((w, "cell", i - side, yb, zc))
+    return out
 
 def assemble(K, d, variant, ky, kz):
     """Step matrix A (cells 0..K-1, then face of side -1, then face of side +1)."""
@@ -103,7 +144,12 @@ def assemble(K, d, variant, ky, kz):
             if rule == "wallcell": A[row, wall_layer] += coef*ph(dy, dz)
             elif rule == "unknown": A[row, fidx[ref]] += coef*ph(dy, dz)
             # exact: zero perturbation
+    tens = variant == "faceUnknownsTensorI"
     for i in range(K):
+        if tens and i in (0, K - 1):
+            for w, kind, ref, dy, dz in tensor_slots(i, K, -np.asarray(d)):
+                add_slot_value(i, w, kind, ref, dy, dz)
+            info[i] = "T"; continue
         sl = slots_of_cell(i, K, variant, d)
         g, nc = fit_weights([s[0] for s in sl], -np.asarray(d))
         info[i] = nc
@@ -115,8 +161,13 @@ def assemble(K, d, variant, ky, kz):
         if rule != "unknown": continue          # not a state variable in this variant
         layer = 0 if side == -1 else K - 1
         xf = -0.5 if side == -1 else K - 0.5
-        sl = slots_of_cell(layer, K, variant, d)
         x = np.array([xf - layer, 0, 0]) - np.asarray(d)
+        if tens:
+            r = fidx[side]
+            for w, kind, ref, dy, dz in tensor_slots(layer, K, x):
+                add_slot_value(r, w, kind, ref, dy, dz)
+            info[("face", side)] = "T"; continue
+        sl = slots_of_cell(layer, K, variant, d)
         g, nc = fit_weights([s[0] for s in sl], x)
         info[("face", side)] = nc
         r = fidx[side]
@@ -140,13 +191,28 @@ def exactness(K, d, variant):
             wl = 0 if ref == -1 else K - 1
             return q(np.array([wl, centre[1] + off[1], centre[2] + off[2]], float))
         return q(centre + np.asarray(off, float))      # unknown or exact: the exact value
+    tens = variant == "faceUnknownsTensorI"
+    def tval(w, kind, ref, dy, dz, layer):
+        side = -1 if layer == 0 else 1
+        if kind == "face":
+            if face_value_rule(variant, wall_kind(d, ref)) == "exact" or True:
+                return q(np.array([-0.5 if side == -1 else K - 0.5, dy, dz], float))
+        return q(np.array([ref, dy, dz], float))
     for i in range(K):
+        if tens and i in (0, K - 1):
+            c = np.array([i, 0., 0.])
+            v = sum(w*tval(w, kind, ref, dy, dz, i) for w, kind, ref, dy, dz in tensor_slots(i, K, -d))
+            err = max(err, abs(v - q(c - d)))
+            xf = np.array([-0.5 if i == 0 else K - 0.5, 0., 0.])
+            v = sum(w*tval(w, kind, ref, dy, dz, i) for w, kind, ref, dy, dz in tensor_slots(i, K, xf - c - d))
+            err = max(err, abs(v - q(xf - d)))
+            continue
         c = np.array([i, 0., 0.]); sl = slots_of_cell(i, K, variant, d)
         g, _ = fit_weights([s[0] for s in sl], -d)
         v = q(c) + sum(gs*(val(*s[:3], c) - q(c)) for gs, s in zip(g, sl))
         err = max(err, abs(v - q(c - d)))
     for side in (-1, +1):
-        if face_value_rule(variant, wall_kind(d, side)) != "unknown": continue
+        if tens or face_value_rule(variant, wall_kind(d, side)) != "unknown": continue
         layer = 0 if side == -1 else K - 1; c = np.array([layer, 0., 0.])
         xf = np.array([-0.5 if side == -1 else K - 0.5, 0., 0.])
         sl = slots_of_cell(layer, K, variant, d)
@@ -160,6 +226,7 @@ def main():
     ap.add_argument("--layers", type=int, default=8)
     ap.add_argument("--waves", type=int, default=24)
     ap.add_argument("--powers", action="store_true")
+    ap.add_argument("--variants", nargs="+", default=["inflowOnly", "zeroGradient", "faceUnknowns", "faceUnknownsTensorI"])
     a = ap.parse_args()
     K = a.layers
     dirs = {"normal +x": (1, 0, 0), "normal -x": (-1, 0, 0), "tangential y": (0, 1, 0),
@@ -170,7 +237,7 @@ def main():
     ks = np.linspace(-np.pi, np.pi, a.waves, endpoint=False)
     print(f"slab K = {K} layers, {a.waves}^2 tangential Bloch waves; growth = max|eig| - 1")
     worst = {}
-    for variant in ("inflowOnly", "zeroGradient", "faceUnknowns"):
+    for variant in a.variants:
         print(f"\n=== {variant}")
         for name, e in dirs.items():
             e = np.asarray(e, float); e /= np.linalg.norm(e)
@@ -196,12 +263,11 @@ def main():
             print(f"  {name:20s} " + "  ".join(f"Co {Co:g}: {g:+.2e} ex {ex:.0e} r{'/'.join(rk)}"
                                                + (f" P {pm:.2f}" if a.powers else "")
                                                for Co, g, ex, rk, pm in row))
-    fu = [(k, v) for k, v in worst.items() if k[0] == "faceUnknowns"]
-    p1 = max(v[1] for k, v in fu); p2 = max(v[0] for k, v in fu)
-    print(f"\nfaceUnknowns: largest exactness error {p1:.2e} (P1: <= 1e-12), "
-          f"largest growth {p2:+.2e} (P2: <= 1e-10)")
-    if a.powers:
-        print(f"faceUnknowns: largest power norm {max(v[2] for k, v in fu):.3f} (P3: <= 10)")
+    for vn in a.variants:
+        fu = [(k, v) for k, v in worst.items() if k[0] == vn]
+        p1 = max(v[1] for k, v in fu); p2 = max(v[0] for k, v in fu)
+        print(f"{vn}: largest exactness error {p1:.2e}, largest growth {p2:+.2e}"
+              + (f", largest power norm {max(v[2] for k, v in fu):.3f}" if a.powers else ""))
 
 if __name__ == "__main__":
     main()
