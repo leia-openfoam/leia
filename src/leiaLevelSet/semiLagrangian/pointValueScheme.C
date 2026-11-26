@@ -368,6 +368,9 @@ void Foam::pointValueScheme::advance
     // ------------------------------------------------------------------ //
     corrector.correct(psi, feet, recon);
 
+    // Boundary state of the reconstruction (no-op unless the model has one).
+    recon.advanceBoundary(*trajectoryNew, *trajectoryOld, dt, psi);
+
     // Optional post-advection fix-up (band model: re-extend psi outside the band
     // as a clean signed distance so freshly-entered band cells get a good value).
     recon.postAdvect(psi);

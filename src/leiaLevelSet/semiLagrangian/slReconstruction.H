@@ -394,6 +394,22 @@ public:
         //  signed-distance re-extension). Default: no-op.
         virtual void postAdvect(volScalarField& psi) {}
 
+        //- Advance the boundary state of the reconstruction by one step, called
+        //  once per step after the cell update and before postAdvect, while the
+        //  reconstruction still holds the fit of psi^n. A model that carries
+        //  values at boundary points (face centres, boundary edges, corners) as
+        //  advected unknowns moves them here, from their own departure points;
+        //  uNew and uOld are the two trajectory-velocity levels of the step and
+        //  dt the step of the scheme. Default: no-op (no boundary state).
+        virtual void advanceBoundary
+        (
+            const volVectorField& uNew,
+            const volVectorField& uOld,
+            const scalar dt,
+            volScalarField& psi
+        )
+        {}
+
         //- Fill kappa (1/length) with the interface mean curvature
         //  kappa = div(grad psi / |grad psi|) evaluated SYMBOLICALLY from the
         //  reconstruction's fit gradient and Hessian (no FVM operators), constant-
