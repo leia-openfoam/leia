@@ -63,6 +63,16 @@ THIRD CANDIDATE, pre-registered after that run and before its own run (2026-11-2
   P5  faceUnknownsTensorI2: P1, and growth <= 1e-10 for every direction and Co <= 1.
   FALSIFIED if any direction amplifies by more than 1e-10.
 
+RESULT faceUnknownsTensorI2 (2026-11-26, laptop; MEASURED): exactness 3.6e-14. K = 6,
+12^2 waves: tangential flow <= 2.2e-16; every Co >= 0.1 and every direction <= 0 (decays);
+the largest growth is 2.6e-4 at Co 0.0164 (normal) and 1.7e-4 (oblique). P5 FALSIFIED by
+the pre-registered threshold. NOT pre-registered, measured after the verdict: the growing
+mode spans the whole slab (eigenvector |v| 0.3 to 1.0 in every layer, k = pi in one
+tangential direction), and its growth falls with the slab thickness: Co 0.0164: 2.6e-4 /
+1.3e-4 / 5.1e-5 at K = 6 / 12 / 24; Co 0.05: 4.6e-4 / 8.2e-5 / -1.5e-11. The production
+inflowOnly has 1.2e-3 (Co 0.0164) and 3.1e-3 (Co 0.05) at every K: a growth that sits at
+the wall and does not fall with K.
+
 Usage: python3 wall_face_unknowns.py [--layers K] [--waves N] [--powers]
 """
 import argparse, itertools, sys
