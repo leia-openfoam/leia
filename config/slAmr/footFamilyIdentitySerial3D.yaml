@@ -12,6 +12,12 @@
 #   S2  every metric CSV (leiaSemiLagrangeLevelSetFoam.csv, gradPsiError.csv) of AFTER
 #       equals BEFORE: compare_metrics_csv.py --tol 0 --skip ELAPSED_CPU_TIME,ELAPSED_CLOCK_TIME.
 #   FALSIFIED (a change is not inert) if any column differs.
+#
+# RESULT (MEASURED 2026-11-26, FE host; before = binaries of 49325615, after = faecb31c,
+# which contains c604fa73 and ba2b579e). 2D: 8 arms (N = 32 to 256, taylor and rk2); 3D:
+# 4 arms (N = 32 and 64, taylor and rk2). S1 PASS: every arm of both runs completes.
+# S2 PASS: both CSVs of every arm are bit-identical (largest relative difference 0 in
+# every column except the timing columns). Both infrastructure commits are inert.
 # ============================================================================
 study_name: footFamilyIdentitySerial3D
 case: 3Dshear
