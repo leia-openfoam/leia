@@ -48,6 +48,21 @@ SECOND CANDIDATE, pre-registered after the first run and before its own run (202
   P4  faceUnknownsTensorI: P1, and growth <= 1e-10 for every direction and Co <= 1.
   FALSIFIED if any direction amplifies by more than 1e-10.
 
+RESULT faceUnknownsTensorI (2026-11-26, laptop, K = 6, 12^2 waves; MEASURED): exactness
+3.6e-14. Tangential flow: growth <= 4.4e-16 at every Co (the outflow/tangential defect of the
+first candidate is gone). P4 FALSIFIED by the INFLOW wall: growth 4.9e-3 at Co 0.1 (normal)
+and 2.3e-3 (oblique), mode in layer 1 next to the inflow wall; the production inflowOnly has
+the same growth there (4.8e-3). At Co 1 (normal) growth 1.04 in layer 0: the departure point
+of the inflow wall cell lies outside the domain (beyond the face at -1/2).
+
+THIRD CANDIDATE, pre-registered after that run and before its own run (2026-11-26):
+  faceUnknownsTensorI2  faceUnknownsTensorI, and (a) a cell that is NOT a wall cell takes no
+      boundary face data (its stencil is cells only, the interior C-Cp/L2 fit), and (b) a
+      departure point outside the domain takes the boundary value of the inflow face that
+      its characteristic crosses (exact data: zero perturbation).
+  P5  faceUnknownsTensorI2: P1, and growth <= 1e-10 for every direction and Co <= 1.
+  FALSIFIED if any direction amplifies by more than 1e-10.
+
 Usage: python3 wall_face_unknowns.py [--layers K] [--waves N] [--powers]
 """
 import argparse, itertools, sys
@@ -90,6 +105,7 @@ def slots_of_cell(i, K, variant, d):
     # boundary faces of the stencil cells: the cells of layer 0 (or K-1) in the 3x3 columns
     for side, layer, xf in ((-1, 0, -0.5), (+1, K - 1, K - 0.5)):
         if abs(layer - i) > 1: continue
+        if variant == "faceUnknownsTensorI2" and layer != i: continue
         kind = wall_kind(d, side)
         if variant == "inflowOnly" and kind != "inflow": continue
         for dy, dz in itertools.product((-1, 0, 1), repeat=2):
@@ -144,8 +160,10 @@ def assemble(K, d, variant, ky, kz):
             if rule == "wallcell": A[row, wall_layer] += coef*ph(dy, dz)
             elif rule == "unknown": A[row, fidx[ref]] += coef*ph(dy, dz)
             # exact: zero perturbation
-    tens = variant == "faceUnknownsTensorI"
+    tens = variant.startswith("faceUnknownsTensorI")
     for i in range(K):
+        if variant == "faceUnknownsTensorI2" and (i - d[0] < -0.5 or i - d[0] > K - 0.5):
+            info[i] = "BC"; continue          # departure point outside: boundary value, exact
         if tens and i in (0, K - 1):
             for w, kind, ref, dy, dz in tensor_slots(i, K, -np.asarray(d)):
                 add_slot_value(i, w, kind, ref, dy, dz)
@@ -191,7 +209,7 @@ def exactness(K, d, variant):
             wl = 0 if ref == -1 else K - 1
             return q(np.array([wl, centre[1] + off[1], centre[2] + off[2]], float))
         return q(centre + np.asarray(off, float))      # unknown or exact: the exact value
-    tens = variant == "faceUnknownsTensorI"
+    tens = variant.startswith("faceUnknownsTensorI")
     def tval(w, kind, ref, dy, dz, layer):
         side = -1 if layer == 0 else 1
         if kind == "face":
@@ -199,6 +217,8 @@ def exactness(K, d, variant):
                 return q(np.array([-0.5 if side == -1 else K - 0.5, dy, dz], float))
         return q(np.array([ref, dy, dz], float))
     for i in range(K):
+        if variant == "faceUnknownsTensorI2" and (i - d[0] < -0.5 or i - d[0] > K - 0.5):
+            continue
         if tens and i in (0, K - 1):
             c = np.array([i, 0., 0.])
             v = sum(w*tval(w, kind, ref, dy, dz, i) for w, kind, ref, dy, dz in tensor_slots(i, K, -d))
@@ -226,7 +246,7 @@ def main():
     ap.add_argument("--layers", type=int, default=8)
     ap.add_argument("--waves", type=int, default=24)
     ap.add_argument("--powers", action="store_true")
-    ap.add_argument("--variants", nargs="+", default=["inflowOnly", "zeroGradient", "faceUnknowns", "faceUnknownsTensorI"])
+    ap.add_argument("--variants", nargs="+", default=["inflowOnly", "zeroGradient", "faceUnknowns", "faceUnknownsTensorI", "faceUnknownsTensorI2"])
     a = ap.parse_args()
     K = a.layers
     dirs = {"normal +x": (1, 0, 0), "normal -x": (-1, 0, 0), "tangential y": (0, 1, 0),
