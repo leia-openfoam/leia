@@ -15,6 +15,14 @@
 #   X3  the serial and the 4-rank run agree to 1e-10 in max e.
 #   FALSIFIED if max e > 1e-6 in any case: a boundary point or the tensor interpolant is
 #   not exact, or the parallel exchange of the boundary state is wrong.
+#
+# RESULT (MEASURED 2026-11-26, FE host, binaries of the commit after 57d6ee4c that sizes
+# every cube; serial and np 4). Every wall cell uses the tensor interpolant (9,736 at
+# N = 32, 39,944 at N = 64; 0 with the base fit). The sphere leaves through x = 2.
+# max e over all cells at T = 1.6: 1.600e-09 (N = 32), 2.400e-09 (N = 64); L1 2.3e-10 /
+# 4.5e-10; the same in the wall layer and in the interior (the precision of the written
+# fields). Serial and 4 ranks agree in every printed digit.
+# X1 PASS, X2 PASS, X3 PASS.
 # ============================================================================
 study_name: wallTensorExact3Dserial
 case: 3Dtranslation
