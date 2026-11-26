@@ -272,3 +272,20 @@ the result.
    increases the error.
 7. **References.** The survey marks several of its references as not verified. Each
    reference is checked against its source before it enters the article.
+8. **Boundary treatment (2026-11-26, supervisor): boundary-face values as advected
+   unknowns, decided for the AMR line on cubic cells.** Each boundary face carries psi;
+   outflow and tangential faces are advected from their own departure points, inflow faces
+   take the boundary value; a wall cell and its faces are interpolated on the 27-point
+   tensor set (3x3 face values, 3x3 wall cells, 3x3 cells of the next layer); other cells
+   use the interior fit without face data; a departure point outside the domain takes the
+   boundary value where its characteristic enters. Symbol analysis:
+   `docs/analysis-amplification-sl/sympy/wall_face_unknowns.py` (candidate
+   `faceUnknownsTensorI2`). Refinement at walls by the stencil rule: no level transition
+   inside the stencil of a wall cell that the band reaches. Needed for contact lines and
+   for an interface that approaches a boundary.
+9. **Roadmap work item (2026-11-26, supervisor): an unstructured formulation of the wall
+   cell update of item 8.** The tensor set of item 8 exists only on a cube lattice. A
+   polyhedral wall cell needs an interpolation on a local point set built from its face
+   values and the neighbouring cell centres that brackets every departure point and keeps
+   the growth factor at 1. Until then, a wall cell that is not a cube keeps the per-cell
+   fit.
