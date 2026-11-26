@@ -27,6 +27,7 @@ deferredCorrector.C
 slScheme.C
 foot/slFootIntegrator.C
 foot/slRk2FootIntegrator.C
+foot/slTaylorCellGradientFootIntegrator.C
 pointValueScheme.C
 fluxFormScheme.C
 normalProjectedScheme.C

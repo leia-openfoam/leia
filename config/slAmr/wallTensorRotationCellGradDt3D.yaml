@@ -1,0 +1,87 @@
+# ============================================================================
+# THE WALL-CELL FOOT (2026-11-26). wallTensorRotationDt3D (second run) with
+# SL_FOOT_INTEGRATOR taylorCellGradient: the dt^2 term of the taylor foot with the
+# least-squares velocity gradient of the cell values (no patch values). One variable.
+# HYPOTHESIS under test: the first-order wall error of the second run (1.74e-3, 8.45e-4,
+# 4.32e-4 h) comes from the Gauss gradient of the trace velocity in the wall cells.
+# PRE-REGISTERED READ-OUT (before the run). Wall cells = distance < h.
+#   C1  every case completes.
+#   C2  the mean wall-cell error falls with order >= 1.8 in dt (ratios >= 3.5), and at
+#       dt = 2 pi/1600 it is at most half of 1.74e-3.
+#   C3  E (L1, interface cells) at every dt is not above the second run of
+#       wallTensorRotationDt3D (2.63e-4, 7.66e-5, 4.65e-5).
+#   FALSIFIED if the wall-cell error keeps order 1 in dt (ratios below 2.5): then the
+#   source is not the foot gradient of the wall cells.
+# ============================================================================
+study_name: wallTensorRotationCellGradDt3D
+case: 3DsphereRotation
+mesh: hex
+mode: parallel
+np: 48
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  BC:
+  - rigidMotionProfile
+  SL_STENCIL_BOUNDARY_FACES:
+  - inflowOnly
+  ADJUST_TIME_STEP:
+  - 'no'
+  DELTA_T:
+  - '0.003926990816987241'
+  - '0.001963495408493621'
+  - '0.0009817477042468104'
+  N_CELLS:
+  - '128'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '6.283185307179586'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - none
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - quadraticSphere
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - cubicLatticeWallTensor
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylorCellGradient
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - staticMesh
+  SL_MESH_TRANSFER:
+  - none
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: last
+studies_dir: studies/slAmr
