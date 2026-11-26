@@ -35,6 +35,13 @@ PRE-REGISTERED READ-OUT (2026-11-26, before the first run of this script).
   P6d the largest ||A^n||_2, n <= 2000, is <= 10.
   FALSIFIED if P6a or P6b fails at an edge or a corner.
 
+RESULT (2026-11-26, laptop; MEASURED). Edge, K = 6, 12 waves along the edge: exactness
+2.1e-14 (P6a PASS); growth for Co >= 0.1 at most 2.2e-16 (P6b PASS); Co < 0.1 at most
+2.2e-4 (P6c PASS); largest ||A^n||_2 for n <= 2000: 4.76 (P6d PASS). Corner, K = 5:
+exactness 4.3e-14 (P6a PASS); every arm decays (growth -4.4e-3 or less for Co >= 0.1,
+-2.5e-4 or less for Co < 0.1; P6b, P6c PASS); P6d not run for the corner (343 unknowns,
+2000 powers per arm).
+
 Usage: python3 wall_edges_corners.py [--K 6] [--waves 12] [--domain edge|corner|both]
 """
 import argparse, itertools
