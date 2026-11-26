@@ -12,6 +12,19 @@
 #       wallTensorRotationDt3D (2.63e-4, 7.66e-5, 4.65e-5).
 #   FALSIFIED if the wall-cell error keeps order 1 in dt (ratios below 2.5): then the
 #   source is not the foot gradient of the wall cells.
+#
+# RESULT (MEASURED 2026-11-26, FE host, binaries of 4a946d2e, np 48).
+#   dt          E (L1 / L2, h)        wall cells mean / max   all cells mean   max e
+#   2 pi/1600   2.59e-4 / 2.99e-4     2.81e-4 / 1.69e-3       5.82e-4          1.79e-3
+#   2 pi/3200   6.48e-5 / 7.48e-5     7.05e-5 / 4.21e-4       1.45e-4          4.52e-4
+#   2 pi/6400   1.62e-5 / 1.87e-5     1.77e-5 / 1.05e-4       3.64e-5          1.15e-4
+#   C1 PASS. C2 PASS: wall-cell ratios 3.99 and 3.99 (order 2.0); 2.81e-4 <= 8.7e-4.
+#   C3 PASS: E ratios 4.00 and 4.00 (order 2.0), below the second run at every dt.
+#   The hypothesis holds: the first-order wall error came from the Gauss gradient in the
+#   dt^2 term of the wall-cell foot. The wall cells now have a smaller error than the
+#   interior; what is left is the foot truncation, second order in dt.
+#   Against the production baseline (quadSphereRotationUniformDt3D): wall cells 9.3e-3 ->
+#   2.8e-4 (33 times), E at dt/4 2.70e-3 -> 1.62e-5 (167 times).
 # ============================================================================
 study_name: wallTensorRotationCellGradDt3D
 case: 3DsphereRotation
