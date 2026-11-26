@@ -209,6 +209,8 @@ void Foam::cubicLatticeWallTensorReconstruction::buildWall()
     tensor_.setSize(nCells);
     tensor_ = false;
     boolList geomOk(nCells, false);
+    label nCand = 0, nMissing = 0, nSize = 0, nSide = 0;
+    forAll(cand, c) { if (cand[c]) { ++nCand; } }
     forAll(cand, c)
     {
         if (!cand[c]) { continue; }
@@ -235,11 +237,11 @@ void Foam::cubicLatticeWallTensorReconstruction::buildWall()
             {
                 if (magSqr(stC_[c][m] - target) < 1e-12*h*h) { r = m; break; }
             }
-            if (r < 0) { ok = false; break; }
+            if (r < 0) { ok = false; ++nMissing; break; }
             // a cell entry of the same size (a face entry has the level-free
             // code -1 in sideFld only on the own rank; the size test excludes
             // faces everywhere: a face carries h = 0)
-            if (mag(stH[c][r] - h) > 1e-6*h) { ok = false; break; }
+            if (mag(stH[c][r] - h) > 1e-6*h) { ok = false; ++nSize; break; }
             // the owner of a boundary point lies on the same walls
             if (atWall[0] + atWall[1] + atWall[2] > 0)
             {
@@ -249,7 +251,7 @@ void Foam::cubicLatticeWallTensorReconstruction::buildWall()
                 {
                     if (atWall[a] && os[a] != side_[c][a]) { ok = false; }
                 }
-                if (!ok) { break; }
+                if (!ok) { ++nSide; break; }
             }
             tRaw_[c][tIdx(i, j, k)] = r;
             tKind_[c][tIdx(i, j, k)] = kindOf(atWall);
@@ -309,6 +311,11 @@ void Foam::cubicLatticeWallTensorReconstruction::buildWall()
     }
     reduce(nWall, sumOp<label>());
     reduce(nTensor, sumOp<label>());
+    Info<< "cubicLatticeWallTensor: candidates (axis-aligned cubes at a wall) "
+        << returnReduce(nCand, sumOp<label>()) << "; rejected: tensor point not in the"
+        << " stencil " << returnReduce(nMissing, sumOp<label>()) << ", other cell size "
+        << returnReduce(nSize, sumOp<label>()) << ", owner on another wall "
+        << returnReduce(nSide, sumOp<label>()) << endl;
     Info<< "cubicLatticeWallTensor: " << nWall << " wall cells, " << nTensor
         << " with the tensor interpolant and advected boundary points, "
         << nWall - nTensor << " with the fit of the base class" << endl;
