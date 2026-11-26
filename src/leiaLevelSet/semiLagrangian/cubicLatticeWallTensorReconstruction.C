@@ -527,8 +527,36 @@ void Foam::cubicLatticeWallTensorReconstruction::advanceBoundary
 {
     if (!wallBuilt_) { return; }
     const polyBoundaryMesh& pbm = mesh_.boundaryMesh();
-    const vectorField& C = mesh_.C().primitiveField();
-    const volTensorField gradU(fvc::grad(uNew, "gradU"));
+    // The velocity gradient of a wall cell from the CELL values of its tensor
+    // stencil only: a one-sided difference normal to a wall (node 0 and the node
+    // one cell inward), a central difference along it. Exact for a linear
+    // velocity. The Gauss gradient is not used: the trace velocity
+    // reconstruct(phi) has the adjacent cell value on a wall face, which biases
+    // it by O(|grad u|) in every wall cell (MEASURED 2026-11-26: a boundary-point
+    // error of 0.2 h after one rotation, independent of dt).
+    List<List<vector>> stU;
+    {
+        volVectorField uc("wallTensorU", uNew);
+        uc.correctBoundaryConditions();
+        stencil_.collectData(uc, stU);
+    }
+    tensorField G(mesh_.nCells(), Zero);
+    forAll(tensor_, c)
+    {
+        if (!tensor_[c]) { continue; }
+        vector row[3];
+        for (label a = 0; a < 3; ++a)
+        {
+            label lo[3] = {1, 1, 1}, hi[3] = {1, 1, 1};
+            scalar span;
+            if (side_[c][a] == 0) { lo[a] = 0; hi[a] = 2; span = 2; }
+            else { lo[a] = 1; hi[a] = 2; span = -side_[c][a]; }   // node 2 is inward
+            const vector uHi = stU[c][tRaw_[c][tIdx(hi[0], hi[1], hi[2])]];
+            const vector uLo = stU[c][tRaw_[c][tIdx(lo[0], lo[1], lo[2])]];
+            row[a] = (uHi - uLo)/(span*h_[c]);
+        }
+        G[c] = tensor(row[0], row[1], row[2]);
+    }
 
     // departure point of a boundary point at displacement xp (cell sizes) of
     // cell c, in cell sizes; inside == false if it leaves through a wall of c
@@ -536,8 +564,8 @@ void Foam::cubicLatticeWallTensorReconstruction::advanceBoundary
     {
         const scalar h = h_[c];
         const vector dx(h*xp);
-        const vector up(uNew[c] + (gradU[c] & dx));
-        const vector acc((uNew[c] - uOld[c])/dt + (up & gradU[c]));
+        const vector up(uNew[c] + (dx & G[c]));
+        const vector acc((uNew[c] - uOld[c])/dt + (up & G[c]));
         const vector xd(dx - up*dt + 0.5*acc*dt*dt);
         const vector xi(xd/h);
         inside = true;
