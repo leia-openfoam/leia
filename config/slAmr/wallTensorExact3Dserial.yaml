@@ -1,0 +1,85 @@
+# ============================================================================
+# WALL TENSOR, EXACTNESS GATE (2026-11-26; stage A of the boundary treatment decided on
+# 2026-11-26, plan section 6 item 8). Reconstruction cubicLatticeWallTensor. The quadratic
+# sphere translates one way with u = (1 0 0) to T = 1.6: the centre goes from x = 0.5 to
+# x = 2.1, so the sphere LEAVES the domain through the outflow wall x = 2 ("the interface
+# approaching the boundary"). Exact patch data on the inflow faces (rigidMotionProfile).
+# Every kind of boundary point is exercised: tangential walls y and z (faces, edges along
+# x), the inflow wall x = 0 and the outflow wall x = 2 (faces, edges, corners).
+# DERIVED: the velocity is constant, so the foot is exact; the tensor interpolant and the
+# interior fit are exact for a quadratic; the boundary points are exact by induction.
+# PRE-REGISTERED READ-OUT (before the run). e = |psi - exact|/h over ALL cells at T:
+#   X1  every case completes; the log reports 0 wall cells with the base fit;
+#   X2  max e <= 1e-8 at both resolutions, serial and on 4 ranks (the two configs
+#       wallTensorExact3Dserial and wallTensorExact3Dnp4 are one gate);
+#   X3  the serial and the 4-rank run agree to 1e-10 in max e.
+#   FALSIFIED if max e > 1e-6 in any case: a boundary point or the tensor interpolant is
+#   not exact, or the parallel exchange of the boundary state is wrong.
+# ============================================================================
+study_name: wallTensorExact3Dserial
+case: 3Dtranslation
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangeLevelSetFoam
+theme: sl-amr
+solve_runtime: 480
+setfields_args: -alphaName alpha
+axes_override:
+  BC:
+  - rigidMotionProfile
+  N_CELLS:
+  - '32'
+  - '64'
+  CFL:
+  - '0.5'
+  END_TIME:
+  - '1.6'
+  OSCILLATION:
+  - 'off'
+  END_REFERENCE:
+  - translate
+  ADVECTION:
+  - semiLagrangian
+  PHASE_INDICATOR:
+  - detrixheAslam
+  PROFILE:
+  - quadraticSphere
+  SL_SCHEME:
+  - pointValue
+  SL_RECONSTRUCTION:
+  - cubicLatticeWallTensor
+  SL_VALUE_BOUND:
+  - none
+  SL_LIMITER:
+  - none
+  SL_FOOT_INTEGRATOR:
+  - taylor
+  SL_STENCIL_BOUNDARY_FACES:
+  - inflowOnly
+  SL_STENCIL:
+  - point
+  SL_CLIP:
+  - 'false'
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - none
+  FLUX_PROJECTION:
+  - none
+  SDPLS_SOURCE:
+  - noSource
+  SOURCE_SCHEME:
+  - explicit
+  DYNAMIC_MESH:
+  - staticMesh
+  SL_MESH_TRANSFER:
+  - none
+  PURGE_WRITE:
+  - '2'
+  REPORT_WRITE_ONLY:
+  - 'false'
+collapse_other_axes: true
+export_slides: false
+keep_fields: last
+studies_dir: studies/slAmr
